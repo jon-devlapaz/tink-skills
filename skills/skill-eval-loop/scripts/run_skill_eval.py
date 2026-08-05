@@ -143,6 +143,52 @@ def _model_graders(
     return external, records
 
 
+def _grade_counter_reference(
+    *,
+    case: dict,
+    suite_root: Path,
+    output_dir: Path,
+    harness: str,
+    executable: str,
+    judge_model: str | None,
+    judge_timeout_seconds: int,
+    eval_run: Any,
+) -> dict | None:
+    """Grade a deliberately wrong answer, when the case declares one.
+
+    The reference check above proves the graders accept a correct answer. It
+    cannot show they reject an incorrect one, and graders that accept everything
+    report a confident verdict for both conditions of the paired run.
+
+    Returns the grading, or None when the case declares no counter-reference.
+    """
+    counter_reference = case.get("counter_reference")
+    if counter_reference is None:
+        return None
+    response = counter_reference["response"]
+    with tempfile.TemporaryDirectory(prefix="skill-eval-counter-") as temp:
+        workspace = Path(temp)
+        _prepare_workspace(suite_root, case, workspace, reference=True)
+        external, _ = _model_graders(
+            case=case,
+            response=response,
+            trace_dir=output_dir / "counter-reference-judges" / case["id"],
+            root=output_dir,
+            harness=harness,
+            executable=executable,
+            judge_model=judge_model,
+            timeout_seconds=judge_timeout_seconds,
+            eval_run=eval_run,
+            display_context=f"counter-reference · {case['id']}",
+        )
+        return grade_case(
+            workspace=workspace,
+            response=response,
+            graders=case["graders"],
+            external_grades=external,
+        )
+
+
 def _validate_references(
     *,
     suite_root: Path,
@@ -179,6 +225,21 @@ def _validate_references(
             )
         if grading["summary"]["failed"]:
             raise ValueError(f"reference solution failed graders for case {case['id']}")
+        counter_grading = _grade_counter_reference(
+            case=case,
+            suite_root=suite_root,
+            output_dir=output_dir,
+            harness=harness,
+            executable=executable,
+            judge_model=judge_model,
+            judge_timeout_seconds=judge_timeout_seconds,
+            eval_run=eval_run,
+        )
+        if counter_grading is not None and not counter_grading["summary"]["failed"]:
+            raise ValueError(
+                f"counter-reference passed graders for case {case['id']}; "
+                "the graders do not separate a correct answer from a wrong one"
+            )
         records.append(
             {
                 "case_id": case["id"],

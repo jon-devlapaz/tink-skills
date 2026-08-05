@@ -30,7 +30,14 @@ from recommend_models import (  # noqa: E402
     infer_tier,
     parse_pi_models,
 )
-from run_skill_eval import _run_condition, condition_order, plan_run, run_suite  # noqa: E402
+from run_skill_eval import (  # noqa: E402
+    _grade_counter_reference,
+    _run_condition,
+    _validate_references,
+    condition_order,
+    plan_run,
+    run_suite,
+)
 from runtime_adapters import (  # noqa: E402
     HARNESS_NAMES,
     build_invocation,
@@ -600,6 +607,132 @@ print(json.dumps({
             self.assertEqual(len(policy_notes), 1)
             self.assertIn("not applied", policy_notes[0])
             self.assertIn("minimum_effect_size=0.1", policy_notes[0])
+
+
+class CounterReferenceTests(unittest.TestCase):
+    """A declared counter-reference must fail the graders.
+
+    The existing reference check proves the graders accept a correct answer. It
+    cannot show they reject a wrong one, and graders that accept everything
+    report a confident verdict for both conditions of a paired run.
+    """
+
+    def _skill_with_counter(self, root: Path, counter_response: str) -> Path:
+        """Add a counter-reference and re-register the case.
+
+        A counter-reference is part of the case, so it changes the case hash.
+        Re-registering it here is the same step an author takes when editing a
+        suite; leaving the manifest stale would fail provenance, which is the
+        behaviour we want everywhere else.
+        """
+        skill = _make_schema3_skill(root)
+        suite_path = skill / "evals" / "evals.json"
+        provenance_path = skill / "evals" / "provenance.json"
+        suite = json.loads(suite_path.read_text(encoding="utf-8"))
+        suite["evals"][0]["counter_reference"] = {"response": counter_response}
+        _write_json(suite_path, suite)
+
+        provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+        provenance["suite_sha256"] = canonical_sha256(suite)
+        provenance["cases"][0]["case_sha256"] = canonical_sha256(suite["evals"][0])
+        _write_json(provenance_path, provenance)
+        return skill
+
+    def _validate(self, skill: Path, output_dir: Path) -> list[dict]:
+        suite = load_suite(skill)
+        return _validate_references(
+            suite_root=skill / "evals",
+            suite=suite,
+            output_dir=output_dir,
+            harness="pi",
+            executable="unused",
+            judge_model=None,
+            judge_timeout_seconds=1,
+            eval_run=None,
+        )
+
+    def test_a_wrong_counter_reference_is_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            skill = self._skill_with_counter(root, "this answer is wrong")
+            self.assertTrue(self._validate(skill, root / "out"))
+
+    def test_a_counter_reference_that_passes_stops_the_run(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            skill = self._skill_with_counter(root, "done")
+            with self.assertRaisesRegex(ValueError, "counter-reference passed graders"):
+                self._validate(skill, root / "out")
+
+    def test_a_suite_without_a_counter_reference_is_unaffected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            skill = _make_schema3_skill(root)
+            self.assertTrue(self._validate(skill, root / "out"))
+            case = load_suite(skill)["evals"][0]
+            self.assertIsNone(
+                _grade_counter_reference(
+                    case=case,
+                    suite_root=skill / "evals",
+                    output_dir=root / "out",
+                    harness="pi",
+                    executable="unused",
+                    judge_model=None,
+                    judge_timeout_seconds=1,
+                    eval_run=None,
+                )
+            )
+
+    def test_counter_reference_must_be_an_object(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            skill = _make_schema3_skill(Path(temp))
+            suite_path = skill / "evals" / "evals.json"
+            suite = json.loads(suite_path.read_text(encoding="utf-8"))
+            suite["evals"][0]["counter_reference"] = "wrong"
+            _write_json(suite_path, suite)
+            with self.assertRaisesRegex(ValueError, "counter_reference must be an object"):
+                load_suite(skill)
+
+    def test_counter_reference_response_must_be_a_string(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            skill = _make_schema3_skill(Path(temp))
+            suite_path = skill / "evals" / "evals.json"
+            suite = json.loads(suite_path.read_text(encoding="utf-8"))
+            suite["evals"][0]["counter_reference"] = {"response": 7}
+            _write_json(suite_path, suite)
+            with self.assertRaisesRegex(ValueError, "counter_reference.response must be a string"):
+                load_suite(skill)
+
+    def test_empty_counter_reference_object_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            skill = _make_schema3_skill(Path(temp))
+            suite_path = skill / "evals" / "evals.json"
+            suite = json.loads(suite_path.read_text(encoding="utf-8"))
+            suite["evals"][0]["counter_reference"] = {}
+            _write_json(suite_path, suite)
+            with self.assertRaisesRegex(
+                ValueError, "counter_reference.response is required"
+            ):
+                load_suite(skill)
+
+    def test_counter_reference_requires_a_response_sensitive_grader(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            skill = _make_schema3_skill(Path(temp))
+            suite_path = skill / "evals" / "evals.json"
+            suite = json.loads(suite_path.read_text(encoding="utf-8"))
+            suite["evals"][0]["graders"] = [
+                {
+                    "name": "Creates the result",
+                    "type": "file_exists",
+                    "path": "result.json",
+                }
+            ]
+            suite["evals"][0]["counter_reference"] = {"response": "wrong"}
+            _write_json(suite_path, suite)
+            with self.assertRaisesRegex(
+                ValueError, "requires at least one response-sensitive grader"
+            ):
+                load_suite(skill)
 
 
 class RuntimeTests(unittest.TestCase):

@@ -19,6 +19,18 @@ GRADER_TYPES = {
     "json_exact",
     "model_rubric",
 }
+# Counter-reference grades a wrong *response* on the gold reference workspace.
+# Workspace-only graders (file_exists / json_exact) cannot discriminate and must
+# not be paired with counter_reference without a response-sensitive grader.
+RESPONSE_SENSITIVE_GRADER_TYPES = frozenset(
+    {
+        "response_contains",
+        "response_not_contains",
+        "response_regex",
+        "markdown_table_column_regex",
+        "model_rubric",
+    }
+)
 SKILL_LOADING_POLICIES = {"required", "optional", "forbidden"}
 SUITE_TYPES = {"capability", "regression"}
 DATASET_ORIGINS = {"author_derived", "held_out", "production_regression"}
@@ -348,6 +360,17 @@ def load_suite(skill_path: Path, evals_path: Path | None = None) -> dict[str, An
             raise ValueError(f"{label}.reference must be an object")
         if not isinstance(reference.get("response", ""), str):
             raise ValueError(f"{label}.reference.response must be a string")
+        counter_reference = case.get("counter_reference")
+        if counter_reference is not None:
+            if not isinstance(counter_reference, dict):
+                raise ValueError(f"{label}.counter_reference must be an object")
+            if "response" not in counter_reference:
+                raise ValueError(
+                    f"{label}.counter_reference.response is required "
+                    "(empty objects are not allowed)"
+                )
+            if not isinstance(counter_reference["response"], str):
+                raise ValueError(f"{label}.counter_reference.response must be a string")
         normalized = dict(case)
         normalized["id"] = case_id
         normalized["prompt"] = prompt.strip()
@@ -360,6 +383,17 @@ def load_suite(skill_path: Path, evals_path: Path | None = None) -> dict[str, An
         grader_names = [grader["name"] for grader in normalized["graders"]]
         if len(grader_names) != len(set(grader_names)):
             raise ValueError(f"{label} has a duplicate grader name")
+        if counter_reference is not None and not any(
+            grader["type"] in RESPONSE_SENSITIVE_GRADER_TYPES
+            for grader in normalized["graders"]
+        ):
+            raise ValueError(
+                f"{label}.counter_reference requires at least one "
+                "response-sensitive grader "
+                f"({', '.join(sorted(RESPONSE_SENSITIVE_GRADER_TYPES))}); "
+                "file_exists/json_exact alone cannot discriminate a wrong "
+                "response on the gold reference workspace"
+            )
         if schema_version == 2:
             for grader_index, grader in enumerate(
                 normalized["graders"],
