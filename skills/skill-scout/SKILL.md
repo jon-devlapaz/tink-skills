@@ -102,11 +102,6 @@ not a verified artifact. A relative recommendation is not adoption approval —
 pinning, adaptation, private access, testing, and execution stay behind later
 gates.
 
-If the next gate is install into the current project and
-[Tink](https://github.com/jon-devlapaz/tink) is available, prefer proposing
-`tink skill add …` after approval. Scout never runs install; Tink is optional
-for discovery.
-
 Return:
 
 1. **Best-supported choice** or **No qualified choice**
@@ -125,6 +120,12 @@ evidence, evaluation, abstention and escalation, and failure recovery.
 For DISCOVER, VERIFY, source auditing, bounded search, and portable
 `repo-brief` resolution, load
 [references/scouting-workflow.md](references/scouting-workflow.md).
+
+When Tink is available, or the user asks about Tink projects, libraries,
+skillsets, or GitHub inspection, also load
+[references/tink-integration.md](references/tink-integration.md). Tink owns
+inventory and adoption mechanics; Skill Scout owns qualification and the
+recommendation.
 
 Complete when: the report form above is filled for the active mode, a winner or
 abstention is explicit, and any non-read-only next step is gated on approval.

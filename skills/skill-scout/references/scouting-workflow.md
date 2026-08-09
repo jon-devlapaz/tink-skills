@@ -17,38 +17,45 @@ Cover these default source tiers when applicable, in order:
 
 Treat only skills loaded for **this** project as already installed:
 
-- Prefer `tink skill list` when `tink` is on `PATH` (lists `.agents/skills/`).
-- Otherwise read `<project>/.agents/skills/*/SKILL.md` (skip `README.md` and
-  dot-entries).
+- Prefer the active runtime's supported inventory command.
+- When Tink is available, load
+  [tink-integration.md](tink-integration.md) and use its project inventory.
+- Otherwise read the active runtime's documented project skill root. For the
+  common Agent Skills layout, inspect `<project>/.agents/skills/` and count
+  directories containing `SKILL.md`; skip dot-entries and documentation files.
 - Also note other project skill roots the active harness uses here when present
   (for example `.cursor/skills/`), but do not invent roots.
 
 A skill that exists only under a personal home (for example `~/.agents/skills/`)
 or another repository is **not** Tier A for this project.
 
-### Tier B — other Tink projects (optional reuse index)
+### Tier B — other projects or personal libraries (optional reuse index)
 
 Do **not** search this tier by default. Open it only when the user asks about
 skills in other projects, reuse across repos, or “what have I installed with
 Tink elsewhere.”
 
-When activated and `$TINK_HOME` or `~/.tink` exists, read
-`skills/by-project/*/meta.json`. Each file is a name catalog:
-`{ "name", "root", "skills": [...] }` — not a skill-tree mirror.
+Use only a supported index or inventory surface. When Tink is available, defer
+to [tink-integration.md](tink-integration.md); do not read or infer Tink's
+private catalog layout. Otherwise inspect only indexes or roots the user or
+runtime explicitly identifies.
 
-- Use matching **names** plus the recorded `root` as leads.
-- Open `<root>/.agents/skills/<name>/` only for shortlisted leads (read-only).
-- If the catalog or a `root` is missing/inaccessible, record the gap; do not
+- Use names and recorded source locations as leads.
+- Open only shortlisted leads (read-only).
+- If an index or source is missing or inaccessible, record the gap; do not
   invent contents.
 - Never treat Tier B as satisfying the non-redundancy gate for the current
-  project. A fit here is a candidate to copy in via `tink skill add` after
-  approval, or evidence that a known skill already exists elsewhere.
+  project. A fit here is an adoption candidate, not an active capability.
 
 ### Tier C — public and registries
 
 - official or canonical registries;
 - GitHub repository and skill search;
 - one broader marketplace, curated index, or general web pass.
+
+When a public GitHub URL is known and Tink is available, use the Tink adapter's
+read-only inspection path to establish repository structure before manually
+traversing it. Structural discovery does not qualify a candidate.
 
 Optional supporting local benches (experimental skill sandboxes the user names)
 may be searched after Tier A when relevant; they are not Tier A unless they are
@@ -151,13 +158,14 @@ A search is complete when:
 If those conditions cannot be met, report the gap and abstain or ask one
 high-leverage question. Do not manufacture search saturation or certainty.
 
-## Adoption next gate (Tink-aware, optional)
+## Adoption next gate
 
 When recommending install into the current project:
 
-1. Prefer `tink skill add <source> [--skill <name>]` when `tink` is available.
-2. If Tink is absent, say so and fall back to the harness's documented skill
-   install path — do not block discovery on Tink.
-3. Still require explicit user approval before any install, config change, or
-   candidate-code execution.
-4. After an approved install, suggest `tink skill check` when Tink is present.
+1. Name the runtime's exact supported adoption action.
+2. If Tink is available, use
+   [tink-integration.md](tink-integration.md) for that handoff.
+3. If no supported installer is available, report the gap rather than inventing
+   a copy or symlink workflow.
+4. Require explicit user approval before any install, config change, private
+   access, sandbox test, or candidate-code execution.
