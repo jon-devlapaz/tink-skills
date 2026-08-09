@@ -3,6 +3,22 @@
 Use these sources as constraints on the protocol, not as authority to invent
 content the user did not supply.
 
+## First-principles grounding
+
+The companion `thinking-first-principles` skill distinguishes binding limits
+from assumptions borrowed from convention, analogy, precedent, or authority. It
+then decomposes the problem into independently supported primitives, rebuilds
+from those primitives, and defines a cheap falsification test.
+
+- Source: [cc-thinking-skills — thinking-first-principles](https://github.com/tjboudreaux/cc-thinking-skills/blob/main/skills/thinking-first-principles/SKILL.md)
+- Operational rule: activate this lens only when a supposedly fixed constraint
+  is doing material work. Classify it, preserve verified physics/contracts/
+  measured facts, reopen unsupported conventions, and derive the convergence
+  from the remaining primitives.
+- Limit: first-principles grounding is a single bounded diagnostic pass. It is
+  not a demand to re-derive a known-good standard, ignore hard constraints, or
+  turn an urgent incident into a greenfield redesign.
+
 ## Grilling lineage
 
 Matt Pocock's `grill-me` and `grilling` skills model an inquiry as a decision

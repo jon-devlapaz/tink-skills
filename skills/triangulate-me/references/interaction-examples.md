@@ -36,6 +36,34 @@ as a hypothesis, name the absent measurement, and ask for or perform the next
 diagnostic check. A valid convergence can be: "Treat datastore replacement as
 unproven until the write bottleneck is localized."
 
+## Fixed constraint with a borrowed solution
+
+User answer:
+
+> We have to use a queue because real-time updates cannot scale.
+
+Use the first-principles lens only because the claimed scale constraint is doing
+the work:
+
+- **Faithful read:** Real-time updates are considered incompatible with the
+  required scale, so a queue is proposed as the remedy.
+- **Steel read:** A queue may absorb bursts and decouple producers from slower
+  consumers, which could protect a real capacity limit.
+- **Stress read:** "Cannot scale" may be an analogy or unmeasured assumption;
+  the actual limit could be fan-out, connection count, payload size, or an
+  implementation detail, and a queue may add latency without solving it.
+- **Crux:** Which measured capacity bound makes direct updates fail, and whether
+  the queue addresses that bound.
+- **Grounding:** Classify the scale claim as a measured fact only if supported
+  by load data; retain the required update rate and latency budget as primitives;
+  reopen the queue-as-requirement assumption; rebuild the smallest transport
+  that meets those bounds; kill-test it with a representative load.
+- **Convergence:** Treat the queue as one candidate architecture, not a binding
+  requirement, until the failing capacity and the queue's effect on it are
+  measured.
+- **Next question:** What load test or production measurement shows the first
+  capacity bound being exceeded?
+
 ## Value conflict
 
 User answer:

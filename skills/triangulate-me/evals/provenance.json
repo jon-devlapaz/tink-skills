@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "suite_sha256": "a96496e849e9f8bcc8d61ce3d102540a3beb82bdc0107853fd3334016e58ac85",
+  "suite_sha256": "3e315ca2de0daece585ef9fd0b1c8d71f270534b0cb3534a163f4041d05ba381",
   "cases": [
     {
       "case_id": "separates-need-from-proposed-feature",
@@ -34,6 +34,17 @@
       "artifact": "provenance/preserves-privacy-abuse-value-crux.json",
       "artifact_sha256": "65aa99387d02c29f4f2148a2e0615f743d0224274a644273035610f95cb4bf8d",
       "case_sha256": "ec920ab3a9c4075654f1a758aea1293660452666f3a755639bca987294918d3d"
+    },
+    {
+      "case_id": "grounds-false-scale-constraint",
+      "origin": "author_derived",
+      "source_id": "triangulate-me-author-scenario-grounds-false-scale-constraint",
+      "source_type": "author_scenario",
+      "observed_at": "2026-08-09",
+      "task_author": "Codex with user authorization",
+      "artifact": "provenance/grounds-false-scale-constraint.json",
+      "artifact_sha256": "08907f7ee2bce8f9b3c95b79641416c971c001ce5067bac7692e29e779584510",
+      "case_sha256": "7533ad967ab907202709884f549abb8ec062084ded9d971142f25c0c7864a04e"
     }
   ]
 }

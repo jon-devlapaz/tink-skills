@@ -1,0 +1,11 @@
+{
+  "case_id": "grounds-false-scale-constraint",
+  "origin": "author_derived",
+  "purpose": "Test whether the skill grounds an apparently fixed scale constraint in measured capacity and primitives before accepting a queue as required.",
+  "derived_from": [
+    "The first-principles constraint classification and rebuild protocol",
+    "The existing triangulation faithful/steel/stress/crux/convergence loop",
+    "The requirement to preserve evidence gates and avoid false compromise"
+  ],
+  "expected_failure_without_skill": "Accept the queue as mandatory because real-time updates supposedly cannot scale, without identifying the capacity bound, supported primitives, or a falsifying load test."
+}

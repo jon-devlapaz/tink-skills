@@ -3,9 +3,11 @@ name: triangulate-me
 description: >
   Run an iterative dialogue that gives each substantive user answer a faithful
   reading, its strongest plausible interpretation, its weakest still-plausible
-  interpretation, and an evidence-sensitive convergence. Use when the user asks
+  interpretation, and an evidence-sensitive convergence, grounding apparently
+  fixed constraints in supported primitives when needed. Use when the user asks
   to triangulate, steelman and stress-test, sharpen a position, expose ambiguity,
-  reconcile competing readings, or reach a robust shared understanding.
+  challenge a false constraint, reconcile competing readings, or reach a robust
+  shared understanding.
 ---
 
 # Triangulate Me
@@ -37,10 +39,15 @@ Apply this sequence:
    foolish position merely because it is easy to reject.
 4. **Crux** — Name the exact premise, definition, value, or missing fact that
    explains the distance between the readings.
-5. **Convergence** — Recommend the most robust next formulation. Preserve the
+5. **First-principles check, when triggered** — If the crux contains a
+   supposedly fixed constraint (such as "must use X," "too expensive," "can't
+   scale," or "that's how it is done"), or a solution justified mainly by
+   analogy or authority, run the grounding pass below. Otherwise skip it.
+6. **Convergence** — Recommend the most robust next formulation. Preserve the
    steel read's value while repairing the stress read's supported vulnerability.
-   State what changed.
-6. **Next question** — Ask one question whose answer resolves the crux. Do not
+   Derive it from the grounded primitives when that check ran, and state what
+   changed.
+7. **Next question** — Ask one question whose answer resolves the crux. Do not
    ask a downstream question while its prerequisite remains unsettled.
    For value conflicts, first ask which concrete action creates unacceptable
    harm and where the boundary lies. Do not jump to identity, policy, or other
@@ -53,9 +60,19 @@ Use this compact form unless the subject needs more explanation:
 **Steel read:** ...
 **Stress read:** ...
 **Crux:** ...
+**Grounding:** ... *(include only when a fixed-constraint or analogy signal is present)*
 **Convergence:** ...
 **Next question:** ...
 ```
+
+## Ground constraints from first principles
+
+Use this as one bounded pass, not as a mandatory seventh interpretation. Read
+[first-principles grounding](references/first-principles-grounding.md) when the
+check is triggered. It defines the constraint classes, primitive reduction,
+rebuild, residuals, and kill test; keep the main response's `Grounding` line
+compact and concrete. Do not use the pass for time-critical incidents or
+ordinary polish without a false-constraint signal.
 
 ## Protect the inquiry
 
@@ -75,9 +92,10 @@ Use this compact form unless the subject needs more explanation:
   and assumptions plainly.
 
 Read [reasoning foundations](references/reasoning-foundations.md) when
-calibrating charity, adversarial pressure, integration, or abstention. Read
-[interaction examples](references/interaction-examples.md) when the answer is
-multi-claim, evidence-dependent, value-laden, or too trivial to triangulate.
+calibrating charity, adversarial pressure, integration, first-principles
+grounding, or abstention. Read [interaction examples](references/interaction-examples.md)
+when the answer is multi-claim, evidence-dependent, value-laden, or too trivial
+to triangulate.
 
 ## Continue and stop
 

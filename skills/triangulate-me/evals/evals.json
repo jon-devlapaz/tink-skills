@@ -125,6 +125,44 @@
       "counter_reference": {
         "response": "Both sides are valid, so require users to reveal half of their identity as a fair compromise."
       }
+    },
+    {
+      "id": "grounds-false-scale-constraint",
+      "behavior_class": "positive",
+      "routing_class": "should_trigger",
+      "prompt": "Help me pressure-test this architecture: We have to use a queue because real-time updates cannot scale. Give the strongest plausible reading, the weakest reasonable reading, and a better convergence before we commit.",
+      "expected_skill_loading": "required",
+      "graders": [
+        {
+          "name": "Uses the grounding frame when a fixed constraint drives the choice",
+          "type": "response_regex",
+          "pattern": "(?is)Faithful read.*Steel read.*Stress read.*Crux.*Grounding.*Convergence.*Next question"
+        },
+        {
+          "name": "Separates measured capacity from queue convention",
+          "type": "model_rubric",
+          "criteria": [
+            {
+              "requirement": "Treat the claim that real-time updates cannot scale as unproven unless a measurement identifies the binding capacity limit.",
+              "prompt_quote": "real-time updates cannot scale"
+            },
+            {
+              "requirement": "Name supported primitives such as update rate, latency budget, fan-out, or another directly relevant requirement rather than relying on precedent or authority.",
+              "prompt_quote": "We have to use a queue"
+            },
+            {
+              "requirement": "Keep the queue as a candidate architecture, state the residual constraint, and propose a cheap representative load test or other kill test.",
+              "prompt_quote": "before we commit"
+            }
+          ]
+        }
+      ],
+      "reference": {
+        "response": "**Faithful read:** Real-time updates are considered incompatible with the required scale, so a queue is proposed as the remedy.\n\n**Steel read:** A queue may absorb bursts and decouple producers from slower consumers, which could protect a real capacity limit.\n\n**Stress read:** \"Cannot scale\" may be an analogy or unmeasured assumption; the actual limit could be fan-out, connection count, payload size, or an implementation detail, and a queue may add latency without solving it.\n\n**Crux:** Which measured capacity bound makes direct updates fail, and whether the queue addresses that bound.\n\n**Grounding:** Classify the scale claim as a measured fact only if supported by load data; retain the required update rate and latency budget as primitives; reopen the queue-as-requirement assumption; rebuild the smallest transport that meets those bounds; binding residuals are the measured capacity and latency limits; kill-test with representative load.\n\n**Convergence:** Treat the queue as one candidate architecture, not a binding requirement, until the failing capacity and the queue’s effect on it are measured.\n\n**Next question:** What load test or production measurement shows the first capacity bound being exceeded?"
+      },
+      "counter_reference": {
+        "response": "Real-time updates cannot scale, so the queue is clearly required. Adopt a standard queue architecture and optimize it later."
+      }
     }
   ]
 }
