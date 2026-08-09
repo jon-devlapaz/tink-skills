@@ -27,10 +27,10 @@ tink skill check
 
 - `tink skill list` reports standalone skills active in the current project.
 - `tink skillset list` reports receipt-backed skillsets active in the current
-  project. It currently lists group names, not member names. For a shortlisted
-  group returned by this command, inspect only
-  `.agents/skills/<name>-skillset/*/SKILL.md` to identify its members; do not
-  scan Tink home or parse private receipt or catalog formats.
+  project, grouped with their member skill names. Treat those members as active
+  when evaluating non-redundancy. If an older Tink version omits members, report
+  the inventory gap instead of scanning Tink home or parsing receipt or catalog
+  formats.
 - `tink skill check` validates the project skill tree; it does not rank skills.
 
 Open broader inventory only when the user's contract calls for it:
