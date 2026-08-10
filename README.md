@@ -63,8 +63,10 @@ not a “wins everywhere” trophy.
 
 Research-only ranking under constraints (workflow fit, safety, demonstrated
 behavior, and related gates). Modes: COMPARE, VERIFY, DISCOVER, or ABSTAIN/BUILD.
-DISCOVER starts in `.agents/skills/`, then public search. Cross-project catalog
-only if you ask (`tink skill list --home`). Detail:
+DISCOVER inventories active project skills and the Tink library first, presents
+at most three qualified local candidates, then separately asks whether to pursue
+one and whether to search online. Cross-project catalog history is optional.
+Detail:
 [skills/skill-scout/SKILL.md](skills/skill-scout/SKILL.md).
 
 ## skill-eval-loop

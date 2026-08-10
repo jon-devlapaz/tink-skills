@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "suite_sha256": "62ea3838aed7269755f356fc683103d1b0489cfe34778e09ee588d35cb033048",
+  "suite_sha256": "283b792ca0a367164096164646c7f60e07f8c60b34dc6d214d4c327851e4a747",
   "cases": [
     {
       "case_id": "local-fit-beats-reputation",
@@ -10,8 +10,8 @@
       "observed_at": "2026-08-09",
       "task_author": "independent eval author",
       "artifact": "provenance/local-fit-beats-reputation.json",
-      "artifact_sha256": "0b047eb4233be6c1b0cfc68c08985af3841181d0de97b83510a3de087a5842f1",
-      "case_sha256": "d5c92cba07ac85663ab968781e29090ee49c02386ebdedc1a44aecba52af3125"
+      "artifact_sha256": "d530e6a6c06d5750d0362b161a417218aab53405008548f995f12597e3361020",
+      "case_sha256": "ecf724ac73188b30f453cd3c89fa50e5ec117609f81c4835b8cd562811fe0296"
     },
     {
       "case_id": "unsafe-candidate-fails-before-ranking",
@@ -21,8 +21,8 @@
       "observed_at": "2026-08-09",
       "task_author": "independent eval author",
       "artifact": "provenance/unsafe-candidate-fails-before-ranking.json",
-      "artifact_sha256": "ca611facac0c83d30f317f00e604a1f54ead668e6a1f2a9a374649c3f69ed701",
-      "case_sha256": "c81731c0fd656d8f6f9921e010a4fd7e93290010a00fb23ec15d63e288fba16a"
+      "artifact_sha256": "ebe0067f79040a8ed750cffe3cda5a818745c1d20ad039195cffccbafdaa1d23",
+      "case_sha256": "a9fcb541428a42c20d34117ef05690e8e016936048e86cbebb04f57114482987"
     },
     {
       "case_id": "copied-lineage-requires-abstention",
@@ -32,19 +32,19 @@
       "observed_at": "2026-08-09",
       "task_author": "independent eval author",
       "artifact": "provenance/copied-lineage-requires-abstention.json",
-      "artifact_sha256": "59e01cb0166f6051022e4288d6a01a86d73d7062cb6ae1418c015a23dfd5ecd0",
-      "case_sha256": "b469a842da7aa28d2c8750caf666dfa63773bae89b24a1bd13f39b91f13c3b01"
+      "artifact_sha256": "9f3990ccdd4951ae25d7cabf8ca3fcb7021c26553bf31348e0d429ba48138a02",
+      "case_sha256": "065dacc1ada0aaabbfdbd1985e1ada82d95a22570e9af23f2802724099177ddb"
     },
     {
       "case_id": "active-project-skill-prevents-redundant-adoption",
       "origin": "author_derived",
       "source_id": "skill-scout-author-scenario-active-project-skill-prevents-redundant-adoption",
       "source_type": "author_scenario",
-      "observed_at": "2026-08-09",
+      "observed_at": "2026-08-10",
       "task_author": "independent eval author",
       "artifact": "provenance/active-project-skill-prevents-redundant-adoption.json",
-      "artifact_sha256": "f6a31d76c0ce8386472f8b85ffa6de3d028288596d4d1f3da33105bc8bb7ed3c",
-      "case_sha256": "300ea37c63afa8dae6c97971b7d3c09cbce9a9397217fbd820993b44fceea0c5"
+      "artifact_sha256": "6290a6fafc84ff90bd8b93ff96ffb152a46b75083d7b56d78c7bbec3f62ca768",
+      "case_sha256": "4333e0f5c16fa13ca36c7b36fa089e4bb6ba09db31e0618a33003bf70f6193f1"
     },
     {
       "case_id": "tink-adoption-remains-a-gated-handoff",
@@ -54,8 +54,8 @@
       "observed_at": "2026-08-09",
       "task_author": "independent eval author",
       "artifact": "provenance/tink-adoption-remains-a-gated-handoff.json",
-      "artifact_sha256": "c5151857f4bcbc932493100c319fe4f6c438f5a77955bb916c995e247832524c",
-      "case_sha256": "6925828706dc8cacba341e780a86e51cca383ebcefd9c3521ad1cf97679812a0"
+      "artifact_sha256": "7fd4d1dce115969ccc928dab0a49432a2eaf39c845631ebd501feaa4dbc87fea",
+      "case_sha256": "ba7f3ee539f7794aa5946b9004f65ef324423da98e71ec75e5ba3a19e26fe7f1"
     }
   ]
 }

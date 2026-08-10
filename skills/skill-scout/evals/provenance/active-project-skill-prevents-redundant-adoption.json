@@ -1,11 +1,9 @@
 {
   "case_id": "active-project-skill-prevents-redundant-adoption",
   "origin": "author_derived",
-  "purpose": "Exercise active-project non-redundancy, the distinction between project skills and cross-project leads, and a bounded follow-up gate.",
+  "purpose": "Prove DISCOVER distinguishes active project and Tink-library candidates before separate acceptance and online-search questions.",
   "derived_from": [
-    "Skill Scout non-redundancy gate",
-    "Scouting workflow Tier A and Tier B boundaries",
-    "Skill Scout read-only next-gate rule"
+    "Skill Scout DISCOVER checkpoint and Tink inventory boundaries"
   ],
-  "expected_failure_without_skill": "Treat another repository as active project capability, broaden a closed recommendation without need, or authorize use or adoption without approval."
+  "expected_failure_without_skill": "Treat a library lead as active, skip the checkpoint, search before opt-in, or authorize restricted work."
 }
