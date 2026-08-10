@@ -1,0 +1,11 @@
+{
+  "case_id": "local-fit-beats-reputation",
+  "origin": "author_derived",
+  "purpose": "Exercise closed-evidence selection of an active exact fit over popularity, runner-up reasoning, and approval-gated next steps.",
+  "derived_from": [
+    "Skill Scout mode selection and COMPARE reporting contract",
+    "Skill Scout workflow-fit, compatibility, maintenance, and operational-cost selection criteria",
+    "Skill Scout read-only and approval-boundary rules"
+  ],
+  "expected_failure_without_skill": "Choose reputation or breadth over exact local fit, omit a defensible runner-up gap, or authorize installation, testing, or execution."
+}

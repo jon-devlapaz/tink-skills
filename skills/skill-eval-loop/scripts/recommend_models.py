@@ -11,7 +11,7 @@ import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from eval_spec import load_suite
+from eval_spec import harness_invocation_counts, load_suite
 from runtime_adapters import HARNESS_NAMES, resolve_harness
 
 
@@ -170,6 +170,10 @@ def build_recommendation(
     task_profile: str,
     case_count: int,
     model_rubric_count: int,
+    counter_reference_count: int = 0,
+    trials: int = 1,
+    model_rubric_counts: list[int] | None = None,
+    counter_reference_declared: list[bool] | None = None,
 ) -> dict[str, object]:
     if not models:
         raise ValueError("model inventory is empty")
@@ -203,8 +207,51 @@ def build_recommendation(
         else _pick_option(tiered, preference).id
     )
     judge = quality if model_rubric_count else None
-    base_calls = 2 * case_count
-    judge_calls = model_rubric_count * 3
+    if case_count < 0 or model_rubric_count < 0:
+        raise ValueError("case and model-rubric counts must be non-negative")
+    if counter_reference_count < 0 or counter_reference_count > case_count:
+        raise ValueError("counter_reference_count must be between zero and case_count")
+    if (model_rubric_counts is None) != (counter_reference_declared is None):
+        raise ValueError(
+            "model_rubric_counts and counter_reference_declared must be supplied together"
+        )
+    if counter_reference_count and model_rubric_counts is None:
+        raise ValueError(
+            "counter-reference invocation counts require exact per-case vectors"
+        )
+    # Preserve the original direct-call API. New callers can supply exact
+    # per-case data, which is required when any counter-reference is declared.
+    if model_rubric_counts is None:
+        if case_count == 0 and model_rubric_count:
+            raise ValueError("zero cases cannot contain model-rubric graders")
+        counts = (
+            [model_rubric_count, *([0] * (case_count - 1))]
+            if case_count
+            else []
+        )
+    else:
+        counts = model_rubric_counts
+        if (
+            len(counts) != case_count
+            or any(type(count) is not int or count < 0 for count in counts)
+            or sum(counts) != model_rubric_count
+        ):
+            raise ValueError("model_rubric_counts must match the supplied totals")
+    if counter_reference_declared is None:
+        counters = [False] * case_count
+    else:
+        counters = counter_reference_declared
+        if (
+            len(counters) != case_count
+            or any(type(declared) is not bool for declared in counters)
+            or sum(counters) != counter_reference_count
+        ):
+            raise ValueError("counter_reference_declared must match supplied totals")
+    invocation_counts = harness_invocation_counts(
+        trials=trials,
+        model_rubric_counts=counts,
+        counter_reference_declared=counters,
+    )
     return {
         "harness": harness,
         "task_profile": task_profile,
@@ -229,8 +276,9 @@ def build_recommendation(
             if judge == target
             else "different_model"
         ),
-        "pilot_trials": 1,
-        "pilot_harness_invocations": base_calls + judge_calls,
+        "pilot_trials": trials,
+        "pilot_harness_invocations": invocation_counts["total"],
+        "pilot_harness_invocation_counts": invocation_counts,
         "full_run_harness_invocations": None,
         "provider_model_calls": "unknown",
         "cost": "unknown unless the selected harness reports pricing",
@@ -279,6 +327,18 @@ def main(argv: list[str] | None = None) -> int:
             task_profile=args.task_profile,
             case_count=len(suite["evals"]),
             model_rubric_count=model_rubric_count,
+            counter_reference_count=sum(
+                case.get("counter_reference") is not None
+                for case in suite["evals"]
+            ),
+            model_rubric_counts=[
+                sum(grader["type"] == "model_rubric" for grader in case["graders"])
+                for case in suite["evals"]
+            ],
+            counter_reference_declared=[
+                case.get("counter_reference") is not None
+                for case in suite["evals"]
+            ],
         )
         report["harness_version"] = harness_version
         report["skill_name"] = suite["skill_name"]

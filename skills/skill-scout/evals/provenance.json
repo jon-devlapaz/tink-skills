@@ -1,39 +1,61 @@
 {
   "schema_version": 1,
-  "suite_sha256": "e285c449e4b542a3d7c4ed6bc29fe005186aa76adf6d319c443431ac9c1334d1",
+  "suite_sha256": "62ea3838aed7269755f356fc683103d1b0489cfe34778e09ee588d35cb033048",
   "cases": [
     {
-      "case_id": "contextual-fit-over-popularity",
+      "case_id": "local-fit-beats-reputation",
       "origin": "author_derived",
-      "source_id": "skill-scout-author-scenario-contextual-fit-over-popularity",
+      "source_id": "skill-scout-author-scenario-local-fit-beats-reputation",
       "source_type": "author_scenario",
-      "observed_at": "2026-07-31",
-      "task_author": "Jcode with user authorization",
-      "artifact": "provenance/contextual-fit-over-popularity.json",
-      "artifact_sha256": "002987d73aaf4dbf8992f883128493b14e22bf1d92b59349b0c2b0a9c72bcac3",
-      "case_sha256": "c5659c431e4d37677795dbe358f3ccd02d560fe178ffe9cebef6672e5cda8e83"
+      "observed_at": "2026-08-09",
+      "task_author": "independent eval author",
+      "artifact": "provenance/local-fit-beats-reputation.json",
+      "artifact_sha256": "0b047eb4233be6c1b0cfc68c08985af3841181d0de97b83510a3de087a5842f1",
+      "case_sha256": "d5c92cba07ac85663ab968781e29090ee49c02386ebdedc1a44aecba52af3125"
     },
     {
-      "case_id": "safety-and-provenance-gate",
+      "case_id": "unsafe-candidate-fails-before-ranking",
       "origin": "author_derived",
-      "source_id": "skill-scout-author-scenario-safety-and-provenance-gate",
+      "source_id": "skill-scout-author-scenario-unsafe-candidate-fails-before-ranking",
       "source_type": "author_scenario",
-      "observed_at": "2026-07-31",
-      "task_author": "Jcode with user authorization",
-      "artifact": "provenance/safety-and-provenance-gate.json",
-      "artifact_sha256": "58d664c468dedf38a516b65b0904ce9d8facc27ae8211b57f9974885ae2cb8df",
-      "case_sha256": "081859b675814ff0671dada64665740048bd896e1ba325a9fa35c6951e9f27d0"
+      "observed_at": "2026-08-09",
+      "task_author": "independent eval author",
+      "artifact": "provenance/unsafe-candidate-fails-before-ranking.json",
+      "artifact_sha256": "ca611facac0c83d30f317f00e604a1f54ead668e6a1f2a9a374649c3f69ed701",
+      "case_sha256": "c81731c0fd656d8f6f9921e010a4fd7e93290010a00fb23ec15d63e288fba16a"
     },
     {
-      "case_id": "deduplicate-and-abstain",
+      "case_id": "copied-lineage-requires-abstention",
       "origin": "author_derived",
-      "source_id": "skill-scout-author-scenario-deduplicate-and-abstain",
+      "source_id": "skill-scout-author-scenario-copied-lineage-requires-abstention",
       "source_type": "author_scenario",
-      "observed_at": "2026-07-31",
-      "task_author": "Jcode with user authorization",
-      "artifact": "provenance/deduplicate-and-abstain.json",
-      "artifact_sha256": "28579d44f406f3061c52c5800d16582f5d14d1055856e17b2fd2d0e12a79e498",
-      "case_sha256": "95c1aeff450ad8c5762764eeea939210a21aa8705d755894c76b0a060a618c8e"
+      "observed_at": "2026-08-09",
+      "task_author": "independent eval author",
+      "artifact": "provenance/copied-lineage-requires-abstention.json",
+      "artifact_sha256": "59e01cb0166f6051022e4288d6a01a86d73d7062cb6ae1418c015a23dfd5ecd0",
+      "case_sha256": "b469a842da7aa28d2c8750caf666dfa63773bae89b24a1bd13f39b91f13c3b01"
+    },
+    {
+      "case_id": "active-project-skill-prevents-redundant-adoption",
+      "origin": "author_derived",
+      "source_id": "skill-scout-author-scenario-active-project-skill-prevents-redundant-adoption",
+      "source_type": "author_scenario",
+      "observed_at": "2026-08-09",
+      "task_author": "independent eval author",
+      "artifact": "provenance/active-project-skill-prevents-redundant-adoption.json",
+      "artifact_sha256": "f6a31d76c0ce8386472f8b85ffa6de3d028288596d4d1f3da33105bc8bb7ed3c",
+      "case_sha256": "300ea37c63afa8dae6c97971b7d3c09cbce9a9397217fbd820993b44fceea0c5"
+    },
+    {
+      "case_id": "tink-adoption-remains-a-gated-handoff",
+      "origin": "author_derived",
+      "source_id": "skill-scout-author-scenario-tink-adoption-remains-a-gated-handoff",
+      "source_type": "author_scenario",
+      "observed_at": "2026-08-09",
+      "task_author": "independent eval author",
+      "artifact": "provenance/tink-adoption-remains-a-gated-handoff.json",
+      "artifact_sha256": "c5151857f4bcbc932493100c319fe4f6c438f5a77955bb916c995e247832524c",
+      "case_sha256": "6925828706dc8cacba341e780a86e51cca383ebcefd9c3521ad1cf97679812a0"
     }
   ]
 }

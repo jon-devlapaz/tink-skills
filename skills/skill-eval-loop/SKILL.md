@@ -32,9 +32,14 @@ Before live trials, calculate and state the exact harness-invocation count:
 
 ```text
 target invocations = 2 × trials × cases
-judge invocations  = Σ(model-rubric graders for each case × (1 + 2 × trials))
+judge invocations  = Σ(g_i × (1 + c_i + 2 × trials))
 total invocations  = target invocations + judge invocations
 ```
+
+Here `g_i` is case *i*'s number of `model_rubric` graders and `c_i` is 1 only
+when that case declares a `counter_reference`. The judge total therefore has
+three visible components: reference judges `Σg_i`, counter-reference judges
+`Σ(g_i × c_i)`, and condition judges `Σ(g_i × 2 × trials)`.
 
 One harness invocation may make multiple provider model calls when tools are
 used, so exact provider-call count and cost stay unknown unless the harness
@@ -186,9 +191,11 @@ Default output resolves under:
 Present the validated plan as a compact two-column Markdown table (not a
 bullet list). Rows: harness, target model, judge model when present, trials per
 case, cases, paired trials, observation, credential status, target invocations,
-judge invocations, and total harness invocations — **bold the total**. State
-above the table that the dry run created no provider model calls or artifacts
-and that live provider-call count and cost are unknown.
+reference judges, counter-reference judges, condition judges, judge invocations,
+and total harness invocations — **bold the total**. State above the table that
+the dry run created no provider model calls, artifacts, workspaces, or panes;
+it only derives the exact harness invocation plan. Live provider-call count and
+cost remain unknown until the harness reports them.
 
 Complete when: the plan names skill, harness, exact model, trial count, pair
 count, exact harness-invocation count, counterbalanced order, observer, and an

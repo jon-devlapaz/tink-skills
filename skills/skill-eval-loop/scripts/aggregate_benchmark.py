@@ -10,6 +10,7 @@ import re
 import sys
 from pathlib import Path
 
+from eval_spec import harness_invocation_counts
 from runtime_adapters import (
     HARNESS_NAMES,
     model_matches,
@@ -20,6 +21,38 @@ from runtime_attestation import evaluate_target_trace_attestation
 
 
 CONDITIONS = ("without_skill", "with_skill")
+
+
+def _usage_bucket(records: list[dict], expected: int | None) -> dict:
+    """Summarize usage without turning unknown provider reporting into zero."""
+    def metric(name: str) -> tuple[object, dict]:
+        if expected is None:
+            return None, {"reported": None, "expected": None}
+        values = [record.get(name) for record in records]
+        numeric_values = (
+            [type(value) is int for value in values]
+            if name == "total_tokens"
+            else [type(value) in {int, float} for value in values]
+        )
+        reported = sum(numeric_values)
+        coverage = {"reported": reported, "expected": expected}
+        if expected == 0:
+            if records:
+                return None, coverage
+            return 0 if name == "total_tokens" else 0.0, coverage
+        if len(records) != expected or reported != expected:
+            return None, coverage
+        total = sum(values)
+        return total if name == "total_tokens" else float(total), coverage
+
+    tokens, tokens_coverage = metric("total_tokens")
+    cost, cost_coverage = metric("cost")
+    return {
+        "tokens": tokens,
+        "cost": cost,
+        "tokens_coverage": tokens_coverage,
+        "cost_coverage": cost_coverage,
+    }
 
 
 def _sha256_file(path: Path) -> str:
@@ -52,8 +85,9 @@ def _require_hash(root: Path, record: dict, stem: str, label: str) -> Path:
     return path
 
 
-def _load_grading(path: Path, label: str) -> tuple[dict, bool]:
-    grading = json.loads(path.read_text(encoding="utf-8"))
+def _validate_grading(grading: object, label: str) -> tuple[dict, bool]:
+    if not isinstance(grading, dict):
+        raise ValueError(f"{label} must be an object")
     expectations = grading.get("expectations")
     summary = grading.get("summary")
     if not isinstance(expectations, list) or not expectations:
@@ -82,6 +116,13 @@ def _load_grading(path: Path, label: str) -> tuple[dict, bool]:
     if any(summary.get(key) != value for key, value in expected.items()):
         raise ValueError(f"{label}.summary is inconsistent with expectations")
     return grading, passed == total
+
+
+def _load_grading(path: Path, label: str) -> tuple[dict, bool]:
+    return _validate_grading(
+        json.loads(path.read_text(encoding="utf-8")),
+        label,
+    )
 
 
 def _judge_identity_valid(
@@ -286,6 +327,24 @@ def aggregate(run_dir: Path) -> dict:
         raise ValueError("suite snapshot cases must have ids")
     if len(case_ids) != len(set(case_ids)):
         raise ValueError("suite snapshot case ids must be unique")
+    case_by_id = {case["id"]: case for case in cases}
+    # Snapshots written before usage accounting intentionally lack these fields.
+    # They can still be revalidated, but cannot prove per-case judge allocation.
+    accounting_fields_present = [
+        "model_rubric_count" in case or "counter_reference_declared" in case
+        for case in cases
+    ]
+    accounting_fields_valid = [
+        type(case.get("model_rubric_count")) is int
+        and case["model_rubric_count"] >= 0
+        and type(case.get("counter_reference_declared")) is bool
+        for case in cases
+    ]
+    if any(accounting_fields_present) and not all(accounting_fields_valid):
+        raise ValueError(
+            "suite snapshot accounting metadata must be complete and valid for every case"
+        )
+    accounting_available = all(accounting_fields_valid)
     trials_per_case = manifest.get("trials_per_case")
     if type(trials_per_case) is not int or trials_per_case < 1:
         raise ValueError("manifest.trials_per_case must be a positive integer")
@@ -318,32 +377,135 @@ def aggregate(run_dir: Path) -> dict:
     reference_validation = manifest.get("reference_validation") or []
     if not isinstance(reference_validation, list):
         raise ValueError("manifest.reference_validation must be a list")
+    reference_judges: list[dict] = []
+    counter_reference_judges: list[dict] = []
+    seen_reference_ids: set[str] = set()
     for ref_index, reference in enumerate(reference_validation, start=1):
         if not isinstance(reference, dict) or reference.get("valid") is not True:
             raise ValueError(f"manifest.reference_validation[{ref_index}] is invalid")
-        for judge_index, judge in enumerate(
-            reference.get("judge_records") or [],
-            start=1,
-        ):
-            label = (
-                f"manifest.reference_validation[{ref_index}]"
-                f".judge_records[{judge_index}]"
+        reference_case_id = reference.get("case_id")
+        if accounting_available:
+            if reference_case_id not in case_by_id:
+                raise ValueError(
+                    f"manifest.reference_validation[{ref_index}].case_id is unknown"
+                )
+            if reference_case_id in seen_reference_ids:
+                raise ValueError(
+                    f"manifest.reference_validation has duplicate case_id "
+                    f"{reference_case_id}"
+                )
+            seen_reference_ids.add(reference_case_id)
+        elif reference_case_id is not None:
+            if reference_case_id not in case_by_id:
+                raise ValueError(
+                    f"manifest.reference_validation[{ref_index}].case_id is unknown"
+                )
+            if reference_case_id in seen_reference_ids:
+                raise ValueError(
+                    f"manifest.reference_validation has duplicate case_id "
+                    f"{reference_case_id}"
+                )
+            seen_reference_ids.add(reference_case_id)
+        judge_groups = (("judge_records", reference_judges),)
+        counter_key_present = "counter_reference" in reference
+        counter = reference.get("counter_reference")
+        if accounting_available and counter_key_present and not isinstance(counter, dict):
+            raise ValueError(
+                f"manifest.reference_validation[{ref_index}].counter_reference "
+                "must be an object"
             )
-            if not isinstance(judge, dict):
-                raise ValueError(f"{label} must be an object")
-            if not _judge_identity_valid(
-                root=root,
-                judge=judge,
-                label=label,
-                judge_model=(
-                    judge_model if isinstance(judge_model, str) else None
-                ),
-                harness=harness,
-            ):
-                invalid_reason = f"reference/{ref_index}: judge_model_mismatch"
-                # Reference judge identity invalidates the run but does not
-                # make the retained files unreadable.
-                reference.setdefault("_invalid_reasons", []).append(invalid_reason)
+        counter_present = counter is not None
+        if accounting_available:
+            declared_counter = case_by_id[reference_case_id][
+                "counter_reference_declared"
+            ]
+            if counter_present != declared_counter:
+                raise ValueError(
+                    f"manifest.reference_validation[{ref_index}].counter_reference "
+                    "does not match suite snapshot"
+                )
+            _, reference_passed = _validate_grading(
+                reference.get("grading"),
+                f"manifest.reference_validation[{ref_index}].grading",
+            )
+            if not reference_passed:
+                raise ValueError(
+                    f"manifest.reference_validation[{ref_index}].grading "
+                    "does not pass all graders"
+                )
+        if counter is not None:
+            if not isinstance(counter, dict):
+                raise ValueError(
+                    f"manifest.reference_validation[{ref_index}].counter_reference "
+                    "must be an object"
+                )
+            judge_groups += (
+                ("counter_reference.judge_records", counter_reference_judges),
+            )
+            if accounting_available:
+                _, counter_passed = _validate_grading(
+                    counter.get("grading"),
+                    f"manifest.reference_validation[{ref_index}]"
+                    ".counter_reference.grading",
+                )
+                if counter_passed:
+                    raise ValueError(
+                        f"manifest.reference_validation[{ref_index}]"
+                        ".counter_reference passed all graders"
+                    )
+        for key, retained in judge_groups:
+            records = (
+                counter.get("judge_records")
+                if counter is not None and key.startswith("counter_reference")
+                else reference.get("judge_records")
+            )
+            if records is None:
+                records = []
+            if not isinstance(records, list):
+                raise ValueError(
+                    f"manifest.reference_validation[{ref_index}].{key} "
+                    "must be a list"
+                )
+            for judge_index, judge in enumerate(records, start=1):
+                label = (
+                    f"manifest.reference_validation[{ref_index}].{key}"
+                    f"[{judge_index}]"
+                )
+                if not isinstance(judge, dict):
+                    raise ValueError(f"{label} must be an object")
+                retained.append(judge)
+                if not _judge_identity_valid(
+                    root=root,
+                    judge=judge,
+                    label=label,
+                    judge_model=(
+                        judge_model if isinstance(judge_model, str) else None
+                    ),
+                    harness=harness,
+                ):
+                    invalid_reason = f"reference/{ref_index}: judge_model_mismatch"
+                    # Reference judge identity invalidates the run but does not
+                    # make the retained files unreadable.
+                    reference.setdefault("_invalid_reasons", []).append(invalid_reason)
+        if accounting_available:
+            expected_judges = case_by_id[reference_case_id]["model_rubric_count"]
+            reference_records = reference.get("judge_records") or []
+            if len(reference_records) != expected_judges:
+                raise ValueError(
+                    f"manifest.reference_validation[{ref_index}].judge_records "
+                    "does not match the case model_rubric_count"
+                )
+            if counter is not None:
+                counter_records = counter.get("judge_records") or []
+                if len(counter_records) != expected_judges:
+                    raise ValueError(
+                        f"manifest.reference_validation[{ref_index}].counter_reference"
+                        ".judge_records does not match the case model_rubric_count"
+                    )
+    if accounting_available and seen_reference_ids != set(case_ids):
+        raise ValueError(
+            "manifest.reference_validation does not cover the complete suite case set"
+        )
 
     trials = manifest.get("trials")
     if not isinstance(trials, list) or not trials:
@@ -358,9 +520,11 @@ def aggregate(run_dir: Path) -> dict:
     seen_pairs: set[tuple[str, int]] = set()
     totals = {condition: 0 for condition in CONDITIONS}
     operations = {
-        condition: {"errors": 0, "timeouts": 0, "tokens": 0, "cost": 0.0}
+        condition: {"errors": 0, "timeouts": 0}
         for condition in CONDITIONS
     }
+    condition_usage_records = {condition: [] for condition in CONDITIONS}
+    condition_judges: list[dict] = []
     pair_outcomes = {
         "improved": 0,
         "regressed": 0,
@@ -389,6 +553,8 @@ def aggregate(run_dir: Path) -> dict:
         trial = pair.get("trial")
         if not isinstance(case_id, str) or type(trial) is not int:
             raise ValueError(f"manifest.trials[{index}] needs case_id and integer trial")
+        if case_id not in case_by_id:
+            raise ValueError(f"manifest.trials[{index}].case_id is unknown")
         key = (case_id, trial)
         if key in seen_pairs:
             raise ValueError(f"duplicate pair: {case_id}/{trial}")
@@ -427,12 +593,17 @@ def aggregate(run_dir: Path) -> dict:
             observed[condition] = result
             totals[condition] += int(result["success"])
             record = conditions[condition]
+            if accounting_available and len(record.get("judge_records") or []) != (
+                case_by_id[case_id]["model_rubric_count"]
+            ):
+                raise ValueError(
+                    f"{pair_label}.{condition}.judge_records does not match "
+                    "the case model_rubric_count"
+                )
             operations[condition]["errors"] += int(record.get("exit_code") != 0)
             operations[condition]["timeouts"] += int(record.get("timed_out") is True)
-            if type(result["total_tokens"]) is int:
-                operations[condition]["tokens"] += result["total_tokens"]
-            if isinstance(result["cost"], (int, float)):
-                operations[condition]["cost"] += float(result["cost"])
+            condition_usage_records[condition].append(record)
+            condition_judges.extend(record.get("judge_records") or [])
             invalid_reasons.extend(
                 f"{pair_label}/{condition}: {reason}"
                 for reason in result["invalid"]
@@ -522,6 +693,51 @@ def aggregate(run_dir: Path) -> dict:
     if seen_pairs != expected_pairs:
         raise ValueError("manifest does not contain the complete case/trial matrix")
 
+    # Schema-2/3 snapshots written before accounting metadata remain valid: their
+    # target records are still measurable, while judge/full usage stays unknown.
+    if accounting_available:
+        invocation_counts = harness_invocation_counts(
+            trials=trials_per_case,
+            model_rubric_counts=[case["model_rubric_count"] for case in cases],
+            counter_reference_declared=[
+                case["counter_reference_declared"] for case in cases
+            ],
+        )
+        condition_judge_expected = invocation_counts["condition_judges"]
+        reference_expected = invocation_counts["references"]
+        counter_reference_expected = invocation_counts["counter_references"]
+        full_expected = invocation_counts["total"]
+    else:
+        condition_judge_expected = None
+        reference_expected = None
+        counter_reference_expected = None
+        full_expected = None
+
+    pair_count = len(trials)
+    for condition in CONDITIONS:
+        operations[condition].update(
+            _usage_bucket(condition_usage_records[condition], pair_count)
+        )
+    operations["condition_judges"] = _usage_bucket(
+        condition_judges,
+        condition_judge_expected,
+    )
+    operations["references"] = _usage_bucket(reference_judges, reference_expected)
+    operations["counter_references"] = _usage_bucket(
+        counter_reference_judges,
+        counter_reference_expected,
+    )
+    operations["full"] = _usage_bucket(
+        [
+            *condition_usage_records["without_skill"],
+            *condition_usage_records["with_skill"],
+            *condition_judges,
+            *reference_judges,
+            *counter_reference_judges,
+        ],
+        full_expected,
+    )
+
     invalid_reasons.extend(
         reason
         for reference in reference_validation
@@ -529,7 +745,6 @@ def aggregate(run_dir: Path) -> dict:
         for reason in reference.get("_invalid_reasons", [])
     )
 
-    pair_count = len(trials)
     treatment_rate = totals["with_skill"] / pair_count
     control_rate = totals["without_skill"] / pair_count
     delta = treatment_rate - control_rate

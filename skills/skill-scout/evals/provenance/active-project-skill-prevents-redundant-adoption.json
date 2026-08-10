@@ -1,0 +1,11 @@
+{
+  "case_id": "active-project-skill-prevents-redundant-adoption",
+  "origin": "author_derived",
+  "purpose": "Exercise active-project non-redundancy, the distinction between project skills and cross-project leads, and a bounded follow-up gate.",
+  "derived_from": [
+    "Skill Scout non-redundancy gate",
+    "Scouting workflow Tier A and Tier B boundaries",
+    "Skill Scout read-only next-gate rule"
+  ],
+  "expected_failure_without_skill": "Treat another repository as active project capability, broaden a closed recommendation without need, or authorize use or adoption without approval."
+}

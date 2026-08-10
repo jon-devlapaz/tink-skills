@@ -1,0 +1,11 @@
+{
+  "case_id": "tink-adoption-remains-a-gated-handoff",
+  "origin": "author_derived",
+  "purpose": "Exercise the Tink ownership boundary, immutable inspected identity, explicit standalone-skill selection from a multi-skill GitHub source, managed adoption handoff, and post-adoption validation gate.",
+  "derived_from": [
+    "Skill Scout selection and approval rules",
+    "Tink integration ownership boundary",
+    "Tink integration standalone adoption and validation handoff"
+  ],
+  "expected_failure_without_skill": "Propose an unpinned source, omit the required incident-brief selector for the multi-skill GitHub source, manually copy or symlink a skill, execute adoption without approval, or omit managed validation."
+}

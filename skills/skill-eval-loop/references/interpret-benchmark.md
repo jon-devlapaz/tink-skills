@@ -19,7 +19,24 @@ run. Report only local paired evidence.
   autonomous schema-3 suites.
 - `routing` — treatment availability, trace-visible injection, explicit access,
   selection errors, and control exposure.
-- `operations` — errors, timeouts, tokens, and cost.
+- `operations.without_skill` and `operations.with_skill` — target-condition
+  errors, timeouts, and usage. These established keys remain the target-only
+  view.
+- `operations.condition_judges` — rubric judges for both target conditions.
+- `operations.references` — rubric judges used to validate correct references.
+- `operations.counter_references` — rubric judges used to reject declared
+  wrong-answer counter-references.
+- `operations.full` — target conditions plus every included judge bucket.
+
+Every operations bucket has `tokens`, `cost`, `tokens_coverage`, and
+`cost_coverage`. Coverage reports `{reported, expected}` independently for
+each metric. A numeric usage value means every expected record reported that
+metric; `0` is possible only when no record was expected or all expected
+records explicitly reported numeric zero. `null` means at least one included
+expected record did not report usage. Older run snapshots without per-case
+accounting metadata keep their target-condition usage, but their new judge and
+full buckets intentionally show `expected: null` and `tokens`/`cost: null`;
+do not infer zero usage from that missing historical metadata.
 
 ## Separation of claims
 

@@ -1,0 +1,11 @@
+{
+  "case_id": "copied-lineage-requires-abstention",
+  "origin": "author_derived",
+  "purpose": "Exercise duplicate normalization, high-risk abstention, and a complete build specification when no candidate qualifies.",
+  "derived_from": [
+    "Skill Scout canonical-candidate normalization",
+    "Skill Scout demonstrated-behavior and safety gates",
+    "Skill Scout ABSTAIN/BUILD specification and escalation requirements"
+  ],
+  "expected_failure_without_skill": "Count copied packages as independent support, force a recommendation, accept workflow-mismatched summarization, or omit high-risk safeguards."
+}

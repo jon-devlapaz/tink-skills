@@ -17,10 +17,15 @@ SKILL_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = SKILL_ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from aggregate_benchmark import aggregate  # noqa: E402
+from aggregate_benchmark import _usage_bucket, aggregate  # noqa: E402
 from audit_suite import audit  # noqa: E402
 from eval_runtime import HeadlessEvalRun  # noqa: E402
-from eval_spec import canonical_sha256, grade_case, load_suite  # noqa: E402
+from eval_spec import (  # noqa: E402
+    canonical_sha256,
+    grade_case,
+    harness_invocation_counts,
+    load_suite,
+)
 from herdr_runtime import HerdrEvalRun, PaneSet, _run_job  # noqa: E402
 from model_grader import _parse_grade  # noqa: E402
 from process_control import CapturedKeyboardInterrupt, run_captured  # noqa: E402
@@ -201,6 +206,52 @@ openai-codex gpt-5.6-sol 272K 128K yes yes
         self.assertTrue(report["frontier_fallbacks"]["quality"])
         self.assertEqual(report["recommended_target"], "provider/main")
 
+    def test_subset_counter_references_use_per_case_counts(self) -> None:
+        models = [ModelOption("provider/main", "balanced", "fixture")]
+        report = build_recommendation(
+            harness="pi",
+            models=models,
+            task_profile="standard",
+            case_count=3,
+            model_rubric_count=3,
+            counter_reference_count=2,
+            trials=3,
+            model_rubric_counts=[2, 1, 0],
+            counter_reference_declared=[False, True, True],
+        )
+        self.assertEqual(
+            report["pilot_harness_invocation_counts"],
+            {
+                "target": 18,
+                "condition_judges": 18,
+                "references": 3,
+                "counter_references": 1,
+                "judge": 22,
+                "total": 40,
+            },
+        )
+
+    def test_counter_references_require_exact_per_case_vectors(self) -> None:
+        with self.assertRaisesRegex(ValueError, "exact per-case vectors"):
+            build_recommendation(
+                harness="pi",
+                models=[ModelOption("provider/main", "balanced", "fixture")],
+                task_profile="standard",
+                case_count=2,
+                model_rubric_count=1,
+                counter_reference_count=1,
+            )
+
+    def test_invocation_counts_require_positive_integer_trials(self) -> None:
+        for trials in (True, 1.5, 0, -1):
+            with self.subTest(trials=trials):
+                with self.assertRaisesRegex(ValueError, "positive integer"):
+                    harness_invocation_counts(
+                        trials=trials,
+                        model_rubric_counts=[1],
+                        counter_reference_declared=[False],
+                    )
+
 
 def _write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -300,6 +351,31 @@ def _make_record(
         "response_sha256": _sha256(response),
         "grading_path": str(grading.relative_to(root)),
         "grading_sha256": _sha256(grading),
+    }
+
+
+def _make_judge_record(root: Path, *, name: str, model: str) -> dict:
+    trace = root / "judges" / f"{name}.jsonl"
+    trace.parent.mkdir(parents=True, exist_ok=True)
+    trace.write_text(
+        json.dumps(
+            {
+                "type": "system",
+                "subtype": "init",
+                "model": model,
+                "session_id": f"judge-{name}",
+                "skills": [],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return {
+        "actual_model": model,
+        "trace_path": str(trace.relative_to(root)),
+        "trace_sha256": _sha256(trace),
+        "total_tokens": 2,
+        "cost": 0.02,
     }
 
 
@@ -605,6 +681,8 @@ print(json.dumps({
                     "confidence_level": 0.95,
                 },
             )
+            self.assertEqual(snapshot["cases"][0]["model_rubric_count"], 0)
+            self.assertFalse(snapshot["cases"][0]["counter_reference_declared"])
             policy_notes = [
                 line for line in report["limits"] if "distribution_policy" in line
             ]
@@ -685,6 +763,39 @@ class CounterReferenceTests(unittest.TestCase):
                     judge_timeout_seconds=1,
                     eval_run=None,
                 )
+            )
+
+    @patch("run_skill_eval._model_graders")
+    def test_counter_reference_retains_its_judge_records(self, graders) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            skill = self._skill_with_counter(root, "this answer is wrong")
+            suite_path = skill / "evals" / "evals.json"
+            provenance_path = skill / "evals" / "provenance.json"
+            suite = json.loads(suite_path.read_text(encoding="utf-8"))
+            suite["evals"][0]["graders"].append(
+                {
+                    "name": "Judge",
+                    "type": "model_rubric",
+                    "rubric": "done",
+                    "criteria": [
+                        {"requirement": "Returns done", "prompt_quote": "Return done."}
+                    ],
+                }
+            )
+            _write_json(suite_path, suite)
+            provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+            provenance["suite_sha256"] = canonical_sha256(suite)
+            provenance["cases"][0]["case_sha256"] = canonical_sha256(suite["evals"][0])
+            _write_json(provenance_path, provenance)
+            graders.return_value = (
+                {"Judge": {"passed": True, "evidence": "fixture"}},
+                [{"actual_model": "provider/judge-1", "trace_path": "judge.jsonl"}],
+            )
+            records = self._validate(skill, root / "out")
+            self.assertEqual(
+                records[0]["counter_reference"]["judge_records"],
+                [{"actual_model": "provider/judge-1", "trace_path": "judge.jsonl"}],
             )
 
     def test_counter_reference_must_be_an_object(self) -> None:
@@ -1421,7 +1532,14 @@ class PlanningTests(unittest.TestCase):
             self.assertFalse(output.exists())
             self.assertEqual(
                 report["harness_invocations"],
-                {"target": 6, "judge": 0, "total": 6},
+                {
+                    "target": 6,
+                    "condition_judges": 0,
+                    "references": 0,
+                    "counter_references": 0,
+                    "judge": 0,
+                    "total": 6,
+                },
             )
             self.assertEqual(report["provider_model_calls"], "unknown")
             self.assertEqual(report["observer"]["kind"], "headless")
@@ -2651,8 +2769,358 @@ print(json.dumps({
             ("with_skill", "without_skill"),
         )
 
+    @patch("run_skill_eval.resolve_harness", return_value=("/usr/local/bin/pi", "1.0"))
+    def test_dry_run_counts_multiple_graders_and_subset_counters(self, _resolve) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            skill = _make_schema2_skill(Path(temp))
+            suite_path = skill / "evals" / "evals.json"
+            suite = json.loads(suite_path.read_text(encoding="utf-8"))
+            first = suite["evals"][0]
+            first["graders"] = [
+                {"name": "model one", "type": "model_rubric", "rubric": "done"},
+                {"name": "model two", "type": "model_rubric", "rubric": "done"},
+            ]
+            second = dict(first)
+            second["id"] = "second"
+            second["graders"] = [
+                {"name": "model three", "type": "model_rubric", "rubric": "done"},
+            ]
+            second["counter_reference"] = {"response": "wrong"}
+            third = dict(first)
+            third["id"] = "third"
+            third["graders"] = [
+                {"name": "Returns done", "type": "response_contains", "value": "done"},
+            ]
+            third["counter_reference"] = {"response": "wrong"}
+            suite["evals"] = [first, second, third]
+            _write_json(suite_path, suite)
+            report = plan_run(
+                skill_path=skill,
+                output_dir=Path(temp) / "run",
+                model="provider/model-1",
+                judge_model="provider/judge-1",
+                trials=3,
+            )
+            self.assertEqual(report["harness_invocations"]["total"], 40)
+
 
 class AggregateTests(unittest.TestCase):
+    def _accounting_snapshot(self, root: Path, *, graders: int, counter: bool) -> None:
+        snapshot_path = root / "suite_snapshot.json"
+        snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+        snapshot["cases"][0].update(
+            {
+                "model_rubric_count": graders,
+                "counter_reference_declared": counter,
+            }
+        )
+        _write_json(snapshot_path, snapshot)
+        manifest_path = root / "run_manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["suite_sha256"] = _sha256(snapshot_path)
+        reference = {
+            "case_id": "case",
+            "valid": True,
+            "grading": _grading(True),
+            "judge_records": [],
+        }
+        if counter:
+            reference["counter_reference"] = {
+                "grading": _grading(False),
+                "judge_records": [],
+            }
+        manifest["reference_validation"] = [reference]
+        _write_json(manifest_path, manifest)
+
+    def test_no_judge_calls_have_zero_usage_only_when_zero_are_expected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            self._accounting_snapshot(root, graders=0, counter=False)
+            operations = aggregate(root)["operations"]
+            self.assertEqual(operations["condition_judges"]["tokens"], 0)
+            self.assertEqual(operations["references"]["cost"], 0.0)
+            self.assertEqual(operations["full"]["tokens"], 20)
+            self.assertEqual(
+                operations["full"]["tokens_coverage"],
+                {"reported": 2, "expected": 2},
+            )
+
+    def test_unexpected_usage_when_zero_expected_is_not_reported_as_zero(self) -> None:
+        bucket = _usage_bucket(
+            [{"total_tokens": 7, "cost": 0.07}],
+            expected=0,
+        )
+        self.assertIsNone(bucket["tokens"])
+        self.assertIsNone(bucket["cost"])
+        self.assertEqual(
+            bucket["tokens_coverage"],
+            {"reported": 1, "expected": 0},
+        )
+        boolean_cost = _usage_bucket(
+            [{"total_tokens": 0, "cost": True}],
+            expected=1,
+        )
+        self.assertIsNone(boolean_cost["cost"])
+        self.assertEqual(
+            boolean_cost["cost_coverage"],
+            {"reported": 0, "expected": 1},
+        )
+
+    def test_accounting_snapshot_requires_complete_unique_references(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            self._accounting_snapshot(root, graders=0, counter=False)
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            for references, message in (
+                ([], "complete suite case set"),
+                (
+                    [
+                        {
+                            "case_id": "case",
+                            "valid": True,
+                            "grading": _grading(True),
+                            "judge_records": [],
+                        },
+                        {
+                            "case_id": "case",
+                            "valid": True,
+                            "grading": _grading(True),
+                            "judge_records": [],
+                        },
+                    ],
+                    "duplicate case_id",
+                ),
+            ):
+                with self.subTest(references=references):
+                    manifest["reference_validation"] = references
+                    _write_json(manifest_path, manifest)
+                    with self.assertRaisesRegex(ValueError, message):
+                        aggregate(root)
+
+    def test_counter_presence_must_match_accounting_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            self._accounting_snapshot(root, graders=0, counter=True)
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["reference_validation"] = [
+                {
+                    "case_id": "case",
+                    "valid": True,
+                    "grading": _grading(True),
+                    "judge_records": [],
+                }
+            ]
+            _write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(ValueError, "counter_reference does not match"):
+                aggregate(root)
+
+    def test_declared_counter_reference_must_be_an_object(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            self._accounting_snapshot(root, graders=0, counter=True)
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["reference_validation"][0]["counter_reference"] = None
+            _write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(ValueError, "counter_reference must be an object"):
+                aggregate(root)
+
+    def test_counter_reference_must_retain_a_failing_grading(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            self._accounting_snapshot(root, graders=0, counter=True)
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["reference_validation"][0]["counter_reference"]["grading"] = (
+                _grading(True)
+            )
+            _write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(ValueError, "counter_reference passed"):
+                aggregate(root)
+
+    def test_partial_accounting_metadata_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            self._accounting_snapshot(root, graders=0, counter=False)
+            snapshot_path = root / "suite_snapshot.json"
+            snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+            del snapshot["cases"][0]["counter_reference_declared"]
+            _write_json(snapshot_path, snapshot)
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["suite_sha256"] = _sha256(snapshot_path)
+            _write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(ValueError, "metadata must be complete"):
+                aggregate(root)
+
+    def test_condition_judges_cannot_be_shifted_between_cases(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            snapshot_path = root / "suite_snapshot.json"
+            snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+            snapshot["cases"] = [
+                {
+                    "id": "case",
+                    "model_rubric_count": 1,
+                    "counter_reference_declared": False,
+                },
+                {
+                    "id": "case-2",
+                    "model_rubric_count": 1,
+                    "counter_reference_declared": False,
+                },
+            ]
+            _write_json(snapshot_path, snapshot)
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            original_pair = manifest["trials"][0]
+            second_pair = json.loads(json.dumps(original_pair))
+            second_pair["case_id"] = "case-2"
+            for condition in ("without_skill", "with_skill"):
+                second_pair["conditions"][condition]["case_id"] = "case-2"
+            manifest.update(
+                {
+                    "suite_sha256": _sha256(snapshot_path),
+                    "case_count": 2,
+                    "pair_count": 2,
+                    "judge_model": "provider/model-1",
+                    "trials": [original_pair, second_pair],
+                    "reference_validation": [
+                        {
+                            "case_id": "case",
+                            "valid": True,
+                            "grading": _grading(True),
+                            "judge_records": [
+                                _make_judge_record(
+                                    root,
+                                    name="reference-one",
+                                    model="provider/model-1",
+                                )
+                            ],
+                        },
+                        {
+                            "case_id": "case-2",
+                            "valid": True,
+                            "grading": _grading(True),
+                            "judge_records": [
+                                _make_judge_record(
+                                    root,
+                                    name="reference-two",
+                                    model="provider/model-1",
+                                )
+                            ],
+                        },
+                    ],
+                }
+            )
+            original_pair["conditions"]["without_skill"]["judge_records"] = [
+                _make_judge_record(root, name="extra-one", model="provider/model-1"),
+                _make_judge_record(root, name="extra-two", model="provider/model-1"),
+            ]
+            _write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(ValueError, "does not match the case model"):
+                aggregate(root)
+
+    def test_complete_full_usage_includes_target_and_all_judges(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            self._accounting_snapshot(root, graders=1, counter=False)
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["judge_model"] = "provider/model-1"
+            trial = manifest["trials"][0]["conditions"]
+            trial["without_skill"]["judge_records"] = [
+                _make_judge_record(root, name="without", model="provider/model-1")
+            ]
+            trial["with_skill"]["judge_records"] = [
+                _make_judge_record(root, name="with", model="provider/model-1")
+            ]
+            manifest["reference_validation"] = [
+                {
+                    "case_id": "case",
+                    "valid": True,
+                    "grading": _grading(True),
+                    "judge_records": [
+                        _make_judge_record(root, name="reference", model="provider/model-1")
+                    ],
+                }
+            ]
+            _write_json(manifest_path, manifest)
+            operations = aggregate(root)["operations"]
+            self.assertEqual(operations["condition_judges"]["tokens"], 4)
+            self.assertEqual(operations["references"]["cost"], 0.02)
+            self.assertEqual(operations["full"]["tokens"], 26)
+            self.assertEqual(operations["full"]["cost"], 0.08)
+            self.assertEqual(
+                operations["full"]["tokens_coverage"],
+                {"reported": 5, "expected": 5},
+            )
+
+    def test_missing_target_or_judge_usage_is_null_with_coverage(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            self._accounting_snapshot(root, graders=1, counter=False)
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["judge_model"] = "provider/model-1"
+            for condition in ("without_skill", "with_skill"):
+                judge = _make_judge_record(
+                    root,
+                    name=f"missing-{condition}",
+                    model="provider/model-1",
+                )
+                judge["total_tokens"] = None
+                judge["cost"] = None
+                manifest["trials"][0]["conditions"][condition]["judge_records"] = [
+                    judge
+                ]
+            reference_judge = _make_judge_record(
+                root,
+                name="missing-reference",
+                model="provider/model-1",
+            )
+            reference_judge["total_tokens"] = None
+            reference_judge["cost"] = None
+            manifest["reference_validation"][0]["judge_records"] = [reference_judge]
+            manifest["trials"][0]["conditions"]["without_skill"]["total_tokens"] = None
+            manifest["trials"][0]["conditions"]["without_skill"]["cost"] = None
+            _write_json(manifest_path, manifest)
+            operations = aggregate(root)["operations"]
+            self.assertIsNone(operations["without_skill"]["tokens"])
+            self.assertEqual(
+                operations["without_skill"]["tokens_coverage"],
+                {"reported": 0, "expected": 1},
+            )
+            self.assertIsNone(operations["condition_judges"]["tokens"])
+            self.assertEqual(
+                operations["condition_judges"]["tokens_coverage"],
+                {"reported": 0, "expected": 2},
+            )
+            self.assertIsNone(operations["full"]["tokens"])
+
+    def test_legacy_snapshot_keeps_target_usage_and_marks_new_buckets_unknown(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            operations = aggregate(root)["operations"]
+            self.assertEqual(operations["without_skill"]["tokens"], 10)
+            self.assertEqual(
+                operations["condition_judges"]["tokens_coverage"],
+                {"reported": None, "expected": None},
+            )
+            self.assertIsNone(operations["full"]["tokens"])
+
     def test_paired_outcomes_produce_descriptive_verdict(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

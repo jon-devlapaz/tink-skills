@@ -7,7 +7,7 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 
 GRADER_TYPES = {
@@ -55,6 +55,48 @@ def canonical_sha256(value: object) -> str:
         ensure_ascii=False,
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def harness_invocation_counts(
+    *,
+    trials: int,
+    model_rubric_counts: Iterable[int],
+    counter_reference_declared: Iterable[bool] | None = None,
+) -> dict[str, int]:
+    """Return exact harness invocations implied by a suite, without side effects.
+
+    Every case gets a correct-answer reference validation and two target
+    conditions per trial. A declared counter-reference gets one additional
+    wrong-answer validation.  Keeping the arithmetic here prevents dry-run and
+    recommendation surfaces from drifting apart.
+    """
+    if type(trials) is not int or trials < 1:
+        raise ValueError("trials must be a positive integer")
+    graders = list(model_rubric_counts)
+    if any(type(count) is not int or count < 0 for count in graders):
+        raise ValueError("model_rubric_counts must contain non-negative integers")
+    counters = (
+        [False] * len(graders)
+        if counter_reference_declared is None
+        else list(counter_reference_declared)
+    )
+    if len(counters) != len(graders) or any(type(value) is not bool for value in counters):
+        raise ValueError("counter_reference_declared must match cases and contain booleans")
+    target = 2 * trials * len(graders)
+    condition_judges = sum(count * 2 * trials for count in graders)
+    references = sum(graders)
+    counter_references = sum(
+        count for count, declared in zip(graders, counters) if declared
+    )
+    judge = condition_judges + references + counter_references
+    return {
+        "target": target,
+        "condition_judges": condition_judges,
+        "references": references,
+        "counter_references": counter_references,
+        "judge": judge,
+        "total": target + judge,
+    }
 
 
 def safe_relative_path(root: Path, value: object, label: str) -> Path:

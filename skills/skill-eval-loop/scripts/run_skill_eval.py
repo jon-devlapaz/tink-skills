@@ -21,7 +21,13 @@ from eval_runtime import (
     require_observer_environment,
     start_eval_run,
 )
-from eval_spec import canonical_sha256, grade_case, load_suite, safe_relative_path
+from eval_spec import (
+    canonical_sha256,
+    grade_case,
+    harness_invocation_counts,
+    load_suite,
+    safe_relative_path,
+)
 from model_grader import run_model_grade
 from runtime_adapters import (
     HARNESS_NAMES,
@@ -169,7 +175,7 @@ def _grade_counter_reference(
     with tempfile.TemporaryDirectory(prefix="skill-eval-counter-") as temp:
         workspace = Path(temp)
         _prepare_workspace(suite_root, case, workspace, reference=True)
-        external, _ = _model_graders(
+        external, judge_records = _model_graders(
             case=case,
             response=response,
             trace_dir=output_dir / "counter-reference-judges" / case["id"],
@@ -181,12 +187,15 @@ def _grade_counter_reference(
             eval_run=eval_run,
             display_context=f"counter-reference · {case['id']}",
         )
-        return grade_case(
-            workspace=workspace,
-            response=response,
-            graders=case["graders"],
-            external_grades=external,
-        )
+        return {
+            "grading": grade_case(
+                workspace=workspace,
+                response=response,
+                graders=case["graders"],
+                external_grades=external,
+            ),
+            "judge_records": judge_records,
+        }
 
 
 def _validate_references(
@@ -235,19 +244,23 @@ def _validate_references(
             judge_timeout_seconds=judge_timeout_seconds,
             eval_run=eval_run,
         )
-        if counter_grading is not None and not counter_grading["summary"]["failed"]:
+        if (
+            counter_grading is not None
+            and not counter_grading["grading"]["summary"]["failed"]
+        ):
             raise ValueError(
                 f"counter-reference passed graders for case {case['id']}; "
                 "the graders do not separate a correct answer from a wrong one"
             )
-        records.append(
-            {
-                "case_id": case["id"],
-                "valid": True,
-                "grading": grading,
-                "judge_records": judge_records,
-            }
-        )
+        record = {
+            "case_id": case["id"],
+            "valid": True,
+            "grading": grading,
+            "judge_records": judge_records,
+        }
+        if counter_grading is not None:
+            record["counter_reference"] = counter_grading
+        records.append(record)
     return records
 
 
@@ -496,18 +509,23 @@ def plan_run(
     if observer not in OBSERVERS:
         raise ValueError(f"observer must be one of {sorted(OBSERVERS)}")
     _assert_external_output(output_dir, skill_path)
-    model_rubric_count = sum(
+    model_rubric_counts = [
         sum(grader["type"] == "model_rubric" for grader in case["graders"])
         for case in suite["evals"]
-    )
-    if model_rubric_count and not judge_model:
+    ]
+    if any(model_rubric_counts) and not judge_model:
         raise ValueError("model_rubric graders require --judge-model")
     executable, version = resolve_harness(
         harness,
         harness_bin or pi_bin,
     )
-    base_calls = 2 * trials * len(suite["evals"])
-    judge_calls = model_rubric_count * (1 + 2 * trials)
+    invocation_counts = harness_invocation_counts(
+        trials=trials,
+        model_rubric_counts=model_rubric_counts,
+        counter_reference_declared=[
+            case.get("counter_reference") is not None for case in suite["evals"]
+        ],
+    )
     return {
         "skill_path": str(skill_path),
         "evals_path": suite["source_path"],
@@ -521,11 +539,7 @@ def plan_run(
         "trials_per_case": trials,
         "case_count": len(suite["evals"]),
         "pair_count": len(suite["evals"]) * trials,
-        "harness_invocations": {
-            "target": base_calls,
-            "judge": judge_calls,
-            "total": base_calls + judge_calls,
-        },
+        "harness_invocations": invocation_counts,
         "provider_model_calls": "unknown",
         "execution_order": {
             "policy": "counterbalanced_by_trial",
@@ -639,6 +653,13 @@ def run_suite(
                     "behavior_class": case["behavior_class"],
                     "routing_class": case.get("routing_class"),
                     "expected_skill_loading": case["expected_skill_loading"],
+                    "model_rubric_count": sum(
+                        grader["type"] == "model_rubric"
+                        for grader in case["graders"]
+                    ),
+                    "counter_reference_declared": (
+                        case.get("counter_reference") is not None
+                    ),
                     "prompt_sha256": canonical_sha256(case["prompt"]),
                     "graders_sha256": canonical_sha256(case["graders"]),
                 }
