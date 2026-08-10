@@ -79,10 +79,13 @@ In DISCOVER:
    search online; stop.
 
 Search online only after opt-in; an original request that explicitly requires
-online search is opt-in. Do not force a local candidate when none qualifies.
+online search is opt-in. Follow the ordered source and stopping rules in the
+scouting workflow. Broaden sources for missing candidates or decision-blocking
+coverage; deepen finalist evidence for risk. Do not conflate the two. Do not
+force a local candidate when none qualifies.
 
 Complete when: the local checkpoint is reported, or authorized online search
-has produced candidates for Step 4.
+has reached its documented stop with finalists or an explicit coverage gap.
 
 ## 6. Recommend, abstain, and name the next gate
 

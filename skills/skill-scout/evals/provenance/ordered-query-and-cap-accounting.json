@@ -1,0 +1,9 @@
+{
+  "case_id": "ordered-query-and-cap-accounting",
+  "origin": "author_derived",
+  "purpose": "Prove per-source family reset, ordered advancement, first-occurrence normalization, caps, and finalist overflow.",
+  "derived_from": [
+    "Skill Scout ordered query, retention, and finalist-cap rules"
+  ],
+  "expected_failure_without_skill": "Skip a family reset, reorder families, count a duplicate twice, conflate caps, choose wrong finalists, or expand without a gap."
+}

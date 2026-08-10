@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "suite_sha256": "283b792ca0a367164096164646c7f60e07f8c60b34dc6d214d4c327851e4a747",
+  "suite_sha256": "573ccb23af7555e47f155f7761187032a0ef386af002b785227c4366bd8019db",
   "cases": [
     {
       "case_id": "local-fit-beats-reputation",
@@ -56,6 +56,50 @@
       "artifact": "provenance/tink-adoption-remains-a-gated-handoff.json",
       "artifact_sha256": "7fd4d1dce115969ccc928dab0a49432a2eaf39c845631ebd501feaa4dbc87fea",
       "case_sha256": "ba7f3ee539f7794aa5946b9004f65ef324423da98e71ec75e5ba3a19e26fe7f1"
+    },
+    {
+      "case_id": "one-off-stays-inline-without-scouting",
+      "origin": "author_derived",
+      "source_id": "skill-scout-author-scenario-one-off-stays-inline-without-scouting",
+      "source_type": "author_scenario",
+      "observed_at": "2026-08-10",
+      "task_author": "independent eval author",
+      "artifact": "provenance/one-off-stays-inline-without-scouting.json",
+      "artifact_sha256": "289ca635f22239ed53d63750b921efffd28828fbf40f532e11bb9da4074a1b02",
+      "case_sha256": "c415f90b32c391a872fd449d617c57292a6a4b8b7d102b6a61c4ee52defeb895"
+    },
+    {
+      "case_id": "qualified-structured-pass-stops-expansion",
+      "origin": "author_derived",
+      "source_id": "skill-scout-author-scenario-qualified-structured-pass-stops-expansion",
+      "source_type": "author_scenario",
+      "observed_at": "2026-08-10",
+      "task_author": "independent eval author",
+      "artifact": "provenance/qualified-structured-pass-stops-expansion.json",
+      "artifact_sha256": "176585baca4e7c5422bc7721754b3a9d85fe1aab0cf51c4c1dc09edef98bb4f4",
+      "case_sha256": "cb89fa4c56bbd82e34de7cfca876cb7dd08170639ee421f16322ff35d041cd93"
+    },
+    {
+      "case_id": "coverage-gap-escalates-by-source-not-inspection-risk",
+      "origin": "author_derived",
+      "source_id": "skill-scout-author-scenario-coverage-gap-escalates-by-source-not-inspection-risk",
+      "source_type": "author_scenario",
+      "observed_at": "2026-08-10",
+      "task_author": "independent eval author",
+      "artifact": "provenance/coverage-gap-escalates-by-source-not-inspection-risk.json",
+      "artifact_sha256": "755c5b704463fecb78cbf35cb191280d6d869d9da1fec460c04eb86203c1c3a6",
+      "case_sha256": "738e5e5cf0d03aa0edd99af026497e5f849178c3c0876c71874e3b03e48bcc99"
+    },
+    {
+      "case_id": "ordered-query-and-cap-accounting",
+      "origin": "author_derived",
+      "source_id": "skill-scout-author-scenario-ordered-query-and-cap-accounting",
+      "source_type": "author_scenario",
+      "observed_at": "2026-08-10",
+      "task_author": "independent eval author",
+      "artifact": "provenance/ordered-query-and-cap-accounting.json",
+      "artifact_sha256": "71cc85cdddbcaa068e56f0bca6c597d9980c90649b75d6afd2db4ba0d8cce0b7",
+      "case_sha256": "01ad2e9161f0c944313cc5ce8c2efdf394e4183ceb36db4a3867ffa8ace0b647"
     }
   ]
 }

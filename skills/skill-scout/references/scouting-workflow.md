@@ -23,14 +23,34 @@ Run the following algorithm. Tink commands and identity rules live in
    original request already answers the second question, record that opt-in
    instead of asking again. Stop when an answer is needed. An acceptable
    candidate is not authorization to install, test, or execute.
-5. Search online only after an explicit affirmative answer (or an already
-   explicit online-search request). Use at most three query families: user
-   terminology, underlying mechanism, and adjacent documented tools. Cover
-   official sources, GitHub, and one broader index; keep at most ten raw leads
-   and three finalists. If the user declines, record Tier C as declined.
+5. Search online only after explicit opt-in. In each source pass, restart this sequence
+   of at most three query families: user terminology, underlying mechanism, and adjacent documented tools.
+   Within that pass, run a later family only while no candidate qualifies, finalists remain materially tied, or a decision-blocking gap remains. Apply this source ladder:
+   - For a named provider, inspect its collection; search [skills.sh](https://skills.sh/)
+     only for no qualifier, a material tie, or a coverage gap. Generic searches
+     start at skills.sh. Repository inspection deepens evidence, not coverage; rankings are leads.
+   - Expand to GitHub code search of valid `SKILL.md` directories only for no
+     qualifier, a material tie, or a gap blocking a defensible recommendation.
+   - Run one general-web or broader-index pass only if the GitHub pass still
+     leaves a material, decision-blocking coverage gap.
+   Within each source pass, merge by `(query-family ordinal, source result rank)`;
+   normalize each lineage on first occurrence before counting. Inspect at most ten
+   unique normalized lineages; reset the cap every required pass. Across all passes,
+   retain/report at most ten non-failed lineages and three finalists. If over capacity,
+   retain qualifiers before unresolved leads, then rank by contract fit, earlier
+   ladder source, and `(query-family ordinal, source result rank)`. Record source,
+   query, date, inspected count,
+   lineages, gaps, and stop reason. Use public read-only surfaces; downloaded CLIs,
+   credentialed APIs, private sources, or execution require separate approval; record a declined search.
 6. Apply every Skill Scout gate before ranking. Each finalist must be pass,
    fail, or unresolved on each gate. Reject failed candidates; abstain when no
    candidate qualifies.
+
+Broaden only for insufficiency, a material tie, or a decision-blocking gap; deepen
+for safety, permissions, compatibility, or execution risk. Stop between passes on a
+defensible set with no material gap. Otherwise complete every applicable rung; an
+empty pass cannot preempt a later source required by a remaining gap. After the final
+applicable source, report unresolved gaps and abstain if they block a recommendation.
 
 For a public GitHub finalist with Tink available, use the adapter's read-only
 inspection path before manual traversal. Inspect repository instructions,
@@ -70,11 +90,9 @@ Do not bypass inaccessible sources. Record the gap instead.
 
 ## Completion and adoption
 
-DISCOVER is complete when project and library inventory (or gaps), shortlist,
-checkpoint answers, online status, normalized lineage, gate results, finalist
-evidence, and coverage gaps are recorded. If online search ran, stop after one
-expansion pass that finds no qualified contender. VERIFY is complete when the
-known candidate is answered against the same evidence standard.
+DISCOVER is complete when project/library inventory or gaps, shortlist, checkpoint
+answers, online status and stop reason, lineage, gate results, finalist evidence,
+and coverage gaps are recorded. VERIFY uses the same evidence standard.
 
 For adoption, name the exact inspected tag or commit and propose the runtime's
 supported action; never substitute a floating branch. Use the Tink adapter when

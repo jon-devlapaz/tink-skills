@@ -65,8 +65,9 @@ Research-only ranking under constraints (workflow fit, safety, demonstrated
 behavior, and related gates). Modes: COMPARE, VERIFY, DISCOVER, or ABSTAIN/BUILD.
 DISCOVER inventories active project skills and the Tink library first, presents
 at most three qualified local candidates, then separately asks whether to pursue
-one and whether to search online. Cross-project catalog history is optional.
-Detail:
+one and whether to search online. Authorized online discovery checks the first
+applicable structured source before evidence-triggered GitHub and general-web
+expansion. Cross-project catalog history is optional. Detail:
 [skills/skill-scout/SKILL.md](skills/skill-scout/SKILL.md).
 
 ## skill-eval-loop

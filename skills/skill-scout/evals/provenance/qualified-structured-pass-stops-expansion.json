@@ -1,0 +1,9 @@
+{
+  "case_id": "qualified-structured-pass-stops-expansion",
+  "origin": "author_derived",
+  "purpose": "Prove a named-provider online search stops before both GitHub and general-web expansion when its applicable structured source yields a qualified candidate.",
+  "derived_from": [
+    "Skill Scout bounded online discovery and qualification-before-ranking rules"
+  ],
+  "expected_failure_without_skill": "Continue into GitHub or general-web comparison after a qualified named-provider structured result."
+}

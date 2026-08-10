@@ -1,0 +1,9 @@
+{
+  "case_id": "one-off-stays-inline-without-scouting",
+  "origin": "author_derived",
+  "purpose": "Prove a natural one-off README capitalization request receives only the direct next action.",
+  "derived_from": [
+    "Skill Scout lightest-mode and one-off inline boundary"
+  ],
+  "expected_failure_without_skill": "Propose preliminary inventory, survey, search, or scouting before the direct correction."
+}

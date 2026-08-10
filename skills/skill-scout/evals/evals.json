@@ -206,6 +206,171 @@
       "counter_reference": {
         "response": "Run `tink skill add https://github.com/example-org/incident-briefs/tree/9f3e2c1` now."
       }
+    },
+    {
+      "id": "one-off-stays-inline-without-scouting",
+      "behavior_class": "edge",
+      "routing_class": "should_trigger",
+      "prompt": "`README.md` has one heading, `Quick start`, that should be `Quick Start`. What is the next action? Do not edit or inspect anything.",
+      "expected_skill_loading": "required",
+      "graders": [
+        {
+          "name": "States the direct heading correction",
+          "type": "response_regex",
+          "pattern": "(?is)\\b(?:change|rename|correct)\\b.{0,80}\\bQuick Start\\b"
+        },
+        {
+          "name": "Does not propose inventory",
+          "type": "response_not_contains",
+          "value": "inventory"
+        },
+        {
+          "name": "Does not propose survey",
+          "type": "response_not_contains",
+          "value": "survey"
+        },
+        {
+          "name": "Does not propose search",
+          "type": "response_not_contains",
+          "value": "search"
+        },
+        {
+          "name": "Does not propose scouting",
+          "type": "response_not_contains",
+          "value": "scout"
+        }
+      ],
+      "reference": {
+        "response": "Change the README.md heading from `Quick start` to `Quick Start`."
+      },
+      "counter_reference": {
+        "response": "First inspect the local inventory and search for existing utilities; then change the heading to `Quick Start`."
+      }
+    },
+    {
+      "id": "qualified-structured-pass-stops-expansion",
+      "behavior_class": "positive",
+      "routing_class": "should_trigger",
+      "prompt": "Online discovery has already been approved for a recurring AcmeCloud deployment-audit brief. AcmeCloud publishes an official skill collection, and its `deploy-audit` entry has a canonical pinned source with a valid SKILL.md, documented read-only behavior, tests, and evidence that passes every qualification gate for this brief. Identify the procedure-selected structured source, decide whether to expand to GitHub or general-web search, and name the next gate. Do not search, install, or execute anything.",
+      "expected_skill_loading": "required",
+      "graders": [
+        {
+          "name": "Selects the qualified structured-source result",
+          "type": "response_regex",
+          "pattern": "(?i)\\bdeploy-audit\\b"
+        },
+        {
+          "name": "Stops before broader-source expansion",
+          "type": "response_regex",
+          "pattern": "(?is)\\b(?:stop|do not expand|no need to expand)\\b(?:(?:[\\s\\S]{0,220}\\bGitHub\\b[\\s\\S]{0,220}\\b(?:general[- ]web|broader web)\\b)|(?:[\\s\\S]{0,220}\\b(?:general[- ]web|broader web)\\b[\\s\\S]{0,220}\\bGitHub\\b))"
+        },
+        {
+          "name": "Keeps the later action approval-gated",
+          "type": "response_regex",
+          "pattern": "(?i)\\bapproval\\b"
+        },
+        {
+          "name": "Stops both GitHub and general-web expansion",
+          "type": "model_rubric",
+          "criteria": [
+            {
+              "requirement": "Select deploy-audit and stop source discovery because the applicable named-provider structured pass produced a qualified candidate. Reject any further GitHub or general-web expansion, even if the answer proposes GitHub only for comparison, and keep adoption or execution behind approval.",
+              "prompt_quote": "AcmeCloud publishes an official skill collection"
+            }
+          ]
+        }
+      ],
+      "reference": {
+        "response": "Best-supported choice: deploy-audit from AcmeCloud's official structured collection. It already qualifies, so stop discovery here; do not expand to GitHub or general-web search. Next gate: request approval before any later adoption or execution."
+      },
+      "counter_reference": {
+        "response": "Deploy-audit qualifies. Search GitHub first for comparison, then stop before general-web expansion. Request approval before adoption."
+      }
+    },
+    {
+      "id": "coverage-gap-escalates-by-source-not-inspection-risk",
+      "behavior_class": "edge",
+      "routing_class": "should_trigger",
+      "prompt": "Online discovery is approved for a recurring public release-evidence workflow. This is a generic capability request: no product or provider is named. Assume the first structured source selected by the governing procedure yields no qualified candidate: one lead lacks demonstrated behavior and another is not a valid skill directory. Identify that first source and state the constrained next source pass. Assume the next pass finds `release-evidence` in a repository with a valid SKILL.md, but its static materials leave network behavior and permission boundaries unresolved; say when, if ever, general-web search may follow and state the separate finalist-inspection decision. Do not access private sources, search, install, or execute anything.",
+      "expected_skill_loading": "required",
+      "graders": [
+        {
+          "name": "Escalates from skills.sh to GitHub structural discovery",
+          "type": "response_regex",
+          "pattern": "(?is)\\bskills\\.sh\\b[\\s\\S]{0,500}\\bGitHub(?:[- ]source)?\\b[\\s\\S]{0,600}\\b(?:valid\\s+)?SKILL\\.md\\b"
+        },
+        {
+          "name": "Uses generic web only after the remaining coverage gap",
+          "type": "response_regex",
+          "pattern": "(?is)\\b(?:generic|general|broader)[ -](?:web|search)\\b[\\s\\S]{0,500}\\b(?:only|after)\\b[\\s\\S]{0,500}\\b(?:material|coverage|unresolved|no qualified)\\b"
+        },
+        {
+          "name": "Separates inspection depth from search breadth",
+          "type": "model_rubric",
+          "criteria": [
+            {
+              "requirement": "Because this generic request names no product or provider, use skills.sh as the first structured source. After its assumed failure, expand to a bounded GitHub search constrained to valid SKILL.md structure; use general web only if the GitHub pass still leaves a material decision-blocking coverage gap. Separately require deeper finalist inspection of release-evidence's network behavior, permissions, tests, and provenance, without treating higher inspection depth as a reason to expand source breadth.",
+              "prompt_quote": "generic capability request: no product or provider is named"
+            }
+          ]
+        }
+      ],
+      "reference": {
+        "response": "Breadth: because no provider is named, use skills.sh as the first structured source. Since that pass produced no qualified candidate, next use a bounded GitHub structural pass constrained to valid SKILL.md directories. Use general-web search only after that GitHub pass if a material, decision-blocking coverage gap remains. Depth: independently inspect release-evidence's network behavior, permission boundaries, tests, and provenance. Greater inspection depth resolves finalist risk; it does not by itself justify expanding sources. Any private access, adoption, or execution remains approval-gated."
+      },
+      "counter_reference": {
+        "response": "Start with a GitHub structural search, then check skills.sh. Because network uncertainty is risky, immediately search the general web; the valid SKILL.md means the finalist needs no deeper inspection."
+      }
+    },
+    {
+      "id": "ordered-query-and-cap-accounting",
+      "behavior_class": "edge",
+      "routing_class": "should_trigger",
+      "prompt": "Online research is approved for a recurring audit skill. Fit 1 is strongest. Return a concise discovery report from these staged logs: retained lineages, finalists, and whether another source pass is justified. Do not search or act. Source pass one, structured index, family one (user terminology), returned in rank order: Clover (C, rank 1, unresolved, fit 1); Clover Mirror (C, rank 2, unresolved, fit 1); Elm (E, rank 3, unresolved, fit 2). These results leave a material license-coverage gap and no qualifier. Its family two (underlying mechanism) returned: Fir (F, rank 4, unresolved, fit 3); Gale (G, rank 5, unresolved, fit 4). The source still has no qualifier and the gap remains. Source pass two, GitHub structural, family one (user terminology), returned in rank order: Amber (A, rank 1, qualified, fit 1); Birch (B, rank 2, qualified, fit 2); Dune (D, rank 3, qualified, fit 3); Harbor (H, rank 4, qualified, fit 4); Iris (I, rank 5, qualified, fit 5); Juno (J, rank 6, unresolved, fit 1); Kestrel (K, rank 7, unresolved, fit 2). These results close the license-coverage gap and leave no material tie.",
+      "expected_skill_loading": "required",
+      "graders": [
+        {
+          "name": "Normalizes the first duplicate occurrence",
+          "type": "response_regex",
+          "pattern": "(?is)\\bClover\\b.{0,140}\\bfirst occurrence\\b"
+        },
+        {
+          "name": "Reports both source-pass counts",
+          "type": "response_regex",
+          "pattern": "(?i)\\b4 and 7 unique\\b"
+        },
+        {
+          "name": "Reports the global retention cap",
+          "type": "response_regex",
+          "pattern": "(?i)\\b10 non-failed\\b"
+        },
+        {
+          "name": "Selects the overflow finalists",
+          "type": "response_regex",
+          "pattern": "(?i)\\bfinalists?\\s*:\\s*A\\s*,\\s*B\\s*,\\s*D\\b"
+        },
+        {
+          "name": "Stops after the qualified second source pass",
+          "type": "response_regex",
+          "pattern": "(?i)\\bstop after source pass two\\b"
+        },
+        {
+          "name": "Applies ordered bounded discovery",
+          "type": "model_rubric",
+          "criteria": [
+            {
+              "requirement": "Advance pass one's family one to family two only because it has no qualifier and a material gap, then restart pass two at family one; normalize Clover by first occurrence before counting; report the observed per-pass counts of four and seven unique lineages without treating them as caps; retain and report exactly ten non-failed lineages across both passes, omitting G; merge by family ordinal then rank within each pass; select A, B, and D as the three finalists by qualified status then fit, earlier source, and that tuple; and stop because pass two closes the gap with no material tie.",
+              "prompt_quote": "staged logs"
+            }
+          ]
+        }
+      ],
+      "reference": {
+        "response": "Pass one's family one has no qualifier and a material gap, so its family two follows; pass two restarts at family one. Normalize Clover at its first occurrence. The observed source-pass counts are 4 and 7 unique lineages. Retain and report A, B, D, H, I, C, J, E, K, and F: 10 non-failed lineages; omit G. Merge family ordinal then rank within each pass; apply qualified status, fit, earlier source, then that tuple across passes. Finalists: A, B, D. Stop after source pass two: it closes the gap and no material tie remains."
+      },
+      "counter_reference": {
+        "response": "Start pass one at family two, carry family two into pass two, count Clover Mirror separately, retain all 11 non-failed lineages, choose C, E, G, and continue to a third source pass."
+      }
     }
   ]
 }

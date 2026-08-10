@@ -1,0 +1,9 @@
+{
+  "case_id": "coverage-gap-escalates-by-source-not-inspection-risk",
+  "origin": "author_derived",
+  "purpose": "Prove a generic request searches skills.sh first, then bounded valid-SKILL.md GitHub discovery after failure, and general web only for a remaining material gap while finalist inspection depth stays independent.",
+  "derived_from": [
+    "Skill Scout bounded discovery, valid-skill structure, qualification, and evidence rules"
+  ],
+  "expected_failure_without_skill": "Guess a provider source, search GitHub before skills.sh, skip valid-SKILL.md constraints, use general web before its fallback condition, or conflate high-risk inspection with broader search."
+}
