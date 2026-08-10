@@ -36,6 +36,14 @@ jobs:
       - name: Check whitespace
         run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
 
+      - name: Reject tracked local artifacts
+        run: |
+          tracked="$(git ls-files -- .agents/ .compound-engineering/ docs/ce-reviews/)"
+          if [ -n "$tracked" ]; then
+            printf 'Local-only artifacts are tracked:\n%s\n' "$tracked"
+            exit 1
+          fi
+
       - name: List installable skills
         run: |
           npx --yes skills add . --list | tee /tmp/skills-list.txt
