@@ -19,7 +19,9 @@ candidate is a valid result.
 | **COMPARE** | Candidates and material evidence are supplied |
 | **VERIFY** | One known skill, URL, or repository is named |
 | **DISCOVER** | Project and Tink library inventory may satisfy the need; online search is optional |
-| **ABSTAIN/BUILD** | No candidate passes the gates |
+
+**ABSTAIN/BUILD** is the outcome when qualification leaves no candidate, not a
+mode chosen before scouting begins.
 
 Use COMPARE when tools are forbidden or the candidate set is closed; do not
 search more broadly when a lighter mode answers the request.
@@ -75,14 +77,14 @@ In DISCOVER:
 1. Enumerate current-project skills, then the supported Tink library.
 2. Qualify and rank at most three local candidates.
 3. Present each candidate's scope, fit, evidence, and material gaps.
-4. Ask separately whether any candidate is acceptable to pursue and whether to
-   search online; stop.
+4. Ask whether any candidate is acceptable to pursue. If online search is not
+   already authorized, ask for that permission separately; otherwise record the
+   existing opt-in. Stop when an answer is needed.
 
-Search online only after opt-in; an original request that explicitly requires
-online search is opt-in. Follow the ordered source and stopping rules in the
-scouting workflow. Broaden sources for missing candidates or decision-blocking
-coverage; deepen finalist evidence for risk. Do not conflate the two. Do not
-force a local candidate when none qualifies.
+When online search is authorized, follow the ordered source and stopping rules
+in the scouting workflow. Broaden sources for missing candidates or decision-
+blocking coverage; deepen finalist evidence for risk. Do not conflate the two.
+Do not force a local candidate when none qualifies.
 
 Complete when: the local checkpoint is reported, or authorized online search
 has reached its documented stop with finalists or an explicit coverage gap.
