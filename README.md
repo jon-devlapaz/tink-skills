@@ -31,13 +31,21 @@ tink skill add jon-devlapaz/tink-skills --skill skill-eval-loop
 tink skill add jon-devlapaz/tink-skills --skill triangulate-me
 ```
 
-Refresh clean imports: `tink skill refresh` (or name one skill). Source may be a
-local path or `--stash`. Do not hand-edit `.tink-source.json` receipts.
+Refresh every clean GitHub import:
+
+```console
+tink skill refresh
+```
+
+Refresh one by naming it: `tink skill refresh NAME`.
+
+Local skills do not refresh. Install a library skill by name with
+`tink skill add NAME`. Do not hand-edit `.tink-source.json` receipts.
 
 ## First success
 
-Both skills are agent workflows. Point your coding agent at the project (with
-skills under `.agents/skills/`) and try:
+Start with the core loop: scout a candidate, then measure it. Point your coding
+agent at the project (with skills under `.agents/skills/`) and try:
 
 **Scout — find a fit (read-only until you approve install):**
 
