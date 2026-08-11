@@ -85,15 +85,3 @@ claim true merely because it lies between them.
 - Operational rule: allow convergence to endorse one side, revise both sides,
   preserve disagreement, or abstain.
 - Limit: balanced presentation does not imply equal evidential weight.
-
-## Derived quality test
-
-A strong triangulation should pass all of these checks:
-
-1. Could the user recognize the faithful read as their actual commitment?
-2. Does the steel read improve coherence without silently changing the claim?
-3. Could a reasonable critic honestly make the stress read from the available
-   language or evidence?
-4. Does the crux explain the difference rather than merely rename it?
-5. Does the convergence say what changed and avoid automatic compromise?
-6. Does the next question resolve the crux rather than open an unrelated branch?

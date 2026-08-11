@@ -1,13 +1,10 @@
 ---
 name: triangulate-me
 description: >
-  Run an iterative dialogue that gives each substantive user answer a faithful
-  reading, its strongest plausible interpretation, its weakest still-plausible
-  interpretation, and an evidence-sensitive convergence, grounding apparently
-  fixed constraints in supported primitives when needed. Use when the user asks
-  to triangulate, steelman and stress-test, sharpen a position, expose ambiguity,
-  challenge a false constraint, reconcile competing readings, or reach a robust
-  shared understanding.
+  Triangulate a claim through faithful, steel, and stress reads, then identify
+  its crux and evidence-sensitive convergence. Use when the user asks to
+  pressure-test an interpretation, expose the crux between plausible readings,
+  ground a supposedly fixed constraint, or converge without false compromise.
 ---
 
 # Triangulate Me
@@ -24,31 +21,35 @@ a proposal for the user to accept, reject, or revise.
 - Find available facts yourself. Ask the user only for judgments, preferences,
   private context, or evidence you cannot inspect.
 
+**Complete when:** exactly one active claim, choice, or assumption is named. If
+the reply is not substantive, respond normally without running the frame.
+
 ## Triangulate each substantive answer
 
 Apply this sequence:
 
-1. **Faithful read** — Restate only what the answer actually commits to. Keep
-   uncertainty, conditions, and scope intact.
+1. **Faithful read** — Restate only what the answer actually commits to.
+   Complete when every qualifier that changes the meaning remains intact.
 2. **Steel read** — Form the strongest coherent interpretation supported by the
-   answer. Make useful implicit premises explicit, but label any premise the
-   user did not state.
+   answer. Complete when every useful agent-added premise is explicit and
+   labeled.
 3. **Stress read** — Form the weakest interpretation that a reasonable reader
-   could still derive from the answer. Ground it in specific ambiguity,
-   omission, evidence, incentive, tradeoff, or consequence. Never invent a
-   foolish position merely because it is easy to reject.
+   could still derive from the answer. Complete when it names a specific,
+   supported vulnerability—or states that none exists.
 4. **Crux** — Name the exact premise, definition, value, or missing fact that
-   explains the distance between the readings.
+   explains the distance between the readings. Complete when resolving it would
+   materially collapse that distance.
 5. **First-principles check, when triggered** — If the crux contains a
    supposedly fixed constraint (such as "must use X," "too expensive," "can't
    scale," or "that's how it is done"), or a solution justified mainly by
    analogy or authority, run the grounding pass below. Otherwise skip it.
 6. **Convergence** — Recommend the most robust next formulation. Preserve the
    steel read's value while repairing the stress read's supported vulnerability.
-   Derive it from the grounded primitives when that check ran, and state what
-   changed.
+   Complete when it states what was preserved, repaired, or left unresolved;
+   derive it from grounded primitives when the check ran.
 7. **Next question** — Ask one question whose answer resolves the crux. Do not
-   ask a downstream question while its prerequisite remains unsettled.
+   ask a downstream question while its prerequisite remains unsettled. Complete
+   when answering it would settle the current crux.
    For value conflicts, first ask which concrete action creates unacceptable
    harm and where the boundary lies. Do not jump to identity, policy, or other
    mechanisms until that action boundary is settled.
@@ -67,24 +68,24 @@ Use this compact form unless the subject needs more explanation:
 
 ## Ground constraints from first principles
 
-Use this as one bounded pass, not as a mandatory seventh interpretation. Read
+Use this as one bounded pass, separate from the six interpretation fields. Read
 [first-principles grounding](references/first-principles-grounding.md) when the
 check is triggered. It defines the constraint classes, primitive reduction,
-rebuild, residuals, and kill test; keep the main response's `Grounding` line
-compact and concrete. Do not use the pass for time-critical incidents or
-ordinary polish without a false-constraint signal.
+rebuild, residuals, and kill test. Keep the main response's `Grounding` line
+compact and concrete. Reserve the pass for a false-constraint or borrowed-
+solution signal; keep time-critical incidents and ordinary polish on their
+direct path.
 
 ## Protect the inquiry
 
-- Do not infer motives, personality, emotions, or beliefs that the user did not
-  express.
-- Do not treat the steel and stress reads as equally evidenced by default.
-- Do not average positions. Convergence may endorse one reading, revise both,
-  preserve an explicit disagreement, or abstain pending evidence or a prototype.
-- Do not convert a factual dispute into a rhetorical compromise. Name the check
-  that could resolve it.
-- Do not manufacture a stress read when no plausible vulnerability exists. Say
-  so and move to the next unresolved decision.
+- Ground every interpretation in the user's expressed language and context;
+  leave unstated motives, personality, emotions, and beliefs outside the frame.
+- Weight the steel and stress reads according to their evidence.
+- Let convergence endorse one reading, revise both, preserve an explicit
+  disagreement, or abstain pending evidence or a prototype.
+- Route a factual dispute to the named check that could resolve it.
+- When no plausible stress read exists, say so and move to the next unresolved
+  decision.
 - Distinguish an ungrillable question from an unresolved one. Recommend a
   concrete experiment when reaction to evidence, behavior, or a prototype is
   required.
@@ -100,8 +101,8 @@ to triangulate.
 ## Continue and stop
 
 After the user answers, recompute the faithful, steel, and stress reads from the
-new evidence; do not defend the previous convergence. Continue until one of
-these conditions holds:
+new evidence and treat the previous convergence as provisional. Continue until
+one of these conditions holds:
 
 - the user explicitly accepts a formulation and no material crux remains;
 - the remaining difference is an acknowledged value choice;
@@ -109,5 +110,5 @@ these conditions holds:
 - the user stops or changes the task.
 
 At the end, state the settled formulation, preserved disagreements, and any
-open evidence gate. Do not turn the result into a plan or act on it unless the
-user asks.
+open evidence gate. Wait for the user's explicit request before planning or
+acting on the result.

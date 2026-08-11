@@ -31,10 +31,10 @@ User answer:
 
 > MongoDB should replace Postgres because our writes are slow.
 
-Do not synthesize a database choice from competing rhetoric. Preserve the claim
-as a hypothesis, name the absent measurement, and ask for or perform the next
-diagnostic check. A valid convergence can be: "Treat datastore replacement as
-unproven until the write bottleneck is localized."
+Preserve the database choice as a hypothesis, name the absent measurement, and
+ask for or perform the next diagnostic check. A valid convergence can be:
+"Treat datastore replacement as unproven until the write bottleneck is
+localized."
 
 ## Fixed constraint with a borrowed solution
 
@@ -70,11 +70,11 @@ User answer:
 
 > Anonymous use protects privacy, but removing it would reduce abuse.
 
-Differentiate the values and do not pretend evidence alone chooses their
-priority. A convergence may define a reversible boundary—such as anonymous
-reading with rate-limited or verified high-impact actions—only if it follows
-from the stated product context. Otherwise preserve the privacy-versus-abuse
-choice and ask which actions create unacceptable harm.
+Differentiate the values and leave their priority with the user. A convergence
+may define a reversible boundary—such as anonymous reading with rate-limited or
+verified high-impact actions—only if it follows from the stated product context.
+Otherwise preserve the privacy-versus-abuse choice and ask which actions create
+unacceptable harm.
 
 ## No plausible stress read
 
@@ -83,9 +83,8 @@ User answer:
 > Every production migration needs a named owner, a tested rollback, and an
 > observable success condition.
 
-Do not invent a foolish objection. State that the answer is already bounded and
-testable, note any genuinely missing scope only if relevant, and move to the
-next unresolved decision.
+State that the answer is already bounded and testable, note any genuinely
+missing scope only if relevant, and move to the next unresolved decision.
 
 ## No substantive answer
 
@@ -93,5 +92,5 @@ User answer:
 
 > Thanks, that makes sense.
 
-Do not emit six interpretation headings. Acknowledge normally. Continue only if
-the prior inquiry still has an unresolved question.
+Acknowledge normally. Continue only if the prior inquiry still has an unresolved
+question.
