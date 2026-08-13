@@ -3797,6 +3797,34 @@ class AggregateTests(unittest.TestCase):
                 any("model_mismatch" in reason for reason in report["invalid_reasons"])
             )
 
+    def test_reparsed_trace_owns_model_attestation_during_aggregation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            control = manifest["trials"][0]["conditions"]["without_skill"]
+            control["model_attested"] = False
+            _write_json(manifest_path, manifest)
+
+            report = aggregate(root)
+            self.assertTrue(report["valid"])
+            self.assertFalse(
+                any(
+                    "model_not_attested" in reason
+                    for reason in report["invalid_reasons"]
+                )
+            )
+
+            control["actual_model"] = "provider/other-model"
+            _write_json(manifest_path, manifest)
+            report = aggregate(root)
+            self.assertFalse(report["valid"])
+            self.assertIn(
+                "case/trial-001/without_skill: manifest_model_mismatch",
+                report["invalid_reasons"],
+            )
+
     def test_aggregation_requires_complete_case_trial_matrix(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

@@ -252,10 +252,6 @@ def _condition_record(
         invalid.append("timeout")
     if record.get("exit_code") != 0:
         invalid.append("runtime_error")
-    if not model_matches(requested_model, record.get("actual_model")):
-        invalid.append("model_mismatch")
-    if record.get("model_attested") is False:
-        invalid.append("model_not_attested")
     judge_records = record.get("judge_records") or []
     if not isinstance(judge_records, list):
         raise ValueError(f"{label}.judge_records must be a list")
