@@ -140,6 +140,20 @@
       "counter_reference": {"response": "Make tested rollback mandatory for every migration; forward recovery is too uncertain to count as a real safeguard."}
     },
     {
+      "id": "separates-headline-price-from-contractual-cost",
+      "behavior_class": "edge",
+      "routing_class": "should_trigger",
+      "expected_skill_loading": "required",
+      "prompt": "A vendor says its service costs $49 per month. The proposed contract lists a $49 monthly platform fee, usage charges after 10,000 events, a twelve-month minimum, and taxes. Finance asks whether '$49 per month' is an accurate budget figure. What should we conclude?",
+      "graders": [{"name": "Separates the headline fee from the contractual budget", "type": "model_rubric", "criteria": [
+        {"requirement": "Distinguish the $49 platform fee from the contract's usage charges, minimum term, and taxes rather than treating the headline as total cost.", "prompt_quote": "usage charges after 10,000 events"},
+        {"requirement": "Do not invent event volume, tax rate, or a total; state the conditions under which $49 is accurate and under which it understates the budget.", "prompt_quote": "accurate budget figure"},
+        {"requirement": "Stay proportionate: identify the one missing input that most directly determines the budget, with at most one decision-resolving question.", "prompt_quote": "What should we conclude?"}
+      ]}],
+      "reference": {"response": "$49 is the base monthly platform fee, not an established all-in monthly budget. It is accurate only before taxes and while usage stays within 10,000 events; the twelve-month minimum also creates at least a $588 pre-tax commitment. Budget from expected event volume and applicable taxes rather than the headline alone. What monthly event volume should finance assume?"},
+      "counter_reference": {"response": "Use $49 per month as the budget because the additional charges apply only if usage exceeds the included allowance."}
+    },
+    {
       "id": "rejects-clearly-unsafe-shortcut",
       "behavior_class": "positive",
       "routing_class": "should_trigger",

@@ -1,0 +1,9 @@
+{
+  "case_id": "separates-headline-price-from-contractual-cost",
+  "origin": "author_derived",
+  "purpose": "Test whether a headline monthly price is separated from mandatory term, usage, and tax assumptions before it becomes a budget claim.",
+  "derived_from": [
+    "Triangulate evidence-weighting and ambiguity boundaries"
+  ],
+  "expected_failure_without_skill": "Treat the platform fee as total monthly cost or invent an all-in budget without usage and tax inputs."
+}
