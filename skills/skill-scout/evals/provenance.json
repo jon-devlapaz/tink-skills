@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "suite_sha256": "573ccb23af7555e47f155f7761187032a0ef386af002b785227c4366bd8019db",
+  "suite_sha256": "9cfbdbf5ddcbad3851d867fc9df704569ba88bcd6b2993a8c82c22975acf9faf",
   "cases": [
     {
       "case_id": "local-fit-beats-reputation",
@@ -44,7 +44,7 @@
       "task_author": "independent eval author",
       "artifact": "provenance/active-project-skill-prevents-redundant-adoption.json",
       "artifact_sha256": "6290a6fafc84ff90bd8b93ff96ffb152a46b75083d7b56d78c7bbec3f62ca768",
-      "case_sha256": "4333e0f5c16fa13ca36c7b36fa089e4bb6ba09db31e0618a33003bf70f6193f1"
+      "case_sha256": "4c64b348057b0abe4777159504054829347f9cce3eec5ab065ab000c349f06b5"
     },
     {
       "case_id": "tink-adoption-remains-a-gated-handoff",
@@ -55,7 +55,7 @@
       "task_author": "independent eval author",
       "artifact": "provenance/tink-adoption-remains-a-gated-handoff.json",
       "artifact_sha256": "7fd4d1dce115969ccc928dab0a49432a2eaf39c845631ebd501feaa4dbc87fea",
-      "case_sha256": "ba7f3ee539f7794aa5946b9004f65ef324423da98e71ec75e5ba3a19e26fe7f1"
+      "case_sha256": "4d3402055817dd426dfcf2e1d8c958c1c727890f1fca093b846227f05742419c"
     },
     {
       "case_id": "one-off-stays-inline-without-scouting",
@@ -66,7 +66,7 @@
       "task_author": "independent eval author",
       "artifact": "provenance/one-off-stays-inline-without-scouting.json",
       "artifact_sha256": "289ca635f22239ed53d63750b921efffd28828fbf40f532e11bb9da4074a1b02",
-      "case_sha256": "c415f90b32c391a872fd449d617c57292a6a4b8b7d102b6a61c4ee52defeb895"
+      "case_sha256": "465a1743a83a2879319910e451386ef9f318449838df885b77db132688fc2f6d"
     },
     {
       "case_id": "qualified-structured-pass-stops-expansion",
@@ -77,7 +77,7 @@
       "task_author": "independent eval author",
       "artifact": "provenance/qualified-structured-pass-stops-expansion.json",
       "artifact_sha256": "176585baca4e7c5422bc7721754b3a9d85fe1aab0cf51c4c1dc09edef98bb4f4",
-      "case_sha256": "cb89fa4c56bbd82e34de7cfca876cb7dd08170639ee421f16322ff35d041cd93"
+      "case_sha256": "5e48650b4a18d5146e0acc987d224c413027586048a5c5975812142827f0cb72"
     },
     {
       "case_id": "coverage-gap-escalates-by-source-not-inspection-risk",
