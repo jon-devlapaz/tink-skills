@@ -9,7 +9,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-from runtime_adapters import build_judge_invocation, model_matches, trace_metadata
+from runtime_adapters import build_judge_invocation, trace_metadata
+from runtime_attestation import require_judge_runtime_attestation
 from process_control import run_captured
 
 
@@ -119,19 +120,12 @@ rubric requirement. Return JSON only:
             else None
         ),
     )
-    if harness == "codex" and not metadata.get("attestation_trace_path"):
-        raise RuntimeError(
-            f"judge model {model} was not attested; persisted Codex rollout "
-            f"is missing; see {trace_path}"
-        )
-    if metadata.get("model_attested") is not True:
-        raise RuntimeError(f"judge model {model} was not attested; see {trace_path}")
-    actual_model = metadata.get("actual_model")
-    if not model_matches(model, actual_model):
-        raise RuntimeError(
-            f"requested judge model {model} but attested {actual_model}; "
-            f"see {trace_path}"
-        )
+    require_judge_runtime_attestation(
+        metadata,
+        harness=harness,
+        requested_model=model,
+        trace_path=trace_path,
+    )
     attestation_trace = metadata.get("attestation_trace_path")
     grade = _parse_grade(str(metadata.get("final_response", "")))
     evidence = {

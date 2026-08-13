@@ -54,7 +54,9 @@ from runtime_adapters import (  # noqa: E402
     validate_pinned_model,
 )
 from runtime_attestation import (  # noqa: E402
+    evaluate_model_trace_attestation,
     evaluate_target_trace_attestation,
+    require_judge_runtime_attestation,
     require_target_runtime_attestation,
 )
 from workspace_paths import DEFAULT_EVAL_RUNS_ROOT, default_run_output  # noqa: E402
@@ -1029,6 +1031,64 @@ class TargetAttestationOwnerTests(unittest.TestCase):
         )
         self.assertIn("attestation_trace_missing", reasons)
         self.assertIn("model_not_attested", reasons)
+
+    def test_target_and_judge_share_model_reason_order(self) -> None:
+        metadata = self._ok_metadata(
+            attestation_trace_path=None,
+            model_attested=False,
+            actual_model="provider/other",
+        )
+        shared = evaluate_model_trace_attestation(
+            metadata,
+            harness="codex",
+            requested_model="provider/model-1",
+        )
+        target = evaluate_target_trace_attestation(
+            metadata,
+            harness="codex",
+            requested_model="provider/model-1",
+        )
+        self.assertEqual(
+            shared,
+            ["attestation_trace_missing", "model_not_attested", "model_mismatch"],
+        )
+        self.assertEqual(target, shared)
+
+    def test_require_uses_the_first_shared_failure_for_target_and_judge(self) -> None:
+        metadata = self._ok_metadata(
+            attestation_trace_path=None,
+            model_attested=False,
+            actual_model="provider/other",
+        )
+        with self.assertRaisesRegex(RuntimeError, "persisted Codex rollout is missing"):
+            require_target_runtime_attestation(
+                metadata,
+                harness="codex",
+                requested_model="provider/model-1",
+                condition="without_skill",
+                activation_mode="forced",
+                skill_name="fixture-skill",
+                trace_path=Path("/tmp/trace.jsonl"),
+            )
+        with self.assertRaisesRegex(RuntimeError, "persisted Codex rollout is missing"):
+            require_judge_runtime_attestation(
+                metadata,
+                harness="codex",
+                requested_model="provider/model-1",
+                trace_path=Path("/tmp/trace.jsonl"),
+            )
+
+    def test_judge_uses_shared_model_mismatch_policy(self) -> None:
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "requested judge model provider/model-1 but attested provider/other",
+        ):
+            require_judge_runtime_attestation(
+                self._ok_metadata(actual_model="provider/other"),
+                harness="codex",
+                requested_model="provider/model-1",
+                trace_path=Path("/tmp/trace.jsonl"),
+            )
 
     def test_evaluate_reports_manifest_model_mismatch(self) -> None:
         reasons = evaluate_target_trace_attestation(
@@ -3590,6 +3650,28 @@ class AggregateTests(unittest.TestCase):
             self.assertFalse(report["runtime_attestation_complete"])
             self.assertEqual(report["outcome_verdict"], "improved")
             self.assertEqual(report["verdict"], "improved")
+
+    def test_forced_skill_access_remains_a_write_time_only_check(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_run(root, [(False, True)])
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["harness"] = "codex"
+            for condition in ("without_skill", "with_skill"):
+                record = manifest["trials"][0]["conditions"][condition]
+                record["attestation_trace_path"] = record["trace_path"]
+                record["attestation_trace_sha256"] = record["trace_sha256"]
+            _write_json(manifest_path, manifest)
+
+            report = aggregate(root)
+            self.assertTrue(report["artifact_valid"])
+            self.assertFalse(
+                any(
+                    "forced_skill_not_accessed" in reason
+                    for reason in report["invalid_reasons"]
+                )
+            )
 
     def test_trace_visible_control_use_blocks_mechanism_claim(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

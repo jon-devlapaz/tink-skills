@@ -10,7 +10,9 @@ run. Report only local paired evidence.
   used the suite's activation mode, and kept the control unexposed.
 - `runtime_attestation_complete` — whether the trace independently names skill
   injection or explicit skill access. Some harness traces omit this lower-layer
-  event.
+  event. Forced Codex treatment also requires explicit skill access while the
+  run is being written; re-aggregation does not retroactively impose that
+  write-time-only check.
 - `outcome_verdict` — `improved`, `regressed`, or `no_difference`.
 - `verdict` — top-level result; becomes `invalid` or `mechanism_unconfirmed`
   when those boundaries fail.
@@ -45,6 +47,11 @@ do not infer zero usage from that missing historical metadata.
 
 Treat assigned intervention, runtime attestation, routing decision, and task
 outcome as separate evidence layers.
+
+Always report those layers separately: artifact validity, mechanism validity,
+runtime attestation, outcome, autonomous selection when measured, usage with
+coverage, and the unproven list. `mechanism_unconfirmed` means attribution is
+unproven; it does not mean the skill failed to improve the observed outcome.
 
 Leave unproven: causal attribution, statistical significance, distribution
 readiness, security approval, and blind-review independence. Condition order is

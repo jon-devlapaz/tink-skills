@@ -33,6 +33,30 @@ def evaluate_target_trace_attestation(
     Forced-skill access is checked only when ``condition`` and
     ``activation_mode`` identify a Codex forced treatment (write-time).
     """
+    reasons = evaluate_model_trace_attestation(
+        metadata,
+        harness=harness,
+        requested_model=requested_model,
+        recorded_actual_model=recorded_actual_model,
+    )
+    if (
+        harness == "codex"
+        and condition == "with_skill"
+        and activation_mode == "forced"
+        and metadata.get("skill_explicitly_accessed") is not True
+    ):
+        reasons.append("forced_skill_not_accessed")
+    return reasons
+
+
+def evaluate_model_trace_attestation(
+    metadata: Mapping[str, Any],
+    *,
+    harness: str,
+    requested_model: str,
+    recorded_actual_model: object | None = None,
+) -> list[str]:
+    """Return shared model-identity reason codes for targets and judges."""
     reasons: list[str] = []
     if harness == "codex" and not metadata.get("attestation_trace_path"):
         reasons.append("attestation_trace_missing")
@@ -46,13 +70,6 @@ def evaluate_target_trace_attestation(
         attested_model,
     ):
         reasons.append("manifest_model_mismatch")
-    if (
-        harness == "codex"
-        and condition == "with_skill"
-        and activation_mode == "forced"
-        and metadata.get("skill_explicitly_accessed") is not True
-    ):
-        reasons.append("forced_skill_not_accessed")
     return reasons
 
 
@@ -66,7 +83,11 @@ def require_target_runtime_attestation(
     skill_name: str,
     trace_path: Path,
 ) -> None:
-    """Raise ``RuntimeError`` when write-time target attestation fails."""
+    """Raise for the first write-time target failure in evaluation order.
+
+    Forced-skill access is write-time only. Aggregate callers must omit
+    ``condition`` and ``activation_mode`` when re-evaluating retained traces.
+    """
     reasons = evaluate_target_trace_attestation(
         metadata,
         harness=harness,
@@ -85,6 +106,40 @@ def require_target_runtime_attestation(
             trace_path=trace_path,
         )
     )
+
+
+def require_judge_runtime_attestation(
+    metadata: Mapping[str, Any],
+    *,
+    harness: str,
+    requested_model: str,
+    trace_path: Path,
+) -> None:
+    """Raise for the first write-time judge failure in evaluation order."""
+    reasons = evaluate_model_trace_attestation(
+        metadata,
+        harness=harness,
+        requested_model=requested_model,
+    )
+    if not reasons:
+        return
+    reason = reasons[0]
+    actual_model = metadata.get("actual_model")
+    if reason == "attestation_trace_missing":
+        message = (
+            f"judge model {requested_model} was not attested; persisted Codex "
+            f"rollout is missing; see {trace_path}"
+        )
+    elif reason == "model_not_attested":
+        message = f"judge model {requested_model} was not attested; see {trace_path}"
+    elif reason == "model_mismatch":
+        message = (
+            f"requested judge model {requested_model} but attested {actual_model}; "
+            f"see {trace_path}"
+        )
+    else:
+        raise ValueError(f"unhandled judge attestation reason: {reason}")
+    raise RuntimeError(message)
 
 
 def _write_time_message(
