@@ -146,6 +146,11 @@ Pin the identity exactly as the selected harness reports it. Attestation
 normalizes surrounding whitespace and case only: provider-qualified and bare
 model ids are distinct, and no provider or model aliases are inferred.
 
+Skip the recommender discovery command only when the user already supplied an
+exact id confirmed by the current harness inventory or a prior recommender
+result from this setup. A family name such as `sonnet` is not an exact id: run
+discovery or ask the user to choose an exact inventory entry.
+
 Show the budget, balanced, and quality frontier; disclose tier fallbacks and
 unknown cost. For a release claim, prefer the intended deployment model. For
 portability, plan separate runs across tiers. Use no judge when the suite is
@@ -167,15 +172,15 @@ limitations.
 
 ### 5. Choose observation, dry-run the plan, authorize
 
-Name both observation options before constructing the dry run:
+Use `headless` by default. Mention and ask about Herdr only when the user asks
+for observation, a visible UI, or Herdr:
 
 - `headless` (default) — full evidence without a Herdr workspace
 - `herdr` — mirror live transcripts into a retained 2×2 workspace; requires a
   Herdr-managed pane with `HERDR_ENV=1`
 
-Ask unless already selected. Pass `--observer herdr` on dry-run and live only
-when Herdr is chosen, and verify its environment before live trials. Workspace
-path layout lives in
+Pass `--observer herdr` on dry-run and live only when Herdr is explicitly
+chosen, and verify its environment before live trials. Workspace path layout lives in
 [the workspace layout reference](references/workspace-layout.md).
 
 ```bash

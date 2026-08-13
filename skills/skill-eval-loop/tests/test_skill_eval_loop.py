@@ -40,6 +40,7 @@ from run_skill_eval import (  # noqa: E402
     _run_condition,
     _validate_references,
     condition_order,
+    main as run_skill_eval_main,
     plan_run,
     run_suite,
 )
@@ -124,6 +125,8 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("Confirm the exact target model", skill_text)
         self.assertIn("explicit yes", remediation)
         self.assertIn("Never ask the user to paste a secret", remediation)
+        self.assertIn("exact id confirmed by the current harness inventory", skill_text)
+        self.assertIn("`sonnet` is not an exact id", skill_text)
 
     def test_interaction_asks_one_question_at_a_time(self) -> None:
         skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
@@ -133,6 +136,8 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("separate turn", skill_text)
         self.assertIn("Setup remediation may interrupt", skill_text)
         self.assertIn("stated fix", skill_text)
+        self.assertIn("Use `headless` by default", skill_text)
+        self.assertNotIn("Name both observation options", skill_text)
 
     def test_harness_claims_link_the_complete_evidence_matrix(self) -> None:
         skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
@@ -1863,6 +1868,24 @@ class ProcessControlTests(unittest.TestCase):
 
 
 class PlanningTests(unittest.TestCase):
+    @patch("run_skill_eval.plan_run", return_value={})
+    def test_cli_defaults_to_one_pilot_trial(self, planned) -> None:
+        with patch("builtins.print"):
+            exit_code = run_skill_eval_main(
+                [
+                    "--skill-path",
+                    "fixture-skill",
+                    "--model",
+                    "provider/model-1",
+                    "--harness",
+                    "pi",
+                    "--dry-run",
+                ]
+            )
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(planned.call_args.kwargs["trials"], 1)
+        self.assertEqual(planned.call_args.kwargs["observer"], "headless")
+
     @patch("run_skill_eval.resolve_harness", return_value=("/usr/local/bin/pi", "1.0"))
     def test_default_dry_run_path_is_external_and_not_created(self, _resolve) -> None:
         with tempfile.TemporaryDirectory() as temp:

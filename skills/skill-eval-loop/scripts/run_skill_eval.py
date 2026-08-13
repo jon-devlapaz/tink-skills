@@ -840,7 +840,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Defaults to .eval-runs/<skill-name>/<run-id>/.",
     )
     parser.add_argument("--model", required=True)
-    parser.add_argument("--trials", type=int, default=3)
+    parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--harness", required=True, choices=HARNESS_NAMES)
     parser.add_argument("--harness-bin")
     parser.add_argument("--pi-bin")
