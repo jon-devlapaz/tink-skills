@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "suite_sha256": "9cfbdbf5ddcbad3851d867fc9df704569ba88bcd6b2993a8c82c22975acf9faf",
+  "suite_sha256": "6788fd125d644d9cb1e13ec14ade96cc43f3fab722c7e9431beceaf5aa6bf3ff",
   "cases": [
     {
       "case_id": "local-fit-beats-reputation",

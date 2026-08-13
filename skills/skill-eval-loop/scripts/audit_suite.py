@@ -83,7 +83,6 @@ def audit(skill_path: Path, evals_path: Path | None = None) -> dict:
         "case_count": len(suite["evals"]),
         "routing_classes": routing_classes,
         "grader_discrimination": discrimination,
-        "distribution_policy": suite.get("distribution_policy"),
         "provenance_case_count": len(suite.get("provenance_records", {})),
     }
 

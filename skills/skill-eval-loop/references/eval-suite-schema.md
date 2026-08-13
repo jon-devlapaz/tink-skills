@@ -19,18 +19,13 @@ each case to retained provenance.
   "activation_mode": "forced",
   "grader_discrimination": "case_contrast",
   "provenance_manifest": "provenance.json",
-  "distribution_policy": {
-    "minimum_pairs": 3,
-    "minimum_effect_size": 0.1,
-    "confidence_level": 0.95
-  },
   "evals": []
 }
 ```
 
-`distribution_policy` remains required by the existing version-3 schema for
-compatibility. The local evaluator records it without making a distribution or
-significance decision.
+Migration: remove the former `distribution_policy` object from version-3
+suites. It was never applied to evaluator decisions, and current validation
+rejects it rather than preserving significance-shaped dead configuration.
 
 Use:
 

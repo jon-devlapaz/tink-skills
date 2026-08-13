@@ -660,7 +660,6 @@ def run_suite(
             "tool_profile": suite["tool_profile"],
             "activation_mode": suite["activation_mode"],
             "grader_discrimination": suite["grader_discrimination"],
-            "distribution_policy": suite.get("distribution_policy"),
             "source_sha256": _sha256_file(Path(suite["source_path"])),
             "cases": [
                 {

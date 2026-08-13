@@ -605,11 +605,6 @@ def _make_schema3_skill(root: Path, *, tamper: bool = False) -> Path:
         "tool_profile": "no_tools",
         "grader_discrimination": "case_contrast",
         "provenance_manifest": "provenance.json",
-        "distribution_policy": {
-            "minimum_pairs": 3,
-            "minimum_effect_size": 0.1,
-            "confidence_level": 0.95,
-        },
         "evals": [case],
     }
     _write_json(skill / "evals" / "evals.json", suite)
@@ -772,119 +767,26 @@ class SuiteValidationTests(unittest.TestCase):
                 load_suite(skill)
 
 
-class DeclaredPolicyTests(unittest.TestCase):
-    """A declared distribution_policy is recorded and reported as unapplied.
-
-    The schema requires the field and validates its bounds, but no evaluator
-    decision uses it. Saying so in the run artifact keeps it from reading like a
-    threshold the run enforced.
-    """
-
-    def test_limits_name_the_policy_that_did_not_gate_the_result(self) -> None:
+class ObsoletePolicyTests(unittest.TestCase):
+    def test_schema_three_rejects_obsolete_distribution_policy(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            _make_run(root, [(True, False), (True, False), (True, True)])
-            snapshot_path = root / "suite_snapshot.json"
-            snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
-            snapshot["distribution_policy"] = {
+            skill = _make_schema3_skill(Path(temp))
+            suite_path = skill / "evals" / "evals.json"
+            suite = json.loads(suite_path.read_text(encoding="utf-8"))
+            self.assertNotIn("distribution_policy", suite)
+            suite["distribution_policy"] = {
                 "minimum_pairs": 3,
                 "minimum_effect_size": 0.1,
                 "confidence_level": 0.95,
             }
-            _write_json(snapshot_path, snapshot)
-            manifest_path = root / "run_manifest.json"
-            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-            manifest["suite_sha256"] = _sha256(snapshot_path)
-            _write_json(manifest_path, manifest)
+            _write_json(suite_path, suite)
 
-            limits = aggregate(root)["limits"]
-            policy_notes = [line for line in limits if "distribution_policy" in line]
-            self.assertEqual(len(policy_notes), 1)
-            self.assertIn("not applied", policy_notes[0])
-            self.assertIn("minimum_effect_size=0.1", policy_notes[0])
-
-    def test_a_run_without_a_declared_policy_gains_no_note(self) -> None:
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            _make_run(root, [(True, False), (True, False), (True, True)])
-            limits = aggregate(root)["limits"]
-            self.assertFalse([line for line in limits if "distribution_policy" in line])
-
-    def test_run_suite_retains_declared_policy_in_the_snapshot(self) -> None:
-        """Honesty depends on run_suite writing the field, not only aggregate.
-
-        The aggregate-only fixtures above can stay green if the snapshot write is
-        dropped. A schema-3 fake run proves the production path retains the
-        declared policy and names it as unapplied in limits.
-        """
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            skill = _make_schema3_skill(root)
-            fake_pi = root / "fake-pi"
-            fake_pi.write_text(
-                """#!/usr/bin/env python3
-import json
-import sys
-
-if "--version" in sys.argv:
-    print("fake-pi 1.0")
-    raise SystemExit(0)
-
-treatment = "--skill" in sys.argv
-print(json.dumps({
-    "type": "system",
-    "subtype": "init",
-    "model": "provider/model-1",
-    "session_id": "fixture-session",
-    "skills": ["candidate-skill"] if treatment else [],
-}))
-print(json.dumps({
-    "message": {
-        "role": "assistant",
-        "model": "provider/model-1",
-        "content": [{"type": "text", "text": "done" if treatment else "FAIL"}],
-        "usage": {"input": 1, "output": 1, "totalTokens": 2},
-    }
-}))
-""",
-                encoding="utf-8",
-            )
-            fake_pi.chmod(0o755)
-            output = root / "run"
-            report = run_suite(
-                skill_path=skill,
-                output_dir=output,
-                model="provider/model-1",
-                trials=1,
-                pi_bin=str(fake_pi),
-            )
-            snapshot = json.loads(
-                (output / "suite_snapshot.json").read_text(encoding="utf-8")
-            )
-            self.assertEqual(
-                snapshot["distribution_policy"],
-                {
-                    "minimum_pairs": 3,
-                    "minimum_effect_size": 0.1,
-                    "confidence_level": 0.95,
-                },
-            )
-            self.assertEqual(snapshot["cases"][0]["model_rubric_count"], 0)
-            self.assertEqual(
-                snapshot["cases"][0]["response_sensitive_graders"],
-                [{"name": "Returns done", "type": "response_contains"}],
-            )
-            self.assertTrue(snapshot["cases"][0]["counter_reference_declared"])
-            self.assertEqual(
-                report["grader_discrimination"],
-                {"claim": "case_contrast", "validated": True},
-            )
-            policy_notes = [
-                line for line in report["limits"] if "distribution_policy" in line
-            ]
-            self.assertEqual(len(policy_notes), 1)
-            self.assertIn("not applied", policy_notes[0])
-            self.assertIn("minimum_effect_size=0.1", policy_notes[0])
+            with self.assertRaisesRegex(
+                ValueError,
+                "distribution_policy is obsolete and must be removed",
+            ):
+                load_suite(skill)
+            self.assertEqual(audit(skill)["errors"], ["invalid_legacy_policy"])
 
 
 class CounterReferenceTests(unittest.TestCase):

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "suite_sha256": "8931e2d33e8a31f21b75f462cb6872033a87104963a2686dc9776b7852533d0f",
+  "suite_sha256": "6f51f705c082da5b516c6ab42aaeff0f98f27290e4d8b2dba5c3cf3d7dcfbad7",
   "cases": [
     {"case_id": "separates-need-from-proposed-feature", "origin": "author_derived", "source_id": "triangulate-me-author-scenario-separates-need-from-proposed-feature", "source_type": "author_scenario", "observed_at": "2026-08-08", "task_author": "Codex with user authorization", "artifact": "provenance/separates-need-from-proposed-feature.json", "artifact_sha256": "444669221147891a099c501a9929b7a15c5d087cd821fe8c2c574a7ffe00527f", "case_sha256": "afa11b4182b1c37b04df2c37ca3ec20e0393f48e75edf307380a42cd263a4fdc"},
     {"case_id": "abstains-pending-database-evidence", "origin": "author_derived", "source_id": "triangulate-me-author-scenario-abstains-pending-database-evidence", "source_type": "author_scenario", "observed_at": "2026-08-08", "task_author": "Codex with user authorization", "artifact": "provenance/abstains-pending-database-evidence.json", "artifact_sha256": "d53ba205f1876388e31088ed12fd8710ce9bedde8b081847989007ea4b1172bb", "case_sha256": "664af55428e73233ab9bd7865dbdc04f8ae565abf73cb2fc82d0a9ed1259d573"},

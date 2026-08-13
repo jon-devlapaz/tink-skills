@@ -121,37 +121,6 @@ def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _validate_distribution_policy(
-    value: object,
-    source: Path,
-) -> dict[str, float | int]:
-    label = f"{source}.distribution_policy"
-    if not isinstance(value, dict):
-        raise ValueError(f"{label} must be an object")
-    minimum_pairs = value.get("minimum_pairs")
-    minimum_effect_size = value.get("minimum_effect_size")
-    confidence_level = value.get("confidence_level")
-    if type(minimum_pairs) is not int or minimum_pairs < 3:
-        raise ValueError(f"{label}.minimum_pairs must be an integer >= 3")
-    if not isinstance(minimum_effect_size, (int, float)) or not (
-        0 < float(minimum_effect_size) <= 1
-    ):
-        raise ValueError(
-            f"{label}.minimum_effect_size must be greater than 0 and at most 1"
-        )
-    if not isinstance(confidence_level, (int, float)) or not (
-        0.8 <= float(confidence_level) < 1
-    ):
-        raise ValueError(
-            f"{label}.confidence_level must be at least 0.8 and below 1"
-        )
-    return {
-        "minimum_pairs": minimum_pairs,
-        "minimum_effect_size": float(minimum_effect_size),
-        "confidence_level": float(confidence_level),
-    }
-
-
 def _load_provenance(
     *,
     suite_root: Path,
@@ -616,18 +585,18 @@ def load_suite(skill_path: Path, evals_path: Path | None = None) -> dict[str, An
             "response-sensitive grader"
         )
     suite_root = source.parent if schema_version == 3 else skill_path
-    distribution_policy = None
     provenance_records: dict[str, Any] = {}
     provenance_sha256 = None
     if schema_version == 3:
+        if "distribution_policy" in data:
+            raise ValueError(
+                f"{source}.distribution_policy is obsolete and must be removed; "
+                "the evaluator never applied these thresholds"
+            )
         case_hashes = {
             str(case["id"]): canonical_sha256(case)
             for case in cases
         }
-        distribution_policy = _validate_distribution_policy(
-            data.get("distribution_policy"),
-            source,
-        )
         provenance_records, provenance_sha256 = _load_provenance(
             suite_root=suite_root,
             value=data.get("provenance_manifest"),
@@ -643,7 +612,6 @@ def load_suite(skill_path: Path, evals_path: Path | None = None) -> dict[str, An
         "grader_discrimination": grader_discrimination,
         "source_path": str(source),
         "suite_root": str(suite_root),
-        "distribution_policy": distribution_policy,
         "provenance_records": provenance_records,
         "provenance_sha256": provenance_sha256,
         "evals": normalized_cases,
