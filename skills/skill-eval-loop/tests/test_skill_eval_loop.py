@@ -440,6 +440,85 @@ def _make_run(root: Path, outcomes: list[tuple[bool, bool]]) -> None:
     )
 
 
+def _make_sealed_marker_run(root: Path) -> None:
+    fixture = SKILL_ROOT / "tests" / "fixtures" / "sealed-marker"
+    nonce = "integrity-0001"
+    prompt = (fixture / "prompt.txt").read_text(encoding="utf-8").strip()
+    skill_text = (fixture / "skill-template.md").read_text(encoding="utf-8")
+    skill_text = skill_text.replace("{{RUN_NONCE}}", nonce)
+    marker = {
+        "schema": "acme.sealed-marker/v1",
+        "status": "ready",
+        "owner": f"skillbench-causal-pilot-{nonce}",
+    }
+    graders = [
+        {
+            "name": "Creates the sealed marker",
+            "type": "file_exists",
+            "path": ".acme/sealed-marker.json",
+        },
+        {
+            "name": "Uses the exact sealed marker value",
+            "type": "json_exact",
+            "path": ".acme/sealed-marker.json",
+            "expected": marker,
+        },
+    ]
+
+    _make_run(root, [(False, True), (False, True)])
+    for trial in range(1, 3):
+        for condition in ("without_skill", "with_skill"):
+            condition_dir = root / "eval-case" / f"trial-{trial:03d}" / condition
+            response = condition_dir / "outputs" / "response.md"
+            response.write_text(
+                "sealed marker prepared\n" if condition == "with_skill" else "unable\n",
+                encoding="utf-8",
+            )
+            if condition == "with_skill":
+                _write_json(condition_dir / ".acme" / "sealed-marker.json", marker)
+                installed = condition_dir / "installed-skill" / "candidate" / "SKILL.md"
+                installed.write_text(skill_text, encoding="utf-8")
+            grading = grade_case(
+                workspace=condition_dir,
+                response=response.read_text(encoding="utf-8"),
+                graders=graders,
+            )
+            grading_path = condition_dir / "grading.json"
+            _write_json(grading_path, grading)
+
+    manifest_path = root / "run_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    installed = (
+        root
+        / "eval-case"
+        / "trial-001"
+        / "with_skill"
+        / "installed-skill"
+        / "candidate"
+    )
+    manifest["skill_sha256"] = skill_payload_sha256(installed)
+    for pair in manifest["trials"]:
+        for condition in ("without_skill", "with_skill"):
+            record = pair["conditions"][condition]
+            condition_dir = (
+                root
+                / "eval-case"
+                / f"trial-{pair['trial']:03d}"
+                / condition
+            )
+            record["response_sha256"] = _sha256(
+                condition_dir / "outputs" / "response.md"
+            )
+            record["grading_sha256"] = _sha256(condition_dir / "grading.json")
+
+    suite_path = root / "suite_snapshot.json"
+    suite = json.loads(suite_path.read_text(encoding="utf-8"))
+    suite["cases"][0]["prompt"] = prompt
+    _write_json(suite_path, suite)
+    manifest["suite_sha256"] = _sha256(suite_path)
+    _write_json(manifest_path, manifest)
+
+
 def _make_schema2_skill(root: Path) -> Path:
     skill = root / "fixture-skill"
     (skill / "evals").mkdir(parents=True)
@@ -3745,6 +3824,100 @@ class AggregateTests(unittest.TestCase):
 
 
 class EvaluatorMutationTests(unittest.TestCase):
+    def test_sealed_run_accepts_good_and_rejects_corrupt_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_sealed_marker_run(root)
+            report = aggregate(root)
+            self.assertEqual(report["verdict"], "improved")
+            self.assertTrue(report["artifact_valid"])
+            self.assertEqual(
+                report["task_success"]["pair_outcomes"],
+                {
+                    "improved": 2,
+                    "regressed": 0,
+                    "tied_pass": 0,
+                    "tied_fail": 0,
+                },
+            )
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_sealed_marker_run(root)
+            response = (
+                root
+                / "eval-case"
+                / "trial-001"
+                / "with_skill"
+                / "outputs"
+                / "response.md"
+            )
+            response.write_text("tampered\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "response_sha256 does not match"):
+                aggregate(root)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_sealed_marker_run(root)
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["trials"].pop()
+            _write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(ValueError, "complete case/trial matrix"):
+                aggregate(root)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _make_sealed_marker_run(root)
+            grading_path = (
+                root
+                / "eval-case"
+                / "trial-001"
+                / "with_skill"
+                / "grading.json"
+            )
+            grading = json.loads(grading_path.read_text(encoding="utf-8"))
+            grading["summary"]["passed"] = 0
+            _write_json(grading_path, grading)
+            manifest_path = root / "run_manifest.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["trials"][0]["conditions"]["with_skill"][
+                "grading_sha256"
+            ] = _sha256(grading_path)
+            _write_json(manifest_path, manifest)
+            with self.assertRaisesRegex(ValueError, "summary is inconsistent"):
+                aggregate(root)
+
+    def test_sealed_marker_grader_rejects_a_wrong_marker(self) -> None:
+        graders = [
+            {
+                "name": "Uses the exact sealed marker value",
+                "type": "json_exact",
+                "path": ".acme/sealed-marker.json",
+                "expected": {
+                    "schema": "acme.sealed-marker/v1",
+                    "status": "ready",
+                    "owner": "skillbench-causal-pilot-integrity-0001",
+                },
+            }
+        ]
+        with tempfile.TemporaryDirectory() as temp:
+            workspace = Path(temp)
+            _write_json(
+                workspace / ".acme" / "sealed-marker.json",
+                {
+                    "schema": "acme.sealed-marker/v1",
+                    "status": "ready",
+                    "owner": "wrong-owner",
+                },
+            )
+            grading = grade_case(
+                workspace=workspace,
+                response="sealed marker prepared\n",
+                graders=graders,
+            )
+            self.assertEqual(grading["summary"]["failed"], 1)
+
     def test_deliberate_response_mutations_fail_deterministic_graders(self) -> None:
         graders = [
             {
