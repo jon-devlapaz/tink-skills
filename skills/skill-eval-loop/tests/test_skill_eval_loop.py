@@ -134,6 +134,17 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("Setup remediation may interrupt", skill_text)
         self.assertIn("stated fix", skill_text)
 
+    def test_harness_claims_link_the_complete_evidence_matrix(self) -> None:
+        skill_text = (SKILL_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        matrix = (SKILL_ROOT / "references" / "harness-support.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("harness evidence matrix", skill_text)
+        self.assertNotIn("Name every supported harness", skill_text)
+        for harness in ("Pi", "Codex", "Claude Code", "Hermes Agent"):
+            self.assertIn(f"| {harness} |", matrix)
+        self.assertIn("release verification pending", matrix)
+
 
 class ModelRecommendationTests(unittest.TestCase):
     def test_provider_name_does_not_inflate_model_tier(self) -> None:

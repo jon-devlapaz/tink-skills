@@ -74,7 +74,9 @@ Order:
 
 ### 1. Choose the execution harness
 
-Name every supported harness before the first evaluation command:
+Name every implemented harness before the first evaluation command, and link
+the current [harness evidence matrix](references/harness-support.md). An
+implemented adapter is not necessarily release-verified against its real CLI.
 
 - `hermes` — Hermes Agent
 - `claude-code` — Claude Code

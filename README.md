@@ -82,10 +82,12 @@ expansion. Cross-project catalog history is optional. Detail:
 
 ## skill-eval-loop
 
-Paired diagnostic under Hermes, Claude Code, Codex, or Pi: same task, skill on
-vs off. One question at a time; dry-run free; live runs wait for your invocation
-budget. Missing suites can be authored in a fresh subagent so cases stay sealed.
-Claim boundaries:
+Implemented paired-diagnostic adapters for Hermes, Claude Code, Codex, and Pi:
+same task, skill on vs off. One question at a time; dry-run free; live runs wait
+for your invocation budget. Implementation is not a claim that every real CLI
+has passed on the current release candidate; see the dated
+[harness evidence matrix](skills/skill-eval-loop/references/harness-support.md).
+Missing suites can be authored in a fresh subagent so cases stay sealed. Claim boundaries:
 [skills/skill-eval-loop/references/interpret-benchmark.md](skills/skill-eval-loop/references/interpret-benchmark.md).
 Full contract: [skills/skill-eval-loop/SKILL.md](skills/skill-eval-loop/SKILL.md).
 
