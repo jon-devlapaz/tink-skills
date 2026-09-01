@@ -103,8 +103,10 @@ Return:
 4. **Runner-up** — strongest case and decisive gap, or n/a
 5. **Risks and adaptation**
 6. **Coverage** — VERIFY or DISCOVER only
-7. **Next gate** — one exact action; require explicit approval when restricted;
-   other restricted actions remain unauthorized
+7. **Next gate** — one exact action; require explicit approval when restricted.
+   Explicitly state that all other private access, installation, configuration,
+   testing, and execution remain unauthorized and each requires separate
+   explicit approval
 
 For ABSTAIN/BUILD, specify transformation, inputs, outputs, privacy and
 permission boundaries, human approvals, auditable evidence, evaluation,
