@@ -1,126 +1,72 @@
 ---
 name: triangulate-me
-description: >
-  Triangulate a claim through faithful, steel, and stress reads, then identify
-  its crux and evidence-sensitive convergence. Use when the user asks to
-  pressure-test an interpretation, expose the crux between plausible readings,
-  ground a supposedly fixed constraint, or converge without false compromise.
+description: Triangulate a claim through faithful, steel, and stress reads, then isolate the crux and converge without false compromise. Use when pressure-testing an interpretation, exposing the crux between plausible readings, grounding a supposedly fixed constraint, or converging without false compromise.
 ---
 
 # Triangulate Me
 
-Sharpen the user's meaning without replacing it. Treat every interpretation as
-a proposal for the user to accept, reject, or revise.
+Sharpen the user's meaning without replacing it. Treat every interpretation as a proposal for the user to accept, reject, or revise.
 
-## Establish the decision
+**Invariant:**
+- Ground every interpretation in the user's expressed language and context; exclude unstated motives, emotions, or psychological speculation.
+- Weight reads by evidence; empirical measurements and concrete harm barriers strictly outweigh aesthetic preference, precedent, or unverified assertion.
+- Avoid false compromise; endorse well-supported positions directly, revise both sides, or preserve genuine value conflicts without manufacturing midpoint compromises or artificial objections.
+- Confine actions to analysis and diagnostics; wait for explicit user approval before planning, code modification, or execution.
 
-- Identify the single claim, choice, or assumption currently doing the work.
-- Split genuinely independent claims and handle them separately.
-- Ignore acknowledgements, logistics, and other replies with no meaningful
-  interpretive gap; respond normally and continue the existing conversation.
-  When the update is complete, do not invent checks, reminders, or follow-up
-  work.
-- Find available facts yourself. Ask the user only for judgments, preferences,
-  private context, or evidence you cannot inspect.
+## 1. Triage and isolate the claim
 
-**Complete when:** exactly one active claim, choice, or assumption is named. If
-the reply is not substantive, respond normally without running the frame.
+- **Fast-path**: If the input is an acknowledgement, logistics, or has no substantive interpretive gap, respond directly and stop without running the frame.
+- Isolate the single active claim, choice, or assumption doing the work. Split independent claims and handle them separately.
+- Inspect accessible facts autonomously; ask the user only for uninspectable context, judgments, or private preferences.
 
-## Triangulate each substantive answer
+**Complete when:** Exactly one active claim, choice, or assumption is isolated, or a direct fast-path response is emitted.
 
-Apply this sequence:
+## 2. Differentiate interpretations
 
-1. **Faithful read** — Restate only what the answer actually commits to.
-   Complete when every qualifier that changes the meaning remains intact.
-2. **Steel read** — Form the strongest coherent interpretation supported by the
-   answer. Complete when every useful agent-added premise is explicit and
-   labeled.
-3. **Stress read** — Form the weakest interpretation that a reasonable reader
-   could still derive from the answer. Complete when it names a specific,
-   supported vulnerability—or states that none exists.
-4. **Crux** — State declaratively the exact premise, definition, value, or
-   missing fact that explains the distance between the readings; do not phrase
-   it as a question. Complete when resolving it would materially collapse that
-   distance.
-5. **First-principles check, when triggered** — If the crux contains a
-   supposedly fixed constraint (such as "must use X," "too expensive," "can't
-   scale," or "that's how it is done"), or a solution justified mainly by
-   analogy or authority, run the grounding pass below. Otherwise skip it.
-6. **Convergence** — Recommend the most robust next formulation. Preserve the
-   steel read's value while repairing the stress read's supported vulnerability.
-   Complete when it states what was preserved, repaired, or left unresolved;
-   derive it from grounded primitives when the check ran. If one position is
-   already bounded, testable, and well-supported, endorse it directly rather
-   than inventing objections, governance, exceptions, or extra requirements.
-7. **Next question** — Ask zero or one question. Ask only when a material crux
-   remains, and do not repeat the crux in question form. Omit the question when
-   convergence settles the decision or no prerequisite answer is needed. Do not
-   ask a downstream question while its prerequisite remains unsettled.
-   For value conflicts, first ask which concrete action creates unacceptable
-   harm and where the boundary lies. Do not jump to identity, policy, or other
-   mechanisms until that action boundary is settled.
+1. **Faithful read** — Restate only what the answer explicitly commits to, keeping every meaning-changing qualifier intact.
+2. **Steel read** — Construct the strongest coherent interpretation supported by context; make any agent-added premise explicit and labeled.
+3. **Stress read** — Name the weakest plausible vulnerability supported by the answer, or state that none exists.
 
-Use the sequence as a reasoning discipline, not a mandatory output template.
-Lead with the decision or direct answer. Include only fields that materially
-change it; a clear or low-complexity decision may need one short paragraph. When
-the full frame helps the user inspect a real interpretive gap, use this compact
-form:
+*Load [references/reasoning-foundations.md](references/reasoning-foundations.md) to calibrate charity, adversarial plausibility, and differentiation.*
+
+**Complete when:** All three reads are bounded by stated evidence and agent premises are explicitly labeled.
+
+## 3. Isolate the crux and ground constraints
+
+- **Crux** — State declaratively the exact premise, definition, value conflict, or missing evidence explaining the divergence between reads. Avoid phrasing the crux as a question.
+- **First-principles check (when triggered)** — If the crux involves a supposedly fixed constraint (such as "must use X," "too expensive," "cannot scale," or "industry standard") or a solution justified by analogy or authority, load [references/first-principles-grounding.md](references/first-principles-grounding.md). Classify constraints, reduce to supported primitives, discard unsupported assumptions, and state the cheapest kill test. Otherwise, skip grounding.
+
+**Complete when:** The crux is declaratively stated, and any fixed-constraint signal is grounded to primitives.
+
+## 4. Formulate convergence
+
+Recommend the most robust formulation: preserve the steel read's value while repairing the stress read's supported vulnerability.
+
+- **Direct endorsement**: If one position is already bounded, testable, and well-supported, endorse it directly without manufacturing counter-objections or exceptions.
+- **Value conflicts**: Anchor the conflict in concrete actions and harm boundaries before procedural mechanisms; preserve distinct values without forcing an arbitrary compromise.
+- **Missing evidence / empirical gates**: Defer conclusions and name the specific diagnostic check, trace, or bounded experiment (with predeclared decision rules and harm guardrails) required to decide.
+
+**Complete when:** The formulation explicitly states what is preserved, repaired, or left unresolved.
+
+## 5. Sequence the next gate or stop
+
+- Ask at most one question addressing the immediate prerequisite crux; ask zero questions if convergence settles the decision or an evidence gate is named. Never repeat the crux as a question.
+- Stop when the formulation is accepted, value choice is acknowledged, or an evidence gate is reached. Wait for explicit user instruction before planning or executing downstream work.
+
+*Load [references/interaction-examples.md](references/interaction-examples.md) for calibration on multi-claim, value-laden, evidence-gated, or trivial cases.*
+
+### Output Schema
+
+Lead with the decision or direct answer. When a substantive interpretive gap warrants inspection, use this compact form:
 
 ```markdown
 **Faithful read:** ...
 **Steel read:** ...
 **Stress read:** ...
 **Crux:** ...
-**Grounding:** ... *(include only when a fixed-constraint or analogy signal is present)*
+**Grounding:** ... *(include only when a fixed-constraint or analogy check ran)*
 **Convergence:** ...
-**Next question:** ...
+**Next question:** ... *(omit when zero questions remain)*
 ```
 
-## Ground constraints from first principles
-
-Use this as one bounded pass, separate from the six interpretation fields. Read
-[first-principles grounding](references/first-principles-grounding.md) when the
-check is triggered. It defines the constraint classes, primitive reduction,
-rebuild, residuals, and kill test. Keep the main response's `Grounding` line
-compact and concrete. Reserve the pass for a false-constraint or borrowed-
-solution signal; a proposed solution or missing evidence alone is not enough.
-Keep time-critical incidents and ordinary polish on their direct path.
-
-## Protect the inquiry
-
-- Ground every interpretation in the user's expressed language and context;
-  leave unstated motives, personality, emotions, and beliefs outside the frame.
-- Weight the steel and stress reads according to their evidence.
-- Let convergence endorse one reading, revise both, preserve an explicit
-  disagreement, or abstain pending evidence or a prototype.
-- Route a factual dispute to the named check that could resolve it.
-- When no plausible stress read exists, say so and move to the next unresolved
-  decision without manufacturing a crux or follow-up question.
-- Distinguish an ungrillable question from an unresolved one. Recommend a
-  concrete experiment when reaction to evidence, behavior, or a prototype is
-  required. When evidence is insufficient and the next step is an experiment or
-  staged rollout, name its predeclared decision rule and material harm
-  guardrail.
-- Keep the user's original language where possible. Mark agent-added language
-  and assumptions plainly.
-
-Read [reasoning foundations](references/reasoning-foundations.md) when
-calibrating charity, adversarial pressure, integration, first-principles
-grounding, or abstention. Read [interaction examples](references/interaction-examples.md)
-when the answer is multi-claim, evidence-dependent, value-laden, or too trivial
-to triangulate.
-
-## Continue and stop
-
-After the user answers, recompute the faithful, steel, and stress reads from the
-new evidence and treat the previous convergence as provisional. Continue until
-one of these conditions holds:
-
-- the user explicitly accepts a formulation and no material crux remains;
-- the remaining difference is an acknowledged value choice;
-- a named fact, experiment, or prototype must come next;
-- the user stops or changes the task.
-
-At the end, state the settled formulation, preserved disagreements, and any
-open evidence gate. Wait for the user's explicit request before planning or
-acting on the result.
+**Complete when:** The output is emitted with at most one prerequisite question, and all downstream action remains gated.
