@@ -41,18 +41,22 @@ name with `tink skill refresh NAME`. Do not hand-edit Tink source receipts.
 
 ## skill-scout
 
-`skill-scout` ranks existing skills under workflow-fit, safety, and evidence
-constraints. Its lightest applicable mode runs first, local candidates precede
-online expansion, and no qualified candidate is a valid result.
+`skill-scout` discovers, qualifies, and recommends existing skills before authoring a new one. It enforces:
+- **Lightest-mode selection** across `COMPARE`, `VERIFY`, and `DISCOVER`.
+- **Read-only candidate inspection** without unsanctioned code execution.
+- **6-point qualification gate** (workflow fit, non-redundancy, safety/provenance, compatibility, maintenance, demonstrated behavior).
+- **Structured 7-field reporting** with verified published descriptions, runner-up gap analysis, and explicit gated next actions.
 
 Full contract: [`skills/skill-scout/SKILL.md`](skills/skill-scout/SKILL.md).
 
 ## triangulate-me
 
-`triangulate-me` gives a claim faithful, steel, and stress readings, identifies
-the material crux, and converges according to the evidence. It may endorse one
-position, preserve a value disagreement, or abstain; it does not force a middle
-ground.
+`triangulate-me` pressure-tests interpretations and ambiguous claims without sycophancy or false compromise. It executes a 5-step deterministic pipeline:
+1. **Triage and isolate the claim** with fast-paths for logistics and non-substantive replies.
+2. **Differentiate interpretations** through *Faithful* (literal commitment), *Steel* (strongest coherent view with labeled agent premises), and *Stress* (adversarial vulnerability) reads.
+3. **Isolate the crux and ground constraints** with declarative crux statements and conditional first-principles reduction for false constraints.
+4. **Formulate convergence** by endorsing bounded positions directly, preserving genuine value conflicts, or naming empirical diagnostic gates.
+5. **Sequence the next gate** with at most one prerequisite question.
 
 Full contract: [`skills/triangulate-me/SKILL.md`](skills/triangulate-me/SKILL.md).
 
