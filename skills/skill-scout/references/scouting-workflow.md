@@ -24,11 +24,18 @@ Run the following algorithm. Tink commands and identity rules live in
    instead of asking again. Stop when an answer is needed. An acceptable
    candidate is not authorization to install, test, or execute.
 5. Search online only after explicit opt-in. In each source pass, restart this sequence
-   of at most three query families: user terminology, underlying mechanism, and adjacent documented tools.
+   of at most three query families — user terminology, underlying mechanism, and adjacent
+   documented tools — expanding each across synonymous vocabularies (popular name,
+   formal/decision-theory terms, colloquial mechanics; e.g. Johari Window,
+   epistemic/Rumsfeld matrix, known unknowns). A family is exhausted only after its
+   synonyms are tried; never report a gap or recommend ABSTAIN/BUILD on a single-vocabulary miss.
    Within that pass, run a later family only while no candidate qualifies, finalists remain materially tied, or a decision-blocking gap remains. Apply this source ladder:
    - For a named provider, inspect its collection; search [skills.sh](https://skills.sh/)
      only for no qualifier, a material tie, or a coverage gap. Generic searches
-     start at skills.sh. This is a live, non-normative discovery index (retrieved
+     start at skills.sh via its JSON endpoint —
+     `curl -s -L "https://skills.sh/api/search?q=<query>"` — never the `/search` HTML page,
+     which is client-rendered and yields no skill text to plain HTTP clients.
+     This is a live, non-normative discovery index (retrieved
      2026-08-12); repository inspection deepens evidence, not coverage, and
      rankings are leads.
    - Expand to GitHub code search of valid `SKILL.md` directories only for no
