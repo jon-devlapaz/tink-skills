@@ -1,7 +1,0 @@
-{
-  "case_id": "recognizes-strong-operational-claim",
-  "origin": "author_derived",
-  "purpose": "Test that the skill accepts a concrete operational baseline while allowing rollback or forward recovery according to migration reversibility.",
-  "derived_from": ["No-plausible-stress-read boundary in interaction examples", "Author-created release policy scenario"],
-  "expected_failure_without_skill": "Manufacture false balance, weaken the baseline, or falsely require rollback for irreversible migrations that need tested forward recovery."
-}

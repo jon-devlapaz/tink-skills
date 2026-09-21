@@ -1,7 +1,0 @@
-{
-  "case_id": "abstains-on-insufficient-experiment-sample",
-  "origin": "author_derived",
-  "purpose": "Test that a tiny unsegmented conversion difference routes to a defined reversible evidence gate rather than a default change or an arbitrary midpoint.",
-  "derived_from": ["Evidence-sensitive convergence requirement", "Author-created experiment scenario"],
-  "expected_failure_without_skill": "Declare the higher small-sample conversion rate a global winner or retain a 50/50 split without a predeclared decision rule and guardrails."
-}

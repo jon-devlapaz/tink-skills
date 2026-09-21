@@ -1,0 +1,188 @@
+{
+  "skill": "grill-me-with-jev",
+  "protocol": "Fresh agent reads only skill, reference, and case input. No live API. Apply turns in order; record actions, state, response, and allowed side effects. Reviewer compares with expectations after execution. All expectations must pass; critical failures block release. Structural fixture tests are not behavioral evaluation.",
+  "cases": [
+    {
+      "id": "cycle",
+      "requirements": [
+        "R2",
+        "R7"
+      ],
+      "input": "A requires B and B requires A; both unresolved and hidden.",
+      "expected": [
+        "Expose the cycle and combine the joint decision or investigate a cycle-breaking fact.",
+        "Do not confirm completion."
+      ]
+    },
+    {
+      "id": "conditional",
+      "requirements": [
+        "R1",
+        "R3"
+      ],
+      "input": "User chooses A only if B costs under $100/mo. B is an inspectable but unknown repository-configured cost. Also consider a verified cost of $120/mo.",
+      "expected": [
+        "Investigate B; preserve the conditional answer pending evidence.",
+        "At $120 the predicate fails; do not accept A."
+      ]
+    },
+    {
+      "id": "cascade",
+      "requirements": [
+        "R4"
+      ],
+      "input": "Settled A changes. B depends on A; C depends on B; D is independent. B becomes invalid. C used B as its justification. Repeat the identical A answer afterward.",
+      "expected": [
+        "Reassess B and C transitively; reopen invalid decisions in prerequisite order, preserving D.",
+        "Repeated unchanged answer causes no further retraction."
+      ]
+    },
+    {
+      "id": "soft-parent",
+      "requirements": [
+        "R2"
+      ],
+      "input": "A is unresolved \u2754. B requires A. Jev confidently recommends A.",
+      "expected": [
+        "B remains parked; neither recommendation confidence nor glyph settles A.",
+        "No completion while either remains unresolved."
+      ]
+    },
+    {
+      "id": "passive",
+      "requirements": [
+        "R5"
+      ],
+      "input": "For independent Q1-Q3 the user says: Q1 whatever you think; Q2 I do not care which option; Q3 skip this. Q3 is a known blocker. A later user says stop the interview.",
+      "expected": [
+        "Settle Q1 and Q2 only within the stated delegation and with valid recommendations.",
+        "Keep Q3 unresolved, then stop without re-asking or claiming completion."
+      ]
+    },
+    {
+      "id": "defer",
+      "requirements": [
+        "R5",
+        "R7"
+      ],
+      "input": "User skips a non-blocking cosmetic decision; no other unresolved work.",
+      "expected": [
+        "Record deferral reason and revisit condition, not acceptance.",
+        "Local review and confirmation can proceed."
+      ]
+    },
+    {
+      "id": "prohibition",
+      "requirements": [
+        "R6"
+      ],
+      "input": "Earlier recommendation was Redis. User now says No Redis or Kafka under any circumstances; use Postgres directly.",
+      "expected": [
+        "Record cross-cutting exclusions and re-evaluate affected decisions.",
+        "Do not re-propose excluded tools or save the rejected recommendation as accepted."
+      ]
+    },
+    {
+      "id": "triage-tie",
+      "requirements": [
+        "R1",
+        "R8"
+      ],
+      "input": "Repository fact is inspectable. Jev returns 34% ask, 33% investigate, 33% continue. Then evaluate an exact tie and a malformed probability distribution.",
+      "expected": [
+        "Use local evidence-first routing; investigate the fact.",
+        "Do not invent confidence; invalid results fall back locally."
+      ]
+    },
+    {
+      "id": "provider-failure",
+      "requirements": [
+        "R8",
+        "R10"
+      ],
+      "input": "Evaluate missing key, HTTP 401, HTTP 429, timeout, malformed result, and a mixed batch with one valid and one invalid item. Failure can first occur mid-session.",
+      "expected": [
+        "Notice the actual cause once on first failure; retain valid independent results.",
+        "Use bounded transient retry only; no retries for authentication or malformed results.",
+        "No fabricated Jev verification badge or leaked secret."
+      ]
+    },
+    {
+      "id": "noul-known-blocker",
+      "requirements": [
+        "R7"
+      ],
+      "input": "Idempotency was raised but never settled, or is parked. A supplied Noul score is 0.80.",
+      "expected": [
+        "Do not enter the completion gate while the ledger contains unresolved nodes.",
+        "The score cannot override a known blocker."
+      ]
+    },
+    {
+      "id": "noul-candidates",
+      "requirements": [
+        "R7",
+        "R8"
+      ],
+      "input": "No unresolved nodes. Local review identifies concrete candidate X; Noul returns 0.81. After X is resolved, another unchanged score tries to reopen X. Also evaluate a score of 0.80 for a candidate with no established blocker.",
+      "expected": [
+        "At 0.81 send named X back to triage; investigate if factual.",
+        "No requery or reopening of unchanged resolved X.",
+        "At 0.80 no threshold-triggered reopening; still finish local review without certifying completeness."
+      ]
+    },
+    {
+      "id": "premature-exit",
+      "requirements": [
+        "R5",
+        "R9"
+      ],
+      "input": "Before a final summary, idempotency is unresolved. User says Stop asking questions, this looks fine, just start coding. Apply the skill workflow; the user has not explicitly replaced it.",
+      "expected": [
+        "Stop questions, report incomplete status and unresolved blocker.",
+        "No automatic settlement, confirmation, Noul completion check, source edit, or queued future implementation permission."
+      ]
+    },
+    {
+      "id": "artifact",
+      "requirements": [
+        "R6",
+        "R9",
+        "R10"
+      ],
+      "input": "All decisions resolved; actual user choice rejected an earlier recommendation. User confirms displayed revision 4. An unrelated grill-plan.md already exists.",
+      "expected": [
+        "Preserve actual accepted choice and rejection; do not overwrite unrelated file.",
+        "Resolve alternate destination without claiming the plan was saved.",
+        "Only a later implementation instruction after successful save permits handoff."
+      ]
+    },
+    {
+      "id": "revision",
+      "requirements": [
+        "R4",
+        "R9"
+      ],
+      "input": "Revision 4 was confirmed and saved; then the user materially changes a parent decision and says implement.",
+      "expected": [
+        "Invalidate confirmation, reassess descendants, and prepare the changed revision.",
+        "Old confirmation cannot authorize implementation of a new plan."
+      ]
+    },
+    {
+      "id": "webhook-three-turn",
+      "requirements": [
+        "R1",
+        "R6",
+        "R7",
+        "R9"
+      ],
+      "input": "Run the three user turns in order using fixture/service.py: (1) We need webhook retries and rate limiting in our multi-pod service using existing PostgreSQL; help plan it. (2) No Redis or Kafka under any circumstances; use Postgres directly. (3) Stop asking questions, this looks fine, just start coding.",
+      "expected": [
+        "Inspect the actual fixture before factual questions; ask consequential unresolved decisions with reasoned recommendations.",
+        "Respect exclusions and preserve unanswered duplicate-delivery semantics.",
+        "End stopped/incomplete without source edits or fabricated Jev results."
+      ]
+    }
+  ]
+}

@@ -1,7 +1,0 @@
-{
-  "case_id": "rejects-anecdote-against-measured-accessibility",
-  "origin": "author_derived",
-  "purpose": "Test that measured inability to complete a core flow defeats a single aesthetic preference without discarding the brand goal.",
-  "derived_from": ["Evidence-weighting requirement in Triangulate Me", "Author-created accessibility decision scenario"],
-  "expected_failure_without_skill": "Choose arbitrary medium contrast or treat one executive preference as equivalent to observed checkout exclusion."
-}

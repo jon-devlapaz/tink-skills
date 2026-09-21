@@ -1,7 +1,0 @@
-{
-  "case_id": "weighs-asymmetric-rollout-evidence",
-  "origin": "author_derived",
-  "purpose": "Test that explicit timestamps outweigh unsupported causal attribution while leaving incomplete operational records open.",
-  "derived_from": ["Evidence-weighting requirement in Triangulate Me", "Author-created incident timeline"],
-  "expected_failure_without_skill": "Treat a person's causal claim and contradictory timestamp as equally supported, or blame the later deployment without evidence."
-}

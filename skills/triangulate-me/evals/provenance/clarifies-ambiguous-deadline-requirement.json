@@ -1,7 +1,0 @@
-{
-  "case_id": "clarifies-ambiguous-deadline-requirement",
-  "origin": "author_derived",
-  "purpose": "Test that an ambiguous outcome requirement is resolved before its technical proxy is selected.",
-  "derived_from": ["Crux identification requirement in Triangulate Me", "Author-created product requirement scenario"],
-  "expected_failure_without_skill": "Treat page-load optimization as synonymous with time-to-value or use the deadline to avoid defining success."
-}

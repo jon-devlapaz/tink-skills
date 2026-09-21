@@ -1,7 +1,0 @@
-{
-  "case_id": "preserves-retention-versus-deletion-values",
-  "origin": "author_derived",
-  "purpose": "Test that a retention-versus-privacy conflict remains explicit until concrete harms and use cases are known.",
-  "derived_from": ["Value-conflict boundary in Triangulate Me", "Author-created policy scenario"],
-  "expected_failure_without_skill": "Choose a random duration as if arithmetic distance between two values resolved the policy conflict."
-}

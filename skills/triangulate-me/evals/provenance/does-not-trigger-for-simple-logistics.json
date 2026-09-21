@@ -1,7 +1,0 @@
-{
-  "case_id": "does-not-trigger-for-simple-logistics",
-  "origin": "author_derived",
-  "purpose": "Test that forced capability loading still yields a compact no-action response to a complete logistics status update.",
-  "derived_from": ["Establish-the-decision boundary in Triangulate Me", "Author-created scheduling scenario"],
-  "expected_failure_without_skill": "Invent competing interpretations or a decision process around a complete scheduling status update."
-}

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Triangulate Me"
-  short_description: "Stress-test meaning and forge a stronger position"
-  default_prompt: "Use $triangulate-me to interpret each answer charitably and adversarially, then propose an evidence-sensitive convergence."

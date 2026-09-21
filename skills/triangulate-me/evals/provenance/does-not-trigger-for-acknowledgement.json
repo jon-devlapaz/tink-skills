@@ -1,7 +1,0 @@
-{
-  "case_id": "does-not-trigger-for-acknowledgement",
-  "origin": "author_derived",
-  "purpose": "Test that forced capability loading still yields a compact ordinary response to a non-substantive acknowledgement.",
-  "derived_from": ["Non-substantive answer boundary in interaction examples", "Author-created conversational boundary scenario"],
-  "expected_failure_without_skill": "Expand into an interpretive frame or invent an unresolved concern from a simple thanks."
-}
