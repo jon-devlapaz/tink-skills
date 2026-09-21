@@ -44,6 +44,10 @@ Infer the smallest ranking-relevant contract: transformation/use case, recurrenc
 
 ## 4. Qualify before ranking
 
+For an explicitly requested experimental Jev run, load
+[Jev fit decisions](references/jev-fit.md). Use it only within existing authority
+for model calls and evidence transmission. Ordinary scouting needs no Jev key.
+
 Reject a candidate that fails any gate:
 
 1. **Workflow fit** — performs the requested transformation.
@@ -56,6 +60,8 @@ Reject a candidate that fails any gate:
 Use stars, installs, and recency only as supporting signals. In COMPARE, record missing adoption evidence as unknown, risk, or a later gate; do not invent requirements the user did not set.
 
 **Complete when:** Every finalist has pass, fail, or unresolved on every gate; only qualified finalists enter ranking.
+In Jev runs, the helper's final `qualify` result must also report
+`eligible_for_ranking: true` for each ranked candidate.
 
 ## 5. Recommend, abstain, and name the next gate
 
