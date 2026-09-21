@@ -56,3 +56,12 @@ coverage and provider limitations rather than claim universal production readine
   the prompt-native interview.
 - Probability-only completion: cannot account for known unresolved decisions.
 - Mandatory deployment/CI setup: not necessary to harden the local skill.
+
+## Measurement follow-up
+
+The [experiment plan](../plans/grill-me-with-jev-experiments.md) evaluates discovery
+of the skill, provider value, and state retention. The operational implementation
+remains prompt-native. A ledger under evals is an isolated prototype, not a second
+implementation claimed to enforce this contract. Trigger changes must preserve
+non-interview requests; question selection must require materially different
+outcomes between reasonable answers. Existing R1-R10 remain binding.

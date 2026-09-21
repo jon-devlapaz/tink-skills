@@ -1,0 +1,12 @@
+{
+  "case": {
+    "accepted": {
+      "delivery": "at-most-once",
+      "ambiguous_timeout": "do not retry after ambiguous timeout",
+      "receiver_deduplication": "out of scope"
+    },
+    "candidate": "Should we prohibit replay of the same event after an ambiguous timeout?",
+    "context": "No new evidence, changed user requirement, or separate manual-replay product feature. Other material questions are already settled."
+  },
+  "expected_ask": false
+}

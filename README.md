@@ -39,6 +39,7 @@ Refresh an installed skill with `tink skill refresh NAME`.
 Full contract: [`skills/grill-me-with-jev/SKILL.md`](skills/grill-me-with-jev/SKILL.md)
 Operational reference: [`skills/grill-me-with-jev/references/triage-patterns.md`](skills/grill-me-with-jev/references/triage-patterns.md)
 Evaluation suite: [`skills/grill-me-with-jev/evals/evals.json`](skills/grill-me-with-jev/evals/evals.json)
+Measurement experiments: [`eval guide`](skills/grill-me-with-jev/evals/README.md) · [`results and limits`](docs/reviews/grill-me-with-jev-experiments.md)
 
 ---
 

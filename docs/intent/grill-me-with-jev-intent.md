@@ -34,3 +34,11 @@ Create a third, unified skill named `grill-me-with-jev` in `skills/grill-me-with
 ## Open Questions
 1. Should `grill-me-with-jev` use an offline/online Python script (like `skill-scout/scripts/jev_fit.py`) or direct prompt/curl instructions as in `jev-me` and `jev-grill`?
 2. Should the output artifact be named `grill-plan.md` or `grill-tree.md`?
+
+## Follow-up: measure before expanding
+
+The user requested trigger evaluation, Jev/Noul ablation, long-session retention,
+and an isolated deterministic bookkeeping experiment, in that order. Preserve
+the hardened decision and authorization semantics. Optimize consequential
+decisions per interruption; add no runtime capabilities until experiments justify
+them. See the [experiment plan](../plans/grill-me-with-jev-experiments.md).

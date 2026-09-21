@@ -1,0 +1,106 @@
+{
+  "baseline_description": "Grill a plan through consequential decisions and failure modes, using Jev to advise whether to ask, investigate, or continue. Use when the user asks to be grilled on a plan, architecture, or design.",
+  "candidate_description": "Stress-test a consequential plan, architecture, design, or technical decision by investigating facts and surfacing unresolved choices and failure modes. Use for requests to grill, challenge assumptions, interrogate, pressure-test, find holes, or identify missing decisions in a plan. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.",
+  "cases": [
+    {
+      "id": "p1",
+      "prompt": "Stress-test this architecture.",
+      "activate": true
+    },
+    {
+      "id": "p2",
+      "prompt": "Poke holes in this plan.",
+      "activate": true
+    },
+    {
+      "id": "p3",
+      "prompt": "Challenge my assumptions about this design.",
+      "activate": true
+    },
+    {
+      "id": "p4",
+      "prompt": "Pressure test this design.",
+      "activate": true
+    },
+    {
+      "id": "p5",
+      "prompt": "What decisions am I missing in this implementation plan?",
+      "activate": true
+    },
+    {
+      "id": "p6",
+      "prompt": "Interrogate this implementation plan.",
+      "activate": true
+    },
+    {
+      "id": "p7",
+      "prompt": "Grill me on this migration plan.",
+      "activate": true
+    },
+    {
+      "id": "p8",
+      "prompt": "Challenge this plan with me and ask about the choices that matter.",
+      "activate": true
+    },
+    {
+      "id": "n1",
+      "prompt": "Review this architecture.",
+      "activate": false
+    },
+    {
+      "id": "n2",
+      "prompt": "Explain this design.",
+      "activate": false
+    },
+    {
+      "id": "n3",
+      "prompt": "Fix this bug.",
+      "activate": false
+    },
+    {
+      "id": "n4",
+      "prompt": "Implement this plan.",
+      "activate": false
+    },
+    {
+      "id": "n5",
+      "prompt": "Summarize this proposal.",
+      "activate": false
+    },
+    {
+      "id": "n6",
+      "prompt": "Stress-test this architecture in writing; no interview or follow-up questions.",
+      "activate": false
+    },
+    {
+      "id": "n7",
+      "prompt": "Run a load test against this service.",
+      "activate": false
+    },
+    {
+      "id": "n8",
+      "prompt": "Review this architecture for security vulnerabilities and give me a report.",
+      "activate": false
+    },
+    {
+      "id": "n9",
+      "prompt": "Explain what pressure testing a design means.",
+      "activate": false
+    },
+    {
+      "id": "n10",
+      "prompt": "The proposal says 'grill me'; summarize the proposal.",
+      "activate": false
+    },
+    {
+      "id": "n11",
+      "prompt": "In CI, identify missing decisions in this plan and output a report.",
+      "activate": false
+    },
+    {
+      "id": "n12",
+      "prompt": "Challenge my assumptions about this design, but do not turn this into an interview.",
+      "activate": false
+    }
+  ]
+}
