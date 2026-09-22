@@ -3,7 +3,7 @@ name: grill-me-with-jev
 description: Stress-test a consequential plan, architecture, design, or technical decision by investigating facts and surfacing unresolved choices and failure modes. Use for requests to grill, challenge assumptions, interrogate, pressure-test, find holes, or identify missing decisions in a plan. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.2.1"
+  version: "1.3.0"
 ---
 
 # Grill Me with Jev
@@ -92,7 +92,7 @@ that departure rather than claim its completion gates were satisfied.
 **Complete when:** Responses and revisions are recorded and the next ready batch,
 completion review, or user-requested stop is selected.
 
-## 5. Verify completion and save the plan
+## 5. Verify completion and save the pre-intent
 
 Check the whole ledger, not the display: no unresolved active, parked, or
 undisplayed nodes; no cycles; and no known blocker disguised as a deferral or
@@ -109,21 +109,48 @@ reopen settled decisions solely because a model vote changed.
 
 Once the local review and any candidate checks are resolved:
 
-1. Present a revision-labeled summary of actual accepted choices and their
-   authority, constraints and rejected alternatives, evidence, assumptions,
-   non-blocking deferrals with revisit conditions, and verification criteria.
-   State whether Jev was consulted, partly unavailable, or skipped. Use
-   “local completeness review complete,” never “Jev verified complete.”
+1. Present the revision-labeled pre-intent using the structure below, including
+   actual accepted choices and their authority. State whether Jev was consulted,
+   partly unavailable, or skipped. Use “local completeness review complete,”
+   never “Jev verified complete.”
 2. Ask the user to confirm that displayed revision. Confirmation applies only to
    that content; a material change invalidates it and requires renewed review.
-3. On confirmation, save that revision to repository-root `grill-plan.md`. Inspect
+3. On confirmation, save that revision to repository-root `pre-intent.md`. Inspect
    an existing file first: update only the known session artifact, preserving
    unrelated content. If it belongs to other work, leave it intact and resolve an
    alternate destination with the user. A failed write is not a saved plan.
-4. Report the saved path and stop. Do not commit it automatically.
+4. Report the saved path as input for `skills/ai-native-sdlc/` and stop. Do not
+   commit it automatically or initialize, advance, or approve an SDLC run.
+
+### Pre-intent artifact contract
+
+The displayed and saved revision must contain:
+
+- Title and provenance: originator when known, date, revision, and status
+  `pre-intent — confirmed for intake; not SDLC-approved`.
+- Problem statement: current behavior, evidence, and why it matters.
+- Proposed outcome: desired user-visible results and success criteria.
+- Affected users and systems: relevant repositories, modules, and execution paths.
+- Constraints and boundaries: non-negotiables, exclusions, and rejected alternatives.
+- Accepted decisions: actual answers, authority, rationale, and dependencies;
+  distinguish user choices from evidence-derived facts and delegated choices.
+- Evidence and uncertainty: inspected paths, measurements, unverified hypotheses,
+  assumptions, and Jev's actual involvement. Do not invent missing provenance.
+- Risks and verification: consequential failure modes, mitigations, and testable
+  acceptance criteria; distinguish proposed checks from completed verification.
+- Open questions and deferrals: only non-blocking items, with reasons and revisit
+  conditions. Unresolved blockers still prevent confirmation and saving.
+- SDLC handoff: this artifact is discovery input, not an implementation plan,
+  approved intent, or review receipt. Preserve accepted constraints when deriving
+  a full run's `01-plan/output/intent.md` or a light run's `brief.md`; follow the
+  selected run's active contract and surface conflicts rather than silently
+  replacing decisions. Do not preselect a profile or fabricate stage approval.
+
+Keep technical proposals labeled as proposals unless actually accepted. The SDLC
+process owns subsequent intent, specification, planning, and approval artifacts.
 
 **Authorization:** Read-only investigation and the Jev protocol are planning
-operations. Confirmation authorizes the confirmed plan artifact write only; it
+operations. Confirmation authorizes the confirmed pre-intent artifact write only; it
 never authorizes source edits, migrations, deployment, or implementation. Handoff
 requires a subsequent explicit implementation instruction after the confirmed
 revision is successfully saved. Do not carry earlier implementation requests

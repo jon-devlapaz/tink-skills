@@ -24,6 +24,26 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         self.assertTrue(fields["description"].strip())
         self.assertRegex(fields["  version"].strip().strip('"'), r"^\d+\.\d+\.\d+$")
 
+    def test_pre_intent_handoff_contract(self):
+        content = (SKILL_DIR / "SKILL.md").read_text()
+        self.assertIn("repository-root `pre-intent.md`", content)
+        self.assertNotIn("grill-plan.md", content)
+        for required in (
+            "not SDLC-approved",
+            "Problem statement",
+            "Proposed outcome",
+            "Affected users and systems",
+            "Accepted decisions",
+            "Evidence and uncertainty",
+            "Risks and verification",
+            "Open questions and deferrals",
+            "01-plan/output/intent.md",
+            "brief.md",
+            "Do not preselect a profile or fabricate stage approval",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, content)
+
     def test_operational_references_resolve_inside_skill(self):
         links = []
         for path in SKILL_DIR.rglob("*.md"):

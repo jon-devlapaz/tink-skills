@@ -150,11 +150,23 @@
         "R9",
         "R10"
       ],
-      "input": "All decisions resolved; actual user choice rejected an earlier recommendation. User confirms displayed revision 4. An unrelated grill-plan.md already exists.",
+      "input": "All decisions resolved; actual user choice rejected an earlier recommendation. User confirms displayed revision 4. An unrelated pre-intent.md already exists.",
       "expected": [
         "Preserve actual accepted choice and rejection; do not overwrite unrelated file.",
         "Resolve alternate destination without claiming the plan was saved.",
         "Only a later implementation instruction after successful save permits handoff."
+      ]
+    },
+    {
+      "id": "pre-intent-sdlc-handoff",
+      "requirements": ["R6", "R9", "R10"],
+      "input": "All consequential decisions are resolved. Prepare the final revision for confirmation, then save it after explicit confirmation. The user wants the output fed into skills/ai-native-sdlc/. No pre-intent.md exists and no SDLC run has been authorized.",
+      "expected": [
+        "Display the pre-intent revision before requesting confirmation and save exactly that confirmed content to repository-root pre-intent.md.",
+        "Include problem, outcome, affected users and systems, constraints, accepted decisions with authority, evidence and uncertainty, risks and verification, and non-blocking deferrals with revisit conditions.",
+        "Label it confirmed for intake, not SDLC-approved; distinguish hypotheses, proposed checks, and technical proposals from established evidence and accepted decisions.",
+        "Describe its use as input to full-profile intent or light-profile brief without selecting a profile, initializing a run, recording stage approval, or starting implementation.",
+        "Report the saved path and stop."
       ]
     },
     {
