@@ -1,6 +1,6 @@
 # SDLC workspace
 
-A small filesystem workflow: define a change, implement and verify it in an isolated checkout, then obtain independent release review. Requires Python 3.9+, Bash, and Git. Set `require_tink: true` when project policy requires Tink integrity checks.
+A small filesystem workflow: define a change, implement and verify it in an isolated checkout, then obtain independent release review. Requires Python 3.9+, Bash, and Git on a POSIX system. Native Windows is not supported. Set `require_tink: true` when project policy requires Tink integrity checks.
 
 ## Start a run
 
@@ -11,7 +11,7 @@ _system/scripts/new-run.sh fix-example --kind bug
 _system/scripts/status.sh fix-example
 ```
 
-The default `light` profile creates one `brief.md`: problem, acceptance criteria, approach, implementation checklist, risks, and verification. Use `--profile full` for consequential architecture or policy changes; it creates the existing intent/spec/plan artifacts. A human selects the appropriate profile. Existing `demo-poc` files are preserved as legacy drafts; text approval tags are not imported as evidence.
+The default `light` profile creates one `brief.md`: problem, acceptance criteria, approach, implementation checklist, risks, and verification. Use `--profile full` for consequential architecture or policy changes; it creates the existing intent/spec/plan artifacts. A human selects the appropriate profile. Legacy artifacts without run metadata remain drafts; text approval tags are not imported as evidence.
 
 After the human accepts the brief, record the actual review reference:
 
@@ -33,7 +33,7 @@ Configure `_system/verification.json` with nonempty command argument arrays and 
 _system/scripts/verify.sh fix-example
 ```
 
-Verification writes the actual check output and a generated receipt under `04-test/output/`. The receipt binds the Git revision, tracked and nonignored untracked file contents/modes, artifact inputs, policy, test lock, and log digest. It excludes `runs/`; do not place application source or test infrastructure there. Ignored files and external services are outside this fingerprint: pin dependencies and environments in trusted CI. Commit changes before final verification; a new commit invalidates old evidence. Avoid modifying the checkout while checks run.
+Verification writes the actual check output and a generated receipt under `04-test/output/`. The receipt binds the Git revision, tracked and nonignored untracked file contents/modes (excluding disposable untracked Python caches), artifact inputs, policy, test lock, and log digest. It excludes `runs/`; do not place application source or test infrastructure there. Ignored files and external services are outside this fingerprint: pin dependencies and environments in trusted CI. Commit code changes before final verification. The receipt records the observed commit for provenance; status compares candidate contents, so committing only run evidence does not invalidate unchanged code. CI must still verify the actual revision being merged. Avoid modifying the checkout while checks run.
 
 A preexisting log is never passing evidence. Failed or interrupted verification cannot reuse an older passing receipt. Local status is not deployment status.
 
@@ -95,3 +95,17 @@ Ordinary write failures roll back files written by that attempt; empty directori
 remain. A killed process can leave a partial installation. Inspect it and the lock,
 confirm no writer remains, then recover through a reviewed migration; do not force overwrite.
 The installer does not create Git history, CI, deployment, monitoring, or tool credentials.
+
+## ICM conventions
+
+This is an ICM-inspired pipeline with explicit adaptations: stage contracts are
+shared factory files rather than duplicated into every run, and machine evidence
+is immutable-by-convention JSON alongside editable Markdown. Light profiles merge
+planning checkpoints into one reviewed brief. Verification is automated; human
+release review remains external. Status reads current artifacts and receipts from
+the filesystem; neither folder existence nor Markdown approval labels advance it.
+Stage numbers are fixed protocol identifiers, not configurable ordering labels.
+
+Templates live in `_shared/`; `brief-template.md` is the light-profile edit surface.
+Run outputs belong under `runs/`. Do not place application code there. Read the
+active contract and immediate inputs rather than loading the full factory.

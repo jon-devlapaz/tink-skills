@@ -61,13 +61,14 @@ Jev fit reference: [`skills/skill-scout/references/jev-fit.md`](skills/skill-sco
 
 ## ai-native-sdlc
 
-`ai-native-sdlc` installs and operates an Interpretable Context Methodology (ICM) workflow inside any Git repository:
-- **6-Stage Lifecycle:** Operates stages from initial intent through technical design, plan mode, locked verification, multi-pass PR review, and metric-based maintain intake.
-- **Streamlined Profiles:** Default `light` profile merges definition into a single `brief.md` for routine tasks; `full` profile separates `intent.md`, `spec.md`, and `plan.md` for consequential architecture.
-- **Cryptographic Evidence Receipts:** Stages advance via machine-signed JSON receipts binding Git revisions, tree states, and test log digests, failing closed on tampering or staleness.
-- **Deterministic Test Locks:** Bug runs require pre-reproduction baselines that prevent agents from weakening tests to pass.
-- **Tink & tink-route Concurrency:** Features a serialized host wrapper preventing race conditions during dynamic skill routing and auto-pruning.
-- **One-Command Bootstrapper:** `scripts/init.py` idempotently scaffolds templates, stage contracts, and verification config into any project.
+`ai-native-sdlc` installs and operates an ICM-inspired local workflow in an explicitly selected Git checkout:
+
+- **Stage contracts:** Guide definition, implementation, verification, and external review/release; maintenance is optional intake.
+- **Profiles:** `light` uses one reviewed brief; `full` separates intent, spec, and plan.
+- **Local evidence:** Content hashes detect changes to covered inputs. JSON receipts are unsigned and do not authenticate human approval.
+- **Test baselines:** Bug runs check protected files against a recorded baseline. Trusted CI must enforce protection against an agent that can rewrite local records.
+- **Skill operations:** A lock serializes cooperating Tink/router calls sharing the same local lock namespace; it does not coordinate other hosts or bypassing callers.
+- **Bootstrap:** Explicit-target installation previews changes, refuses conflicts, and leaves verification unconfigured until real project checks are selected.
 
 Full contract: [`skills/ai-native-sdlc/SKILL.md`](skills/ai-native-sdlc/SKILL.md)
 Operator manual: [`skills/ai-native-sdlc/assets/_system/SDLC.md`](skills/ai-native-sdlc/assets/_system/SDLC.md)

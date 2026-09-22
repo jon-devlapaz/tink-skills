@@ -25,10 +25,10 @@ profile from folder names. Light runs record the combined definition decision at
 stage 3; full runs record stages 1, 2, and 3 in order.
 
 Use `_system/SDLC.md` for decision, reproduction-lock, and verification examples
-(authoritative post-install; `README.md` is its pre-packaging source-workspace equivalent).
+in the installed project.
 Use CLI help to check required arguments. Paths and commands are relative to the
 workspace root unless an absolute script path is supplied.
 
-When entering review, compare the stage contract with `_shared/REVIEW.md`. Resolve
-any disagreement over required review passes explicitly; do not silently weaken
-a policy or edit factory references during an active feature run.
+When entering review, load `_shared/REVIEW.md` for review scope and severity.
+The review policy covers both profiles; stage 05 owns handoff and cleanup.
+Preserve project-specific policy and keep factory files unchanged during active runs.

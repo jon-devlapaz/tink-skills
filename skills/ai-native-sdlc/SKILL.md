@@ -6,7 +6,7 @@ license: MIT
 
 # AI-Native SDLC
 
-Advance the next authorized action in this local workflow PoC. Stage contracts
+Advance the next authorized action in this local ICM-inspired workflow. Stage contracts
 own the process; local receipts track evidence, not authenticated release authority.
 
 ## Bootstrap
@@ -51,8 +51,7 @@ never treat initialization as an upgrade or change factory files during an activ
    authorization remains valid within its scope; never fabricate a separate role's
    sign-off. For a capability gap, read [toolchain routing](references/toolchain-routing.md).
 5. **Verify and report.** Inspect `_system/verification.json` before claiming what
-   verification proves: new installations require project-specific checks; the source
-   workspace may instead be configured to test the workflow itself.
+   verification proves: new installations require project-specific checks.
    Run `_system/scripts/verify.sh <slug>`, then check current status. The generated
    receipt is `runs/<slug>/04-test/output/verification.json`. Report the completed
    action, evidence, next valid action, and any external approval or deployment
@@ -61,16 +60,16 @@ never treat initialization as an upgrade or change factory files during an activ
 ## Evidence and recovery
 
 - Use `python3 _system/scripts/sdlc.py <command> --help` for current arguments;
-  use `_system/SDLC.md` for commands and recovery (authoritative post-install;
-  `README.md` is its pre-packaging source-workspace equivalent).
+  use `_system/SDLC.md` for commands and recovery (the installed operator guide).
   `decide` requires `--reviewer`, `--source`, and `--reason` for both approval
   and `changes-requested`, including full-profile stages 1, 2, and 3.
 - Local references are recorded, not authenticated. Hashes detect differences
   against recorded inputs; agent-writable receipts and test locks are not a
   security boundary. Trusted CI and forge policy must enforce release authority.
-- A stable dirty working tree can verify. Changes after verification, including
-  a new commit, make evidence stale. Commit before final verification; recheck
-  after edits or skill mutations. Do not claim ignored files or external services
+- A stable dirty working tree can verify. Covered content changes make evidence
+  stale; evidence-only commits preserve content validity. The recorded commit is
+  provenance, not CI approval for a newer revision. Commit code before final
+  verification and recheck after edits or skill mutations. Do not claim ignored files or external services
   are covered by the checkout fingerprint.
 - On rejection or stale inputs, retain feedback and artifacts, revise the affected
   work, renew required human decisions, and rerun verification. Never hand-edit

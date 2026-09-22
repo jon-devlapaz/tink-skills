@@ -109,13 +109,20 @@ def git(*args):
 
 def snapshot():
     head = git('rev-parse', 'HEAD').decode().strip()
-    names = git('ls-files', '-z', '--cached', '--others', '--exclude-standard').split(b'\0')
+    tracked = set(git('ls-files', '-z', '--cached').split(b'\0'))
+    names = tracked | set(git('ls-files', '-z', '--others', '--exclude-standard').split(b'\0'))
     files = {}
     for name in names:
         if not name:
             continue
         relative = os.fsdecode(name)
         if relative.startswith('runs/'):
+            continue
+        # Ignore disposable Python caches only when untracked. Tracked files
+        # remain covered even when their name resembles generated output.
+        parts = Path(relative).parts
+        if name not in tracked and (any(part in {'__pycache__', '.pytest_cache', '.ruff_cache'} for part in parts)
+                                    or Path(relative).suffix in {'.pyc', '.pyo'}):
             continue
         path = ROOT / relative
         if path.is_symlink():
@@ -174,7 +181,7 @@ def create(args):
         try:
             write_json(temporary / 'run.json', {'profile': args.profile, 'kind': args.kind, 'schema': 1})
             if args.profile == 'light':
-                (temporary / 'brief.md').write_text('# Change brief\n\n## Problem and outcome\n\n## Acceptance criteria\n\n## Approach and implementation checklist\n\n## Risks and verification\n')
+                shutil.copyfile(ROOT / '_shared/brief-template.md', temporary / 'brief.md')
             else:
                 for target, template in zip(ARTIFACTS, ['intent', 'spec', 'plan']):
                     dest = temporary / target
@@ -254,6 +261,13 @@ def lock_tests(args):
     print('Local test baseline recorded. CI must independently validate the failing reproduction and protect the baseline.')
 
 
+def evidence_matches(record, current):
+    # HEAD records provenance. Evidence-only commits must not stale unchanged
+    # candidate contents; CI still needs a check for the actual merge revision.
+    return (record.get('candidate', {}).get('tree') == current['candidate']['tree']
+            and all(record.get(key) == value for key, value in current.items() if key != 'candidate'))
+
+
 def status(args):
     if not args.run:
         directory = ROOT / 'runs'
@@ -274,7 +288,7 @@ def status(args):
         record = read_json(record_path)
         if record.get('result') == 'passed':
             try:
-                verified = all(record.get(k) == v for k, v in evidence_inputs(path).items()) and record['log'] == digest((record_path.parent / 'test-log.md').read_bytes())
+                verified = evidence_matches(record, evidence_inputs(path)) and record['log'] == digest((record_path.parent / 'test-log.md').read_bytes())
             except (ValueError, OSError, subprocess.SubprocessError):
                 pass
         print('Verification: ' + ('current' if verified and not blocked else 'failed, stale, or blocked'))

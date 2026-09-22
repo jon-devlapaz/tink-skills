@@ -1,60 +1,58 @@
-# AI-Native SDLC Skill
+# AI-Native SDLC
 
-A portable, evidence-based software development lifecycle skill for AI coding agents.
-This README describes the pre-packaging source workspace; after installation, the
-operator manual is `_system/SDLC.md` in the target checkout.
+Install an ICM-inspired local workflow into an explicitly selected Git checkout.
+Editable Markdown holds intent and plans; JSON receipts track local decisions and
+verification evidence. CI, authenticated approval, deployment, and monitoring remain
+project integrations. Content hashes detect changes; they are not signatures.
 
-## What is this?
-`ai-native-sdlc` installs and operates an Interpretable Context Methodology (ICM) workflow inside any Git repository. It implements the 6-stage lifecycle from Anthropic's AI-Native SDLC Playbook with fail-closed cryptographic receipts, deterministic verification gates, and Tink toolchain integration.
+## Install and configure
 
-## Installation via Tink
+From this skill collection:
 
 ```sh
 tink skill add jon-devlapaz/tink-skills --skill ai-native-sdlc
-```
-
-## Bootstrap a Project
-
-In any repository checkout where you want to enable the SDLC workflow:
-
-```sh
-# 1. Preview changes (read-only)
 python3 .agents/skills/ai-native-sdlc/scripts/init.py . --check
-
-# 2. Install scaffold
 python3 .agents/skills/ai-native-sdlc/scripts/init.py .
 ```
 
-This sets up:
-- `stages/`: 6 stage contracts (`01-plan` through `06-maintain`)
-- `_shared/`: Templates (`brief.md`, `intent.md`, `spec.md`, `plan.md`, `REVIEW.md`)
-- `_system/`: Portable engine `sdlc.py` and bash wrappers (`new-run.sh`, `status.sh`, `verify.sh`)
-- `_system/SDLC.md`: Complete operator manual and recovery procedures
+The initializer installs stage contracts, templates, runtime scripts, and the operator
+guide at `_system/SDLC.md`. It preserves existing project instructions and refuses
+conflicting or different-version scaffolds. Review a separate migration for upgrades.
+Use a separate worktree or clone for code-writing runs.
 
-## Quick Workflow
+**Verification starts unconfigured.** Set `_system/verification.json` to real project
+checks before running verification. Tink integrity checking is optional and explicit.
+Git needs an initial commit before verification. The runtime requires Python 3.9+,
+Git, and Bash on a POSIX system; native Windows operation is not supported.
+
+## Operate a run
 
 ```sh
-# 1. Start a run (default: light profile with brief.md)
-_system/scripts/new-run.sh fix-auth --kind bug
-
-# 2. Check pipeline state
-_system/scripts/status.sh fix-auth
-
-# 3. Record human review decision
-python3 _system/scripts/sdlc.py decide fix-auth 3 approved \
-  --reviewer "Lead Engineer" \
-  --source "PR #42" \
-  --reason "Accepted scope and verification plan"
-
-# 4. Lock bug reproduction test (for bug runs)
-python3 _system/scripts/sdlc.py lock-tests fix-auth tests/test_auth.py \
-  --source "Review ref" --failure-evidence "CI job #104"
-
-# 5. Run deterministic verification
-_system/scripts/verify.sh fix-auth
+_system/scripts/new-run.sh feature-name
+_system/scripts/status.sh feature-name
 ```
 
-## Requirements
-- Python 3.9+
-- Git, Bash
-- Optional: [Tink](https://github.com/jon-devlapaz/tink) & [tink-route](https://github.com/jon-devlapaz/tink-route)
+Edit the generated brief and obtain actual human acceptance before recording the
+review decision. Follow the installed guide for the complete decision command,
+reproduction baseline for bug fixes, rejection/rework, and verification. Do not
+paste fictional reviewer names or evidence into real runs. The full profile separates
+intent, spec, and implementation plan; the light profile uses one reviewed brief.
+
+Local status accepts unchanged candidate content after an evidence-only commit.
+A release still needs CI for the actual merge revision and independent forge approval.
+
+## Maintain this package
+
+`assets/` is the canonical distributable scaffold in this repository. Do not update
+it from an external sandbox generator. After an intentional payload change, choose
+a release version and refresh the content manifest:
+
+```sh
+python3 skills/ai-native-sdlc/scripts/package.py --version 1.0.1
+python3 skills/ai-native-sdlc/scripts/package.py --check
+python3 -m unittest discover -s tests -p 'test_sdlc_*.py' -v
+```
+
+The manifest records payload content hashes, not publisher authenticity. Tests use
+isolated temporary repositories and synthetic review fixtures, never real approvals.
+The package intentionally has one runtime implementation; tests execute that payload.
