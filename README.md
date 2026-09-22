@@ -4,6 +4,7 @@ Evidence-oriented Agent Skills:
 
 - **skill-scout** finds and qualifies existing agent skills before another one is created.
 - **grill-me-with-jev** grills a plan through consequential decisions and failure modes, using TypeSafe Jev to advise whether to ask, investigate, or continue.
+- **ai-native-sdlc** installs and operates an evidence-based software development lifecycle using file-based stage contracts, deterministic test locks, and Tink toolchain routing.
 
 *(Note: `triangulate-me` has been deprecated and superseded by `grill-me-with-jev` for decision-tree interrogation and grounded planning).*
 
@@ -21,6 +22,7 @@ Install the skills from this repository with [Tink](https://github.com/jon-devla
 ```console
 tink skill add jon-devlapaz/tink-skills --skill grill-me-with-jev
 tink skill add jon-devlapaz/tink-skills --skill skill-scout
+tink skill add jon-devlapaz/tink-skills --skill ai-native-sdlc
 ```
 
 Refresh an installed skill with `tink skill refresh NAME`.
@@ -57,6 +59,21 @@ Jev fit reference: [`skills/skill-scout/references/jev-fit.md`](skills/skill-sco
 
 ---
 
+## ai-native-sdlc
+
+`ai-native-sdlc` installs and operates an Interpretable Context Methodology (ICM) workflow inside any Git repository:
+- **6-Stage Lifecycle:** Operates stages from initial intent through technical design, plan mode, locked verification, multi-pass PR review, and metric-based maintain intake.
+- **Streamlined Profiles:** Default `light` profile merges definition into a single `brief.md` for routine tasks; `full` profile separates `intent.md`, `spec.md`, and `plan.md` for consequential architecture.
+- **Cryptographic Evidence Receipts:** Stages advance via machine-signed JSON receipts binding Git revisions, tree states, and test log digests, failing closed on tampering or staleness.
+- **Deterministic Test Locks:** Bug runs require pre-reproduction baselines that prevent agents from weakening tests to pass.
+- **Tink & tink-route Concurrency:** Features a serialized host wrapper preventing race conditions during dynamic skill routing and auto-pruning.
+- **One-Command Bootstrapper:** `scripts/init.py` idempotently scaffolds templates, stage contracts, and verification config into any project.
+
+Full contract: [`skills/ai-native-sdlc/SKILL.md`](skills/ai-native-sdlc/SKILL.md)
+Operator manual: [`skills/ai-native-sdlc/assets/_system/SDLC.md`](skills/ai-native-sdlc/assets/_system/SDLC.md)
+
+---
+
 ## Repository Structure
 
 ```text
@@ -67,6 +84,7 @@ Jev fit reference: [`skills/skill-scout/references/jev-fit.md`](skills/skill-sco
 │   ├── plans/           # Stage 3: Implementation plans
 │   └── reviews/         # Stage 5: Verification & evaluation reports
 ├── skills/
+│   ├── ai-native-sdlc/
 │   ├── grill-me-with-jev/
 │   └── skill-scout/
 └── tests/               # Python contract and Jev-fit tests
