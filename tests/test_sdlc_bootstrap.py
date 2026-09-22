@@ -258,6 +258,14 @@ class BootstrapTests(unittest.TestCase):
         self.assertTrue(agents.read_text().startswith('Existing instructions'))
         self.assertEqual(agents.stat().st_mode & 0o777, 0o600)
 
+    def test_main_reports_runtime_error_without_traceback(self):
+        with patch.object(bootstrap, 'install', side_effect=RuntimeError('injected rollback error')):
+            with patch.object(bootstrap.sys, 'argv', ['init.py', str(self.root)]):
+                with patch.object(bootstrap.sys, 'stderr') as stderr:
+                    self.assertEqual(bootstrap.main(), 1)
+        combined = ''.join(call[0][0] for call in stderr.write.call_args_list)
+        self.assertIn('injected rollback error', combined)
+
     def test_stale_installer_tmp_file_refused(self):
         tmp = self.root / '.AGENTS.md.sdlc-install-tmp'
         tmp.write_bytes(b'user data')

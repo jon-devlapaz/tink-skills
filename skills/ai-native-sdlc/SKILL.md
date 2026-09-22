@@ -50,12 +50,14 @@ never treat initialization as an upgrade or change factory files during an activ
    decisions with the CLI, including reviewer, source, and reason. Prior explicit
    authorization remains valid within its scope; never fabricate a separate role's
    sign-off. For a capability gap, read [toolchain routing](references/toolchain-routing.md).
-5. **Verify and report.** Inspect `_system/verification.json` before claiming what
-   verification proves: new installations require project-specific checks.
-   Run `_system/scripts/verify.sh <slug>`, then check current status. The generated
-   receipt is `runs/<slug>/04-test/output/verification.json`. Report the completed
-   action, evidence, next valid action, and any external approval or deployment
-   result still missing. A passing local receipt does not mean deployed.
+5. **Verify and report.** When the active stage or changed candidate requires
+   verification, inspect `_system/verification.json` before claiming what it proves:
+   new installations require project-specific checks. Run
+   `_system/scripts/verify.sh <slug>`, then check current status. The generated
+   receipt is `runs/<slug>/04-test/output/verification.json`. Otherwise, check
+   current status without running verification. Report the completed action,
+   evidence, next valid action, and any external approval or deployment result
+   still missing. A passing local receipt does not mean deployed.
 
 ## Evidence and recovery
 

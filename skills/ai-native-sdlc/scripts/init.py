@@ -112,12 +112,13 @@ def install(root, check=False):
                     stream.write(data)
                 if name.startswith('_system/scripts/'):
                     target.chmod(0o755)
+            # Best-effort concurrent-edit check: an edit after this comparison can still be overwritten by replace() below.
             if (agents.read_bytes() if agents.exists() else None) != original:
                 raise ValueError('AGENTS.md changed during initialization.')
             agents_attempted = True
             tmp_agents.write_bytes((text + ('\n\n' if text else '') + ROUTER + '\n').encode())
             if agents_mode is not None:
-                tmp_agents.chmod(agents_mode)
+                tmp_agents.chmod(agents_mode & 0o777)
             tmp_agents.replace(agents)
             router_written = True
             with receipt.open('x') as stream:
@@ -169,7 +170,7 @@ def main():
     args = parser.parse_args()
     try:
         install(Path(args.target), args.check)
-    except (OSError, ValueError, KeyError) as error:
+    except (OSError, ValueError, KeyError, RuntimeError) as error:
         print(f'Error: {error}', file=sys.stderr)
         return 1
     return 0
