@@ -5,6 +5,7 @@ __pycache__/
 .ruff_cache/
 .eval-runs/
 skills/grill-me-with-jev/evals/results/
+skills/grill-me-with-jev/evals/dogfood-output/
 .hermes/
 .agents/
 .ci/
