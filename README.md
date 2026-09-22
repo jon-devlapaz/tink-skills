@@ -1,18 +1,18 @@
 # tink-skills
 
-Evidence-oriented Agent Skills:
+Evidence-oriented Agent Skills for AI coding workflows:
 
-- **skill-scout** finds and qualifies existing agent skills before another one is created.
-- **grill-me-with-jev** grills a plan through consequential decisions and failure modes, using TypeSafe Jev to advise whether to ask, investigate, or continue.
-- **ai-native-sdlc** installs and operates an evidence-based software development lifecycle using file-based stage contracts, deterministic test locks, and Tink toolchain routing.
+- **grill-me-with-jev** — Pressure-tests your engineering plan through a step-by-step interview, resolving facts in the codebase first and asking one consequential decision at a time.
+- **skill-scout** — Finds, inspects, and qualifies existing agent skills before you build a new one.
+- **ai-native-sdlc** — Runs an evidence-based software development lifecycle with stage contracts, verified test receipts, and test locks.
 
 *(Note: `triangulate-me` has been deprecated and superseded by `grill-me-with-jev` for decision-tree interrogation and grounded planning).*
 
 ```mermaid
 flowchart LR
     intent["intent / idea"] --> grill["grill-me-with-jev"]
-    grill -->|settled plan| scout["skill-scout"]
-    scout -->|qualified skill / none| implementation["implement / execute"]
+    grill -->|settled pre-intent| scout["skill-scout"]
+    scout -->|qualified skill / none| implementation["ai-native-sdlc"]
 ```
 
 ## Install
@@ -31,46 +31,53 @@ Refresh an installed skill with `tink skill refresh NAME`.
 
 ## grill-me-with-jev
 
-`grill-me-with-jev` stress-tests an engineering or architectural plan through an interactive decision tree interview:
-- **Attention discipline:** Resolves inspectable repository facts autonomously before interrupting the user; reserves questions for consequential user authority and judgment.
-- **Triage gatekeeper (Jev advisory):** Uses TypeSafe Jev to advise whether a concern should *ask now*, *investigate first*, or *continue without asking*.
-- **Formal DAG frontier:** Tracks decision nodes with discrete states (`unresolved`, `settled`, `deferred`, `superseded`), handles cycles, and cascades invalidations cleanly when parent assumptions change.
-- **Anti-laziness stopping gate:** Evaluates candidate omissions via Jev `Noul` (`probability > 0.80`) to reject premature session termination.
-- **Durable plan artifact:** Upon final user confirmation, saves the agreed plan to `grill-plan.md` without authorizing unprompted code modifications.
+`grill-me-with-jev` stress-tests your architectural plan or technical decision through a focused, single-question interview before you write code.
 
-Full contract: [`skills/grill-me-with-jev/SKILL.md`](skills/grill-me-with-jev/SKILL.md)
-Operational reference: [`skills/grill-me-with-jev/references/triage-patterns.md`](skills/grill-me-with-jev/references/triage-patterns.md)
-Evaluation suite: [`skills/grill-me-with-jev/evals/evals.json`](skills/grill-me-with-jev/evals/evals.json)
-Measurement experiments: [`eval guide`](skills/grill-me-with-jev/evals/README.md) · [`results and limits`](docs/reviews/grill-me-with-jev-experiments.md)
+### How it works
+- **Investigates facts first:** Checks repository code, configs, and schemas before asking you anything. If a fact is discoverable, it won't interrupt you for it.
+- **One decision at a time:** Paces questions one by one with a clear recommendation grounded in workspace evidence, keeping cognitive load low.
+- **Advisory triage (TypeSafe Jev):** Consults Jev to gauge whether a concern needs your judgment now, needs more investigation, or can proceed safely.
+- **Durable discovery artifact:** Once all blockers are resolved and confirmed, writes the accepted plan to `pre-intent.md` as intake for downstream implementation.
+
+### Interview format
+
+```text
+Decision 1 of 3 ready (2 parked)
+❓ Q1 — Decision: Consequence or tradeoff requiring your judgment.
+➡️ Recommended: Evidence-grounded option.
+⚡️ Jev triage: ask now · 0.85 probability
+```
+
+Full contract: [`skills/grill-me-with-jev/SKILL.md`](skills/grill-me-with-jev/SKILL.md)  
+Operational references: [`ledger-transitions.md`](skills/grill-me-with-jev/references/ledger-transitions.md) · [`typesafe-protocol.md`](skills/grill-me-with-jev/references/typesafe-protocol.md)
 
 ---
 
 ## skill-scout
 
-`skill-scout` discovers, qualifies, and recommends existing skills before authoring a new one:
-- **Lightest-mode selection** across `COMPARE`, `VERIFY`, and `DISCOVER`.
-- **Read-only candidate inspection** without unsanctioned code execution.
-- **6-point qualification gate** (workflow fit, non-redundancy, safety/provenance, compatibility, maintenance, demonstrated behavior).
-- **Structured 7-field reporting** with verified published descriptions, runner-up gap analysis, and explicit gated next actions.
-- **Experimental Jev fit decisions:** Optional helper using TypeSafe Jev for workflow-fit qualification under frozen evaluation policies.
+`skill-scout` finds and qualifies existing agent skills before you author a new one from scratch.
 
-Full contract: [`skills/skill-scout/SKILL.md`](skills/skill-scout/SKILL.md)
+### How it works
+- **Targeted search:** Looks across GitHub and community registries for existing solutions.
+- **Read-only inspection:** Evaluates candidate source code, licenses, and dependencies safely without executing arbitrary code.
+- **Clear verdict:** Grades candidates across fit, maintenance, and safety, returning a concrete recommendation (adopt, adapt, or build new).
+
+Full contract: [`skills/skill-scout/SKILL.md`](skills/skill-scout/SKILL.md)  
 Jev fit reference: [`skills/skill-scout/references/jev-fit.md`](skills/skill-scout/references/jev-fit.md)
 
 ---
 
 ## ai-native-sdlc
 
-`ai-native-sdlc` installs and operates an ICM-inspired local workflow in an explicitly selected Git checkout:
+`ai-native-sdlc` installs and operates an evidence-based software development lifecycle inside your repository.
 
-- **Stage contracts:** Guide definition, implementation, verification, and external review/release; maintenance is optional intake.
-- **Profiles:** `light` uses one reviewed brief; `full` separates intent, spec, and plan.
-- **Local evidence:** Content hashes detect changes to covered inputs. JSON receipts are unsigned and do not authenticate human approval.
-- **Test baselines:** Bug runs check protected files against a recorded baseline. Trusted CI must enforce protection against an agent that can rewrite local records.
-- **Skill operations:** A lock serializes cooperating Tink/router calls sharing the same local lock namespace; it does not coordinate other hosts or bypassing callers.
-- **Bootstrap:** Explicit-target installation previews changes, refuses conflicts, and leaves verification unconfigured until real project checks are selected.
+### How it works
+- **Structured stages:** Guides work through Plan, Design, Build, Test, Deploy, and Maintain.
+- **Flexible profiles:** Use `light` (a single reviewed brief) for routine tasks, or `full` (intent, spec, and plan) for consequential architecture.
+- **Evidence-backed gates:** Advances stages using verified test receipts and content hashes so progress is provable, not assumed.
+- **Safe scaffolding:** Easily installed via `scripts/init.py` without overwriting existing repo instructions.
 
-Full contract: [`skills/ai-native-sdlc/SKILL.md`](skills/ai-native-sdlc/SKILL.md)
+Full contract: [`skills/ai-native-sdlc/SKILL.md`](skills/ai-native-sdlc/SKILL.md)  
 Operator manual: [`skills/ai-native-sdlc/assets/_system/SDLC.md`](skills/ai-native-sdlc/assets/_system/SDLC.md)
 
 ---
@@ -80,10 +87,10 @@ Operator manual: [`skills/ai-native-sdlc/assets/_system/SDLC.md`](skills/ai-nati
 ```text
 .
 ├── docs/
-│   ├── intent/          # Stage 1: Problem statements & goals
-│   ├── specs/           # Stage 2: Functional specifications (R1-R10)
-│   ├── plans/           # Stage 3: Implementation plans
-│   └── reviews/         # Stage 5: Verification & evaluation reports
+│   ├── intent/          # Problem statements & goals
+│   ├── specs/           # Functional specifications
+│   ├── plans/           # Implementation plans
+│   └── reviews/         # Verification & evaluation reports
 ├── skills/
 │   ├── ai-native-sdlc/
 │   ├── grill-me-with-jev/

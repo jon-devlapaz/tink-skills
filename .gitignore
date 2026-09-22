@@ -8,6 +8,7 @@ skills/grill-me-with-jev/evals/results/
 skills/grill-me-with-jev/evals/dogfood-output/
 .hermes/
 .agents/
+.tink/
 .ci/
 .compound-engineering/
 docs/ce-reviews/
