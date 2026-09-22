@@ -63,6 +63,8 @@ def install(root, check=False):
         receipt = safe(root, RECEIPT)
         agents = safe(root, 'AGENTS.md')
         original = agents.read_bytes() if agents.exists() else None
+        agents_mode = agents.stat().st_mode if original is not None else None
+        tmp_agents = agents.parent / '.AGENTS.md.sdlc-install-tmp'
         text = original.decode() if original is not None else ''
         destinations = {name: safe(root, name) for name in files}
         if receipt.exists():
@@ -87,6 +89,8 @@ def install(root, check=False):
             entry = safe(root, top)
             if entry.exists() and (not entry.is_dir() or any(entry.iterdir())):
                 conflicts.append(f'{top} (existing content outside this package)')
+        if tmp_agents.exists():
+            conflicts.append(f'{tmp_agents.name} (stale installer temp file)')
         if conflicts or '<!-- AI-Native SDLC Router -->' in text:
             raise ValueError('Unmanaged or partial scaffold exists; no files changed. Review migration separately: ' + ', '.join(conflicts or ['AGENTS.md router']))
         print('Create: ' + ', '.join(sorted(files)))
@@ -94,8 +98,11 @@ def install(root, check=False):
         if check:
             print('Preview only; verification will remain UNCONFIGURED.')
             return
+        fresh_dirs = {parent for target in (*destinations.values(), receipt) for parent in target.parents if parent != root and root in parent.parents and not parent.exists()}
         created = []
+        agents_attempted = False
         router_written = False
+        install_error = None
         try:
             for name, data in files.items():
                 target = destinations[name]
@@ -105,27 +112,54 @@ def install(root, check=False):
                     stream.write(data)
                 if name.startswith('_system/scripts/'):
                     target.chmod(0o755)
-            # Detect edits since preflight instead of overwriting concurrent instructions.
             if (agents.read_bytes() if agents.exists() else None) != original:
                 raise ValueError('AGENTS.md changed during initialization.')
-            agents.write_text(text + ('\n\n' if text else '') + ROUTER + '\n')
+            agents_attempted = True
+            tmp_agents.write_bytes((text + ('\n\n' if text else '') + ROUTER + '\n').encode())
+            if agents_mode is not None:
+                tmp_agents.chmod(agents_mode)
+            tmp_agents.replace(agents)
             router_written = True
             with receipt.open('x') as stream:
                 created.append(receipt)
                 json.dump(manifest, stream, indent=2)
                 stream.write('\n')
-        except Exception:
+        except Exception as error:
+            install_error = error
+            cleanup_errors = []
             for target in reversed(created):
-                target.unlink(missing_ok=True)
-            if router_written:
-                if original is None:
-                    agents.unlink()
-                else:
-                    agents.write_bytes(original)
+                try:
+                    target.unlink(missing_ok=True)
+                except OSError as cleanup_error:
+                    cleanup_errors.append(f'{target}: {cleanup_error}')
+            if agents_attempted:
+                try:
+                    if router_written:
+                        if original is None:
+                            agents.unlink(missing_ok=True)
+                        else:
+                            agents.write_bytes(original)
+                    tmp_agents.unlink(missing_ok=True)
+                except OSError as cleanup_error:
+                    cleanup_errors.append(f'{agents}: {cleanup_error}')
+            for fresh in sorted(fresh_dirs, reverse=True):
+                try:
+                    fresh.rmdir()
+                except OSError:
+                    pass
+            if cleanup_errors:
+                raise RuntimeError('Rollback incomplete: ' + '; '.join(cleanup_errors) + f'; original error: {error}') from error
             raise
         print('Scaffold installed. Verification is UNCONFIGURED and will fail until real checks are selected. Read _system/SDLC.md.')
     finally:
-        lock.rmdir()
+        try:
+            lock.rmdir()
+        except FileNotFoundError:
+            pass
+        except OSError as lock_error:
+            if install_error is None:
+                raise RuntimeError(f'Installer finished but .sdlc-init-lock cleanup failed: {lock_error}; remove it manually.') from lock_error
+            raise RuntimeError(f'Installation failed: {install_error}; .sdlc-init-lock cleanup also failed: {lock_error}; remove it manually.') from install_error
 
 
 def main():

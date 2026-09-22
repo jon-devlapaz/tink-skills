@@ -123,6 +123,148 @@ class BootstrapTests(unittest.TestCase):
         result = subprocess.run(['python3', str(SKILL / 'scripts/package.py'), '--check'], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_agents_write_failure_restores_original(self):
+        (self.root / 'AGENTS.md').write_text('Existing instructions')
+        original = (self.root / 'AGENTS.md').read_bytes()
+        real_write_bytes = Path.write_bytes
+        calls = []
+        def failing_write(path, data, *args, **kwargs):
+            if not calls:
+                calls.append(path)
+                real_write_bytes(path, b'PARTIAL-')
+                raise OSError('injected AGENTS write error')
+            return real_write_bytes(path, data, *args, **kwargs)
+        with patch.object(Path, 'write_bytes', failing_write):
+            with self.assertRaisesRegex(OSError, 'injected AGENTS write error'):
+                bootstrap.install(self.root)
+        self.assertEqual((self.root / 'AGENTS.md').read_bytes(), original)
+        self.assertFalse((self.root / '.AGENTS.md.sdlc-install-tmp').exists())
+        self.assertFalse((self.root / '_system').exists())
+        self.assertFalse((self.root / 'stages').exists())
+        self.assertFalse((self.root / '_shared').exists())
+        self.assertFalse((self.root / '.sdlc-init-lock').exists())
+        self.run_init()
+
+    def test_agents_write_failure_without_original_leaves_no_agents_file(self):
+        real_write_bytes = Path.write_bytes
+        calls = []
+        def failing_write(path, data, *args, **kwargs):
+            if not calls:
+                calls.append(path)
+                real_write_bytes(path, b'PARTIAL-')
+                raise OSError('injected AGENTS write error')
+            return real_write_bytes(path, data, *args, **kwargs)
+        with patch.object(Path, 'write_bytes', failing_write):
+            with self.assertRaisesRegex(OSError, 'injected AGENTS write error'):
+                bootstrap.install(self.root)
+        self.assertFalse((self.root / 'AGENTS.md').exists())
+        self.assertFalse((self.root / '.AGENTS.md.sdlc-install-tmp').exists())
+        self.assertFalse((self.root / '_system').exists())
+        self.assertFalse((self.root / '.sdlc-init-lock').exists())
+        self.run_init()
+
+    def test_receipt_failure_restores_agents_and_scaffold(self):
+        (self.root / 'AGENTS.md').write_text('keep me')
+        real_open = Path.open
+        def failing_open(path, mode='r', *args, **kwargs):
+            if path.name == 'scaffold.json' and mode == 'x':
+                raise OSError('injected receipt error')
+            return real_open(path, mode, *args, **kwargs)
+        with patch.object(Path, 'open', failing_open):
+            with self.assertRaisesRegex(OSError, 'injected receipt error'):
+                bootstrap.install(self.root)
+        self.assertEqual((self.root / 'AGENTS.md').read_text(), 'keep me')
+        self.assertFalse((self.root / '_system').exists())
+        self.assertFalse((self.root / 'stages').exists())
+        self.assertFalse((self.root / '_shared').exists())
+        self.assertFalse((self.root / '.sdlc-init-lock').exists())
+        self.run_init()
+
+    def test_rollback_cleanup_failure_preserves_original_error(self):
+        (self.root / 'AGENTS.md').write_text('keep me')
+        real_open = Path.open
+        state = {'calls': 0}
+        def failing_open(path, mode='r', *args, **kwargs):
+            if mode == 'xb':
+                state['calls'] += 1
+                if state['calls'] == 2:
+                    raise OSError('original write error')
+            return real_open(path, mode, *args, **kwargs)
+        def failing_unlink(path, *args, **kwargs):
+            raise OSError('injected cleanup error')
+        with patch.object(Path, 'open', failing_open), patch.object(Path, 'unlink', failing_unlink):
+            with self.assertRaises(RuntimeError) as ctx:
+                bootstrap.install(self.root)
+        self.assertIn('original write error', str(ctx.exception))
+        self.assertIn('injected cleanup error', str(ctx.exception))
+        self.assertIsInstance(ctx.exception.__cause__, OSError)
+
+    def test_lock_cleanup_failure_on_success_surfaced(self):
+        real_rmdir = Path.rmdir
+        def failing_rmdir(path, *args, **kwargs):
+            if path.name == '.sdlc-init-lock':
+                raise OSError('injected lock cleanup error')
+            return real_rmdir(path, *args, **kwargs)
+        with patch.object(Path, 'rmdir', failing_rmdir):
+            with self.assertRaisesRegex(RuntimeError, 'lock cleanup failed'):
+                bootstrap.install(self.root)
+        self.assertTrue((self.root / '_system/SDLC.md').is_file())
+        self.assertTrue((self.root / '.sdlc-init-lock').exists())
+
+    def test_lock_cleanup_failure_on_error_reports_both(self):
+        real_open = Path.open
+        state = {'calls': 0}
+        def failing_open(path, mode='r', *args, **kwargs):
+            if mode == 'xb':
+                state['calls'] += 1
+                if state['calls'] == 2:
+                    raise OSError('original write error')
+            return real_open(path, mode, *args, **kwargs)
+        real_rmdir = Path.rmdir
+        def failing_rmdir(path, *args, **kwargs):
+            if path.name == '.sdlc-init-lock':
+                raise OSError('injected lock cleanup error')
+            return real_rmdir(path, *args, **kwargs)
+        with patch.object(Path, 'open', failing_open), patch.object(Path, 'rmdir', failing_rmdir):
+            with self.assertRaises(RuntimeError) as ctx:
+                bootstrap.install(self.root)
+        self.assertIn('original write error', str(ctx.exception))
+        self.assertIn('lock cleanup', str(ctx.exception))
+
+    def test_concurrent_agents_change_aborts_without_overwrite(self):
+        (self.root / 'AGENTS.md').write_text('v1 instructions')
+        real_read_bytes = Path.read_bytes
+        state = {'calls': 0}
+        def concurrent_read(path, *args, **kwargs):
+            data = real_read_bytes(path, *args, **kwargs)
+            if path.name == 'AGENTS.md':
+                state['calls'] += 1
+                if state['calls'] == 2:
+                    Path.write_bytes(path, b'v2 concurrent edit')
+                    return real_read_bytes(path, *args, **kwargs)
+            return data
+        with patch.object(Path, 'read_bytes', concurrent_read):
+            with self.assertRaisesRegex(ValueError, 'changed during initialization'):
+                bootstrap.install(self.root)
+        self.assertEqual((self.root / 'AGENTS.md').read_bytes(), b'v2 concurrent edit')
+        self.assertFalse((self.root / '_system').exists())
+        self.assertFalse((self.root / '.sdlc-init-lock').exists())
+
+    def test_install_preserves_agents_file_mode(self):
+        agents = self.root / 'AGENTS.md'
+        agents.write_text('Existing instructions')
+        agents.chmod(0o600)
+        self.run_init()
+        self.assertTrue(agents.read_text().startswith('Existing instructions'))
+        self.assertEqual(agents.stat().st_mode & 0o777, 0o600)
+
+    def test_stale_installer_tmp_file_refused(self):
+        tmp = self.root / '.AGENTS.md.sdlc-install-tmp'
+        tmp.write_bytes(b'user data')
+        self.run_init(ok=False)
+        self.assertEqual(tmp.read_bytes(), b'user data')
+        self.assertFalse((self.root / '_system').exists())
+
 
 if __name__ == '__main__':
     unittest.main()
