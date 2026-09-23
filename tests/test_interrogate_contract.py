@@ -1,4 +1,4 @@
-"""Structural contract checks for grill-me-with-jev.
+"""Structural contract checks for interrogate.
 
 These checks must not be reported as proof of transition or authorization behavior.
 """
@@ -9,7 +9,7 @@ import unittest
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL_DIR = ROOT / "skills" / "grill-me-with-jev"
+SKILL_DIR = ROOT / "skills" / "interrogate"
 
 
 class TestGrillMeWithJevContract(unittest.TestCase):
@@ -52,9 +52,25 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                 self.assertTrue(target.is_relative_to(SKILL_DIR.resolve()), target)
                 self.assertTrue(target.is_file(), target)
                 links.append(target)
-        for ref_name in ("ledger-transitions.md", "typesafe-protocol.md"):
+        for ref_name in ("ledger-transitions.md",):
             with self.subTest(ref=ref_name):
                 self.assertIn(SKILL_DIR / "references" / ref_name, links)
+        self.assertNotIn(SKILL_DIR / "references" / "typesafe-protocol.md", links)
+
+    def test_no_model_advice_tokens(self):
+        for path in SKILL_DIR.rglob("*.md"):
+            content = path.read_text()
+            for token in ("typesafe", "Jev triage", "Jev option", "Noul",
+                          "noul", "\u26a1", "confidence",
+                          "grill-me-with-jev"):
+                with self.subTest(path=str(path), token=token):
+                    self.assertNotIn(token, content)
+
+    def test_single_presentation_template(self):
+        content = (SKILL_DIR / "SKILL.md").read_text()
+        self.assertEqual(len(re.findall(r"```text", content)), 1)
+        self.assertIn("\U0001f4dc Grounded:", content)
+        self.assertIn("\U0001f464 Owner:", content)
 
     def test_artifact_chain_relative_links_resolve(self):
         checked = 0

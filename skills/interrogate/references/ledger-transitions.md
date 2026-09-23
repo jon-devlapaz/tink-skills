@@ -2,13 +2,13 @@
 
 This document defines the decision ledger data model, frontier state readiness,
 single-decision pacing, dependency resolution, cycle breaking, and cascading
-invalidation rules for `grill-me-with-jev`. It serves as the authoritative
-specification for ledger state transitions, complemented by the TypeSafe protocol
-at [typesafe-protocol.md](typesafe-protocol.md).
+invalidation rules for `interrogate`. It is the authoritative
+specification for ledger state transitions.
 
 ## 1. Decision Ledger Data Model
 
-The interview operates as a projection of a formal directed acyclic graph (DAG)
+The interview operates as a projection of a dependency graph (acyclic
+invariant, repaired via §4 cycle handling)
 known as the **decision ledger**. The agent maintains this ledger to track
 investigated facts, consequential trade-offs, accepted constraints, and open
 blockers. During long interviews, the decision ledger may be maintained in an
@@ -26,7 +26,7 @@ consequential decision requiring judgment. Every node must have:
 - `prerequisites`: Tuple or list of prerequisite node IDs that must be `settled` before this node can become ready.
 - `predicate`: Optional condition expression that must evaluate to true for the branch to be active.
 - `evidence`: Workspace facts, inspected paths, schema snippets, configuration keys, or explicit access limitations.
-- `recommendation`: Grounded host proposal based on verified evidence and settled prerequisites, annotated with Jev advisory metrics when evaluated.
+- `recommendation`: Grounded host proposal based on verified evidence and settled prerequisites.
 - `answer`: Actual user choice, evidence-derived fact, or delegated choice.
 - `authority`: Authority source for the answer: `user` (explicit user instruction), `evidence` (verified workspace fact), or `delegated` (scoped user delegation).
 - `revision`: Premise revision number at which the node was created, updated, or settled.
@@ -77,8 +77,8 @@ on the frontier simultaneously, they are never presented all at once.
 When multiple independent nodes are ready on the frontier, prioritize and rank
 them by:
 1. **Consequence**: Highest architectural, security, data integrity, or runtime behavioral impact.
+2. **Risk**: blast radius × irreversibility × cost of reversal, stated in one line per node; record the tiebreak reason in the ledger.
 2. **Risk**: Highest blast radius, irreversibility, or cost of reversal.
-3. **Jev Triage Score**: Highest advisory probability or confidence for `ask` (when consulted via [typesafe-protocol.md](typesafe-protocol.md)).
 
 Select the single highest-priority ready decision to present to the user.
 
@@ -89,8 +89,9 @@ so the user retains visibility into total scope without feeling overwhelmed:
 ```text
 Decision 1 of 3 ready (2 parked)
 ❓ Q1 — Decision: consequence or tradeoff requiring your judgment.
-➡️ Recommended: option grounded in evidence.
-⚡️ Jev triage: ask now · <returned probability> probability
+📜 Grounded: <claim> (path:line); <claim> (commit|log).
+👤 Owner: <who answers> — Why it matters: <what it unblocks or endangers>.
+➡️ Recommended: option grounded in the 📜 lines above.
 ```
 
 - Report counts: `Decision X of Y ready (Z parked)` where:
@@ -137,21 +138,22 @@ or “Use Redis only if cluster mode is supported”) are **conditional answers*
 ## 5. Answers, Delegation, and Deferral
 
 ### Explicit Choices & Prohibitions
-- Record the actual user answer even when it contradicts the host recommendation or model advice.
+- Record the actual user answer even when it contradicts the host recommendation.
 - Apply volunteered constraints and prohibitions (e.g. “No Kafka under any circumstances”) across all nodes and candidate options immediately.
 - If a user choice conflicts with an accepted constraint, expose the conflict explicitly rather than silently erasing prior decisions.
 
 ### Scoped Delegation
 - Phrases like “whatever you think”, “you decide”, or “I don't care which option” delegate the referenced decision.
-- Settle the node using the currently valid recommendation within that scope; record `authority: delegated`.
+- Settle the node using the currently valid recommendation within that scope; record `authority: delegated`. Nodes marked `⚠️ ungrounded` cannot settle by delegation: retain as unresolved blockers.
 - If no valid recommendation exists, investigate workspace facts or retain the node as an unresolved blocker.
 - Ambiguous delegation covers only the clearly referenced node, never all future decisions.
 - “Use your arrows” accepts currently displayed valid recommendation arrows (`➡️`) only.
+- Worked example: “you decide” on a node with 📜 lines and a ➡️ settles it as `delegated`; the same words on a `⚠️ ungrounded` node settle nothing — it stays an unresolved blocker.
 - Acceptance of an earlier recommendation does not authorize a replacement if the premise is subsequently invalidated; only continuing explicit delegation covers a revised choice.
 - “I don't care” without a clear referent does not remove a requirement; clarify only if its meaning changes a consequential outcome.
 
 ### Deferrals
-- “Skip this” requests deferral, not acceptance or dependency parking.
+- “Skip this” requests deferral, not acceptance or dependency parking. Deferring a parked node requires scoping out its dependents or retaining them as parked blockers — skip never silently unblocks.
 - Defer only **non-blocking** concerns, recording both a `defer_reason` and a concrete `revisit_condition`.
 - If the skipped item is a known blocker, keep it `unresolved` and explain once why it cannot be deferred without compromising discovery.
 - Do not repeat an explicitly skipped question without a new reason; it remains a tracked item preventing completion until settled or explicitly scoped out.
@@ -167,7 +169,7 @@ or “Use Redis only if cluster mode is supported”) are **conditional answers*
 When an accepted answer, constraint, or underlying piece of evidence changes semantically:
 1. **Increment Premise Revision**: Increment the ledger's premise revision number and invalidate any prior pre-intent confirmation.
 2. **Transitive Traversal**: Traverse all transitive descendant nodes in topological prerequisite order.
-3. **Preserve Valid Justifications**: Preserve answers whose justifications remain fully supported despite the changed premise.
+3. **Preserve Valid Justifications**: Preserve answers whose justifications remain fully supported and freshly verified at the current revision despite the changed premise.
 4. **Reopen Invalidated Nodes**: Reopen nodes whose prerequisites or premises were altered, setting status back to `unresolved`, clearing or parking invalid answers, and recording `reopen_reason`.
 5. **Supersede Inactive Branches**: Mark branches rendered irrelevant by changed choices as `superseded`.
 6. **Reactivate Superseded Branches**: Re-evaluate previously superseded branches that become active under the new premise.
@@ -177,5 +179,5 @@ When an accepted answer, constraint, or underlying piece of evidence changes sem
 ### Post-Traversal Readiness
 After traversal, recompute readiness: reopened descendants remain parked until their
 updated prerequisites settle. When re-asking a reopened question, explicitly state
-the changed premise that prompted reopening. Model score fluctuations alone never
-justify invalidation without an underlying factual or authority change.
+the changed premise that prompted reopening. Reopen only for a recorded factual
+or authority change, never on a hunch alone.

@@ -32,9 +32,9 @@ path = "skills/epistemic-matrix"
 sha256 = "bce355e60ed6c1439076b457d680e3fb609b84543327a62e26b6d88beaa01e2c"
 
 [[skills]]
-name = "grill-me-with-jev"
-source = "skills/grill-me-with-jev"
-sha256 = "e17d57d279197bd1c0cc84280595c803119f85af141ddc11ae7d9e8cacb97908"
+name = "interrogate"
+source = "skills/interrogate"
+sha256 = "bcc1672a58b18d629620dff9062a4cddb65ceaa8fcbf59a62e8ddec00250c109"
 
 [[skills]]
 name = "manage-tink"

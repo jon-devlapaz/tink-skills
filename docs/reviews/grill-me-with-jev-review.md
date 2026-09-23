@@ -4,7 +4,7 @@ Status: local validation complete; release approval not claimed.
 Chain: [intent](../intent/grill-me-with-jev-intent.md) ->
 [spec](../specs/grill-me-with-jev-spec.md) ->
 [build plan](../plans/grill-me-with-jev-plan.md) -> this review.
-Contract: [SKILL.md](../../skills/grill-me-with-jev/SKILL.md).
+Contract: [SKILL.md](../../skills/interrogate/SKILL.md).
 Cases: [evals.json](../../skills/grill-me-with-jev/evals/evals.json).
 
 ## Method and baseline
