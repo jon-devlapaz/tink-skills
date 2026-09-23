@@ -1,9 +1,0 @@
-{
-  "case_id": "copied-lineage-requires-abstention",
-  "origin": "author_derived",
-  "purpose": "Prove copied lineage is normalized and high-risk selection abstains into a build contract.",
-  "derived_from": [
-    "Skill Scout lineage, ABSTAIN/BUILD, and escalation rules"
-  ],
-  "expected_failure_without_skill": "Count copies separately, force a choice, accept summarization, or omit safeguards."
-}

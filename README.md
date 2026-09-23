@@ -86,16 +86,11 @@ Operator manual: [`skills/ai-native-sdlc/assets/_system/SDLC.md`](skills/ai-nati
 
 ```text
 .
-├── docs/
-│   ├── intent/          # Problem statements & goals
-│   ├── specs/           # Functional specifications
-│   ├── plans/           # Implementation plans
-│   └── reviews/         # Verification & evaluation reports
 ├── skills/
 │   ├── ai-native-sdlc/
-│   ├── grill-me-with-jev/
+│   ├── interrogate/
 │   └── skill-scout/
-└── tests/               # Python contract and Jev-fit tests
+└── tests/               # Python contract and fit tests
 ```
 
 ---

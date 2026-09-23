@@ -100,22 +100,8 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         self.assertIn("\U0001f4dc Grounded:", content)
         self.assertIn("\U0001f464 Owner:", content)
 
-    def test_artifact_chain_relative_links_resolve(self):
-        checked = 0
-        for folder, artifact in (("intent", "intent"), ("specs", "spec"),
-                                 ("plans", "plan"), ("reviews", "review")):
-            path = ROOT / "docs" / folder / f"grill-me-with-jev-{artifact}.md"
-            if not path.is_file():
-                continue
-            checked += 1
-            for href in re.findall(r"\[[^\]]*\]\(([^)]+)\)", path.read_text()):
-                if "://" in href or href.startswith(("/", "#")):
-                    continue
-                target = (path.parent / href.split("#")[0]).resolve()
-                if not target.is_file() and ("grill-me-with-jev-intent.md" in href or "evals" in href):
-                    continue
-                self.assertTrue(target.is_file(), href)
-        self.assertGreater(checked, 0)
+    # docs/ chain retired with the docs tree (prune): no design docs ship;
+    # runs/ carry session evidence instead.
 
 
 if __name__ == "__main__":
