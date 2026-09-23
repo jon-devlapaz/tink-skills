@@ -127,5 +127,54 @@ class TestGrillMeWithJevContract(unittest.TestCase):
     # runs/ carry session evidence instead.
 
 
+class TestThroughlineSkillOrder(unittest.TestCase):
+    def test_readme_throughline_order_and_deprecation(self):
+        readme = (ROOT / "README.md").read_text()
+        mermaid = re.search(r"```mermaid\n(.*?)```", readme, re.DOTALL)
+        self.assertIsNotNone(mermaid)
+        diagram = mermaid.group(1)
+        edges = (
+            'intent["intent / idea"] --> interrogate["interrogate"]',
+            'interrogate -->|settled pre-intent| scout["skill-scout"]',
+            'scout -->|qualified skill / none| implementation["ai-native-sdlc"]',
+        )
+        positions = []
+        for edge in edges:
+            at = diagram.find(edge)
+            self.assertGreaterEqual(at, 0, edge)
+            positions.append(at)
+        self.assertEqual(positions, sorted(positions))
+        self.assertLess(positions[0], positions[1])
+        self.assertLess(positions[1], positions[2])
+        self.assertNotIn("grill-me-with-jev", diagram)
+        self.assertNotRegex(diagram, r"interrogate\s*-->(?:\|[^|]*\|)?\s*implementation\[")
+        self.assertIn(
+            "`grill-me-with-jev` are deprecated; use `interrogate`",
+            readme,
+        )
+
+    def test_grill_me_with_jev_is_a_redirect(self):
+        path = ROOT / "skills" / "grill-me-with-jev" / "SKILL.md"
+        content = path.read_text()
+        frontmatter = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
+        self.assertIsNotNone(frontmatter)
+        name = re.search(r"(?m)^name:\s*(\S+)\s*$", frontmatter.group(1))
+        self.assertIsNotNone(name)
+        self.assertEqual(name.group(1), "grill-me-with-jev")
+        self.assertIn("Deprecated alias", frontmatter.group(1))
+        self.assertIn("Use the `interrogate` skill", frontmatter.group(1))
+        self.assertIn("Use **`interrogate`** instead", content)
+        self.assertIn("../interrogate/SKILL.md", content)
+        self.assertIn("canonical skill is `interrogate`", content)
+        heading = re.search(r"(?m)^# .+$", content)
+        self.assertIsNotNone(heading)
+        self.assertIn("deprecated", heading.group(0).lower())
+        self.assertNotRegex(content, r"(?i)canonical interview")
+        self.assertNotRegex(
+            content,
+            r"(?i)canonical (?:interview )?skill is `grill-me-with-jev`",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
