@@ -31,6 +31,9 @@ class TestGrillMeWithJevContract(unittest.TestCase):
             "not approved for implementation",
             "Problem statement",
             "Proposed outcome",
+            "Acceptance criteria",
+            "exact command",
+            "Suggested first slice",
             "Affected users and systems",
             "Constraints and boundaries",
             "Accepted decisions",
@@ -57,14 +60,39 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                 self.assertIn(SKILL_DIR / "references" / ref_name, links)
         self.assertNotIn(SKILL_DIR / "references" / "typesafe-protocol.md", links)
 
-    def test_no_model_advice_tokens(self):
+    def test_no_triage_machinery(self):
+        # Per-turn lens routing is allowed (see test_lens_call_present); the
+        # banned set is the triage/option/Noul machinery rejected by pilots.
+        # Revision note: narrowed from a blanket model-advice ban by explicit
+        # operator direction; see run grill-epistemic dogfood battery report.
         for path in SKILL_DIR.rglob("*.md"):
             content = path.read_text()
-            for token in ("typesafe", "Jev triage", "Jev option", "Noul",
-                          "noul", "\u26a1", "confidence",
+            for token in ("typesafe-protocol", "Jev triage", "Jev option",
+                          "Noul", "noul", "\u26a1",
                           "grill-me-with-jev"):
                 with self.subTest(path=str(path), token=token):
                     self.assertNotIn(token, content)
+
+    def test_lens_call_present(self):
+        self.assertTrue((SKILL_DIR / "references" / "epistemic-lenses.md").is_file())
+        content = (SKILL_DIR / "SKILL.md").read_text()
+        for required in ("epistemic-lenses.md", "gating rule",
+                         "never a badge"):
+            with self.subTest(required=required):
+                self.assertIn(required, content)
+        lenses = (SKILL_DIR / "references" / "epistemic-lenses.md").read_text()
+        for required in ("Opt-in", "Authorization", "Preflight",
+                         "unresolved", "transcript is the receipt",
+                         "confidence", "0.50"):
+            with self.subTest(required=required):
+                self.assertIn(required, lenses)
+
+    def test_braindump_entry_and_draft_step(self):
+        content = (SKILL_DIR / "SKILL.md").read_text()
+        for required in ("braindump", "Shape the working draft",
+                         "PROVISIONAL", "Only then does the frontier loop"):
+            with self.subTest(required=required):
+                self.assertIn(required, content)
 
     def test_single_presentation_template(self):
         content = (SKILL_DIR / "SKILL.md").read_text()

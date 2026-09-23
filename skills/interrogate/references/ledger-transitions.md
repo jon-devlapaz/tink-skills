@@ -78,20 +78,17 @@ When multiple independent nodes are ready on the frontier, prioritize and rank
 them by:
 1. **Consequence**: Highest architectural, security, data integrity, or runtime behavioral impact.
 2. **Risk**: blast radius × irreversibility × cost of reversal, stated in one line per node; record the tiebreak reason in the ledger.
-2. **Risk**: Highest blast radius, irreversibility, or cost of reversal.
 
 Select the single highest-priority ready decision to present to the user.
 
 ### Presentation Format & Backlog Progress
-Present exactly one decision per interaction turn. Always report backlog progress
+Present exactly one decision per interaction turn in the canonical template
+owned by SKILL.md Step 3 (single source; do not duplicate it here). Always report backlog progress
 so the user retains visibility into total scope without feeling overwhelmed:
 
 ```text
 Decision 1 of 3 ready (2 parked)
-❓ Q1 — Decision: consequence or tradeoff requiring your judgment.
-📜 Grounded: <claim> (path:line); <claim> (commit|log).
-👤 Owner: <who answers> — Why it matters: <what it unblocks or endangers>.
-➡️ Recommended: option grounded in the 📜 lines above.
+(see SKILL.md Step 3 for the canonical ❓/📜/👤/➡️ template)
 ```
 
 - Report counts: `Decision X of Y ready (Z parked)` where:

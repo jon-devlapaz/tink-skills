@@ -34,7 +34,7 @@ sha256 = "bce355e60ed6c1439076b457d680e3fb609b84543327a62e26b6d88beaa01e2c"
 [[skills]]
 name = "interrogate"
 source = "skills/interrogate"
-sha256 = "bcc1672a58b18d629620dff9062a4cddb65ceaa8fcbf59a62e8ddec00250c109"
+sha256 = "53163c63b5ee942af34544355799d9a0cd6150ebcb672fa51fa9ddc71629006b"
 
 [[skills]]
 name = "manage-tink"

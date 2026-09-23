@@ -1,6 +1,6 @@
 ---
 name: interrogate
-description: Stress-test a consequential plan, architecture, design, or technical decision by investigating facts and surfacing unresolved choices and failure modes. Use for requests to grill, challenge assumptions, interrogate, pressure-test, find holes, or identify missing decisions in a plan. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
+description: Stress-test a consequential plan, architecture, design, or technical decision — or turn a loose brainstorm, braindump, hunch, or idea into one — by investigating facts and surfacing unresolved choices and failure modes. Use for requests to grill, challenge assumptions, interrogate, pressure-test, find holes, or identify missing decisions, or think through a half-formed brainstorm, braindump, hunch, or idea. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
   version: "1.4.0"
@@ -14,18 +14,32 @@ its receipt; every question names its owner.
 
 ## 1. Triage the ask and extract context
 
-- Open an interview only for an explicit request to challenge a plan or surface
-  its missing decisions. Ordinary review, explanation, summary, execution, and
+- Open an interview for an explicit request to challenge a plan, surface
+  its missing decisions, or think through a loose brainstorm, braindump,
+  hunch, or idea. A half-formed input is valid entry — it gets shaped first,
+  not refused. Ordinary review, explanation, summary, execution, and
   explicit no-interview requests keep their requested format. Non-interactive
   requests skip the interview and retain their existing authorization.
 - Before opening the interview, read [ledger-transitions.md](references/ledger-transitions.md)
-  for decision ledger setup, frontier transitions, and ranking.
+  for decision ledger setup, frontier transitions, and ranking, and
+  [epistemic-lenses.md](references/epistemic-lenses.md) for the per-turn lens menu.
   Maintain that decision ledger throughout; visible questions are a projection of this ledger.
 - Extract the goal, explicit constraints, exclusions, accepted answers, and
   scope. Preserve settled choices and recorded exclusions faithfully without
   re-asking established decisions or proposing prohibited alternatives.
 
 **Complete when:** The goal and initial ledger are recorded, or the fast path ends.
+
+### Shape the working draft (braindump entry only; skip when a plan arrives)
+
+When the input is loose, synthesize a provisional draft before any grill
+turn: candidate goal, candidate proposed outcome, and candidate options with
+tradeoffs — each labeled PROVISIONAL assumption, never an answer or a claim.
+Provisional lines need no 📜 and spend no ungrounded budget; they are
+scaffolding for the user to correct. Present the draft in one tight block and
+ask what to keep, cut, or reshape. Confirmed lines become ledger nodes (facts
+to investigate, decisions to grill); rejected lines are dropped, not parked.
+Only then does the frontier loop start.
 
 ## 2. Investigate facts before asking
 
@@ -66,6 +80,15 @@ from settling by delegation (see Step 4). Every frontier question names its deci
 `operator` alone suffices only for consequence-free clarifications. Queued and undisplayed nodes remain tracked blockers in
 the ledger that prevent completion until settled. Surface material findings
 promptly as they arise.
+
+Per turn, and only for sessions opted into lenses (see session setup in
+[epistemic-lenses.md](references/epistemic-lenses.md)), the host may issue one
+lens-selection call: state (goal, ready
+node's evidence summaries, owner named so far) against
+[epistemic-lenses.md](references/epistemic-lenses.md) as a single Choice,
+applied per its gating rule. A skipped or failed call is a
+logged skip, never a badge and never a settlement. The lens advises the
+reading of the turn only.
 
 ```text
 Decision 1 of 3 ready (2 parked)
@@ -158,6 +181,11 @@ The displayed and saved revision must contain:
   `pre-intent — confirmed for intake; not approved for implementation`.
 - Problem statement: current behavior, evidence, and why it matters.
 - Proposed outcome: desired user-visible results and success criteria.
+- Acceptance criteria: standalone testable checks, each independently
+  verifiable without re-reading the interview. Every check carries its exact command,
+  expected output, and where it runs — prose without literals is
+  not a criterion. This section is the executable core of the intake —
+  downstream stages consume it verbatim.
 - Affected users and systems: relevant repositories, modules, and execution paths.
 - Constraints and boundaries: non-negotiables, exclusions, and rejected alternatives.
 - Accepted decisions: actual answers, authority, rationale, and dependencies;
@@ -168,6 +196,10 @@ The displayed and saved revision must contain:
   this session. Flag a stale watch: any cited source older than the session start
   or since modified is suspect until re-read. Record verified origins and state
   gaps explicitly rather than inventing missing provenance.
+- Suggested first slice: the smallest implementation step that would start
+  resolving the problem, labeled proposal only, stated as an exact first
+  command with its working directory. Non-binding: it seeds Stage 01
+  approach drafting without preempting design or authorizing work.
 - Risks and verification: consequential failure modes, mitigations, and testable
   acceptance criteria; distinguish proposed checks from completed verification.
 - Open questions and deferrals: only non-blocking items, with reasons and revisit
