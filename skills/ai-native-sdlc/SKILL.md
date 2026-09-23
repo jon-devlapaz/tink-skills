@@ -22,65 +22,67 @@ python3 <skill-directory>/scripts/init.py <target-checkout>
 
 The preview reports collisions; the installer refuses unmanaged, partial, modified,
 or different-version scaffolds instead of overwriting them. There is no `--force`.
-The installed guide is `_system/SDLC.md`. Verification starts unconfigured and
-must be given real project checks. Repeated initialization preserves that config.
-For upgrades, compare a fresh temporary installation and review migration separately;
-never treat initialization as an upgrade or change factory files during an active run.
+The installed operator guide is `_system/SDLC.md`. Verification starts unconfigured;
+populate it with real project checks before relying on passing receipts. Repeated
+initialization preserves that configuration. Initialization is not an upgrade mechanism;
+compare a fresh temporary installation to plan migrations separately, and keep factory
+templates untouched during active runs to preserve stage contracts.
 
 ## Workflow
 
 1. **Locate and resume.** Read the target checkout's `AGENTS.md`, then run
-   `_system/scripts/status.sh`. Select the existing run that matches the request;
-   inspect its `run.json` and run status before creating anything. Commands operate
+   `_system/scripts/status.sh`. Select the existing run matching the request;
+   inspect its `run.json` and status before creating anything. Commands operate
    on the checkout containing the scripts, not an arbitrary application repository.
-   If the requested target is unclear, resolve it before mutations.
-2. **Choose the entry point.** For new work, use the profile justified by the
-   user's scope: `light` combines definition in `brief.md`; `full` separates
-   intent, spec, and plan for consequential changes. Do not silently downgrade a
-   selected profile. Consult [stage navigation](references/lifecycle-stages.md)
+   Resolve ambiguous target checkouts before mutations.
+2. **Choose the entry point.** For new work, select the profile justified by scope:
+   `light` combines definition in `brief.md`; `full` separates intent, spec, and
+   plan for consequential changes. Maintain the selected profile across stages so
+   that required review gates remain enforced. Consult [stage navigation](references/lifecycle-stages.md)
    for initialization and the active contract. Legacy drafts are not approved
-   evidence; preserve them and follow the repository's recovery instructions.
+   evidence; preserve them and follow repository recovery procedures.
 3. **Read the active contract.** Load its immediate inputs and requested references,
-   then complete that stage's work. Do not replay all six stages or create a run
-   merely to answer a question. Surface material findings immediately. If references
-   conflict, disclose the conflict and resolve it against user instructions and
-   repository policy before the affected action; do not invent a new rule here.
+   then complete that stage's work. Answer read-only questions directly without
+   creating a run or walking unnecessary stages. Surface material findings immediately.
+   When references conflict, disclose the discrepancy and resolve it against user
+   instructions and repository policy before acting, rather than inventing an ad-hoc rule.
 4. **Execute within authority.** Use a separate worktree or clone for each
-   code-writing run. Keep run artifacts in that checkout. Record only actual human
-   decisions with the CLI, including reviewer, source, and reason. Prior explicit
-   authorization remains valid within its scope; never fabricate a separate role's
-   sign-off. For a capability gap, read [toolchain routing](references/toolchain-routing.md).
+   code-writing run, keeping run artifacts inside that checkout. Record only genuine
+   human review decisions with the CLI, including reviewer, source, and reason.
+   Prior explicit authorization remains valid within its scope; role boundaries
+   must reflect actual stakeholder input rather than fabricated sign-offs. For
+   capability gaps, consult [toolchain routing](references/toolchain-routing.md).
 5. **Verify and report.** When the active stage or changed candidate requires
    verification, inspect `_system/verification.json` before claiming what it proves:
    new installations require project-specific checks. Run
    `_system/scripts/verify.sh <slug>`, then check current status. The generated
-   receipt is `runs/<slug>/04-test/output/verification.json`. Otherwise, check
-   current status without running verification. Report the completed action,
-   evidence, next valid action, and any external approval or deployment result
-   still missing. A passing local receipt does not mean deployed.
+   receipt is `runs/<slug>/04-test/output/verification.json`. If verification is
+   not required, inspect status directly. Report the completed action, evidence,
+   next valid action, and any external approval or deployment result still missing.
+   Local test receipts certify local checks, not deployment.
 
 ## Evidence and recovery
 
-- Use `python3 _system/scripts/sdlc.py <command> --help` for current arguments;
-  use `_system/SDLC.md` for commands and recovery (the installed operator guide).
-  `decide` requires `--reviewer`, `--source`, and `--reason` for both approval
-  and `changes-requested`, including full-profile stages 1, 2, and 3.
+- Consult `_system/SDLC.md` and `python3 _system/scripts/sdlc.py <command> --help`
+  for commands and recovery. The `decide` command requires `--reviewer`, `--source`,
+  and `--reason` for both approval and `changes-requested`, across full-profile stages 1, 2, and 3.
 - Local references are recorded, not authenticated. Hashes detect differences
   against recorded inputs; agent-writable receipts and test locks are not a
   security boundary. Trusted CI and forge policy must enforce release authority.
-- A stable dirty working tree can verify. Covered content changes make evidence
-  stale; evidence-only commits preserve content validity. The recorded commit is
-  provenance, not CI approval for a newer revision. Commit code before final
-  verification and recheck after edits or skill mutations. Do not claim ignored files or external services
-  are covered by the checkout fingerprint.
-- On rejection or stale inputs, retain feedback and artifacts, revise the affected
-  work, renew required human decisions, and rerun verification. Never hand-edit
-  generated receipts to advance status.
+- Verification tolerates a stable dirty working tree, but any tracked content
+  change stales prior evidence; evidence-only commits preserve content validity.
+  Commit code before final verification and re-verify after any subsequent edits or
+  skill mutations. The checkout fingerprint covers tracked repository files,
+  not ignored files or external services.
+- When work is rejected or inputs become stale, retain prior feedback, revise the
+  artifacts, obtain renewed review decisions, and rerun verification. State
+  transitions depend on valid receipt hashes; advance status only through the CLI,
+  never by hand-editing generated receipts.
 - For bug runs, demonstrate the expected failure and obtain independent acceptance
-  before recording a reproduction baseline. A changed protected file fails against
-  that baseline. An incorrect already-recorded baseline needs independent review and a
-  replacement run linked to the original. A rejected proposal that is not yet
-  locked can be revised before acceptance; never weaken tests to obtain green.
+  before recording a reproduction baseline. Modifications to protected reproduction
+  files fail verification against that baseline. If a recorded baseline is incorrect,
+  link a replacement run under independent review. Revise implementation code to
+  satisfy the contract rather than weakening test assertions to force passing receipts.
 - On a busy or interrupted operation, inspect the reported lock and confirm no
   writer remains before removing it. Preserve partial results and inspect state
   before retrying; an operation's failure does not establish that nothing changed.

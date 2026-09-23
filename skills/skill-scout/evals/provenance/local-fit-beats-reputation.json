@@ -1,9 +1,0 @@
-{
-  "case_id": "local-fit-beats-reputation",
-  "origin": "author_derived",
-  "purpose": "Prove exact active-project fit outranks popularity, with a runner-up and approval-gated next step.",
-  "derived_from": [
-    "Skill Scout COMPARE selection and next-gate rules"
-  ],
-  "expected_failure_without_skill": "Choose popularity, omit the runner-up gap, or authorize restricted work."
-}

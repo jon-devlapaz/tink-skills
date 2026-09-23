@@ -1,9 +1,0 @@
-{
-  "case_id": "active-project-skill-prevents-redundant-adoption",
-  "origin": "author_derived",
-  "purpose": "Prove DISCOVER distinguishes active project and Tink-library candidates before separate acceptance and online-search questions.",
-  "derived_from": [
-    "Skill Scout DISCOVER checkpoint and Tink inventory boundaries"
-  ],
-  "expected_failure_without_skill": "Treat a library lead as active, skip the checkpoint, search before opt-in, or authorize restricted work."
-}

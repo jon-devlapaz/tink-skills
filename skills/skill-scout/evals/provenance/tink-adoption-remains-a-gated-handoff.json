@@ -1,9 +1,0 @@
-{
-  "case_id": "tink-adoption-remains-a-gated-handoff",
-  "origin": "author_derived",
-  "purpose": "Prove immutable, selected, managed Tink adoption remains a later approval-gated handoff.",
-  "derived_from": [
-    "Skill Scout approval rules and Tink adoption handoff"
-  ],
-  "expected_failure_without_skill": "Use a floating or unselected source, copy files, execute without approval, or omit validation."
-}

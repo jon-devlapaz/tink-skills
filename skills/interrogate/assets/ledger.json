@@ -1,0 +1,15 @@
+{"revision": 0, "goal": "example — replaced each turn", "origin": "goal",
+ "frontier": ["db-engine"],
+ "nodes": [
+  {"id": "goal", "kind": "fact", "status": "settled", "label": "★ Session goal",
+   "evidence": ["confirmed working draft"], "answer": "agreed beginning", "authority": "user", "prerequisites": []},
+  {"id": "auth-model", "kind": "fact", "status": "settled", "label": "Auth model",
+   "evidence": ["auth.py:12 `require_jwt()`"], "answer": "JWT required", "authority": "evidence", "prerequisites": ["goal"]},
+  {"id": "db-engine", "kind": "decision", "status": "unresolved", "label": "DB engine",
+   "question": "Postgres or SQLite?", "evidence": ["store.py:40 `sqlite3.connect`"],
+   "owner": "operator", "gate": "name the engine", "recommendation": "Postgres",
+   "prerequisites": ["auth-model"]},
+  {"id": "cache", "kind": "decision", "status": "unresolved", "label": "Cache layer",
+   "question": "Redis or in-process?", "evidence": [], "owner": "operator",
+   "gate": "name the cache", "prerequisites": ["db-engine"]}
+ ]}

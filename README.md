@@ -2,16 +2,17 @@
 
 Evidence-oriented Agent Skills for AI coding workflows:
 
-- **grill-me-with-jev** — Pressure-tests your engineering plan through a step-by-step interview, resolving facts in the codebase first and asking one consequential decision at a time.
+- **interrogate** — Pressure-tests your engineering plan through a step-by-step interview, resolving facts in the codebase first and asking one consequential decision at a time.
 - **skill-scout** — Finds, inspects, and qualifies existing agent skills before you build a new one.
 - **ai-native-sdlc** — Runs an evidence-based software development lifecycle with stage contracts, verified test receipts, and test locks.
+- **skill-gate** — Statically extracts feature vectors, profiles execution risk, and evaluates harness compatibility for agent skills.
 
-*(Note: `triangulate-me` has been deprecated and superseded by `grill-me-with-jev` for decision-tree interrogation and grounded planning).*
+*(Note: `triangulate-me` and `grill-me-with-jev` are deprecated; use `interrogate` for decision-tree interrogation and grounded planning. A thin redirect remains at `skills/grill-me-with-jev/` for older install links.)*
 
 ```mermaid
 flowchart LR
-    intent["intent / idea"] --> grill["grill-me-with-jev"]
-    grill -->|settled pre-intent| scout["skill-scout"]
+    intent["intent / idea"] --> interrogate["interrogate"]
+    interrogate -->|settled pre-intent| scout["skill-scout"]
     scout -->|qualified skill / none| implementation["ai-native-sdlc"]
 ```
 
@@ -20,23 +21,24 @@ flowchart LR
 Install the skills from this repository with [Tink](https://github.com/jon-devlapaz/tink):
 
 ```console
-tink skill add jon-devlapaz/tink-skills --skill grill-me-with-jev
+tink skill add jon-devlapaz/tink-skills --skill interrogate
 tink skill add jon-devlapaz/tink-skills --skill skill-scout
 tink skill add jon-devlapaz/tink-skills --skill ai-native-sdlc
+tink skill add jon-devlapaz/tink-skills --skill skill-gate
 ```
 
 Refresh an installed skill with `tink skill refresh NAME`.
 
 ---
 
-## grill-me-with-jev
+## interrogate
 
-`grill-me-with-jev` stress-tests your architectural plan or technical decision through a focused, single-question interview before you write code.
+`interrogate` stress-tests your architectural plan or technical decision through a focused, single-question interview before you write code.
 
 ### How it works
 - **Investigates facts first:** Checks repository code, configs, and schemas before asking you anything. If a fact is discoverable, it won't interrupt you for it.
 - **One decision at a time:** Paces questions one by one with a clear recommendation grounded in workspace evidence, keeping cognitive load low.
-- **Advisory triage (TypeSafe Jev):** Consults Jev to gauge whether a concern needs your judgment now, needs more investigation, or can proceed safely.
+- **Epistemic lenses:** Routes each turn through explicit lenses (opt-in, authorization, preflight) without legacy triage machinery.
 - **Durable discovery artifact:** Once all blockers are resolved and confirmed, writes the accepted plan to `pre-intent.md` as intake for downstream implementation.
 
 ### Interview format
@@ -45,11 +47,11 @@ Refresh an installed skill with `tink skill refresh NAME`.
 Decision 1 of 3 ready (2 parked)
 ❓ Q1 — Decision: Consequence or tradeoff requiring your judgment.
 ➡️ Recommended: Evidence-grounded option.
-⚡️ Jev triage: ask now · 0.85 probability
+📜 Grounded: workspace evidence summary.
 ```
 
-Full contract: [`skills/grill-me-with-jev/SKILL.md`](skills/grill-me-with-jev/SKILL.md)  
-Operational references: [`ledger-transitions.md`](skills/grill-me-with-jev/references/ledger-transitions.md) · [`typesafe-protocol.md`](skills/grill-me-with-jev/references/typesafe-protocol.md)
+Full contract: [`skills/interrogate/SKILL.md`](skills/interrogate/SKILL.md)  
+Operational references: [`ledger-transitions.md`](skills/interrogate/references/ledger-transitions.md) · [`epistemic-lenses.md`](skills/interrogate/references/epistemic-lenses.md)
 
 ---
 
@@ -82,20 +84,30 @@ Operator manual: [`skills/ai-native-sdlc/assets/_system/SDLC.md`](skills/ai-nati
 
 ---
 
+## skill-gate
+
+`skill-gate` statically audits agent skills for risk and harness compatibility without executing untrusted code.
+
+### How it works
+- **Feature extraction:** Parses `SKILL.md`, Python AST, and shell tokens into a normalized 8D vector with a deterministic hash.
+- **Risk profiling:** Scores destructive ops, network access, credential exposure, and autonomy escalation; triggers redline blocks when needed.
+- **Harness compatibility:** Checks declared tools against pi, claude, codex, or generic harness profiles.
+
+Full contract: [`skills/skill-gate/SKILL.md`](skills/skill-gate/SKILL.md)
+
+---
+
 ## Repository Structure
 
 ```text
 .
-├── docs/
-│   ├── intent/          # Problem statements & goals
-│   ├── specs/           # Functional specifications
-│   ├── plans/           # Implementation plans
-│   └── reviews/         # Verification & evaluation reports
 ├── skills/
 │   ├── ai-native-sdlc/
-│   ├── grill-me-with-jev/
-│   └── skill-scout/
-└── tests/               # Python contract and Jev-fit tests
+│   ├── interrogate/
+│   ├── skill-gate/
+│   ├── skill-scout/
+│   └── grill-me-with-jev/   # deprecated redirect → interrogate
+└── tests/               # Python contract and fit tests
 ```
 
 ---

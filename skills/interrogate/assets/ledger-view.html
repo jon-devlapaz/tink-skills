@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interrogate Ledger</title>
+<link rel="icon" href="data:,">
+<!--
+  Live viewer for the interrogate decision ledger.
+  Served over localhost (see SKILL.md Step 4): the page fetches ledger.json
+  beside it and re-renders on change (~2s poll). Opened via file:// it falls
+  back to the embedded snapshot below.
+  Source template: skills/interrogate/assets/ledger-view.html (+ ledger.json)
+  Schema: skills/interrogate/references/ledger-transitions.md §1 (JSON serialization)
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"
+        integrity="sha384-IWROdLKRsN1UuJywMlWl7/blXQ8GEooN2n7dzTxfEPd7ybYIKCUJ2Ol/1Gpf3YV4"
+        crossorigin="anonymous"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+  header { padding: 10px 16px; border-bottom: 1px solid #8884; }
+  header h1 { font-size: 16px; margin: 0 0 4px; }
+  #counts { font-size: 13px; }
+  #bar { height: 6px; background: #8883; border-radius: 3px; margin-top: 6px; }
+  #bar > div { height: 100%; background: #2a7; border-radius: 3px; }
+  main { flex: 1; display: flex; min-height: 0; }
+  #cy { flex: 3; min-width: 0; }
+  aside { flex: 1; min-width: 260px; border-left: 1px solid #8884; padding: 12px 14px; overflow-y: auto; font-size: 13px; }
+  aside h2 { font-size: 14px; margin: 0 0 6px; }
+  aside dt { font-weight: 600; margin-top: 8px; }
+  aside dd { margin: 2px 0 0; }
+  #legend { padding: 8px 16px; border-top: 1px solid #8884; font-size: 12px; display: flex; gap: 16px; flex-wrap: wrap; }
+  #cdn-banner { padding: 10px 16px; background: #a60; color: #fff; font-size: 13px; }
+  #cy ul { font-size: 13px; line-height: 1.7; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: baseline; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Interrogate Ledger</h1>
+  <div id="counts"></div>
+  <div id="bar"><div></div></div>
+</header>
+<div id="cdn-banner" hidden></div>
+<main>
+  <div id="cy"></div>
+  <aside id="detail"><h2>Node detail</h2><p>Click a node.</p></aside>
+</main>
+<div id="legend">
+  <span><i class="sw" style="background:#c80"></i>ready (frontier)</span>
+  <span><i class="sw" style="background:#2a7"></i>settled</span>
+  <span><i class="sw" style="background:#999"></i>parked</span>
+  <span><i class="sw" style="background:#36c"></i>deferred</span>
+  <span><i class="sw" style="background:#fff;border:1px dashed #999"></i>superseded</span>
+  <span>▭ decision &nbsp; ○ fact</span>
+</div>
+<script id="ledger-data" type="application/json">
+{"__LEDGER_JSON__": true, "revision": 0, "goal": "fallback snapshot — live data comes from ledger.json over localhost", "origin": "goal", "frontier": [], "nodes": []}
+</script>
+<script>
+let LEDGER = JSON.parse(document.getElementById('ledger-data').textContent);
+let cy = null, lastHash = '';
+const hash = s => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return String(h); };
+async function poll() {
+  try {
+    const res = await fetch('ledger.json?_=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const text = await res.text();
+    if (hash(text) === lastHash) return;
+    lastHash = hash(text);
+    LEDGER = JSON.parse(text);
+    render();
+  } catch { /* file:// or server down: keep current data */ }
+}
+function render() {
+if (typeof cytoscape === 'undefined') { fallback(); return; }
+const byId = Object.fromEntries(LEDGER.nodes.map(n => [n.id, n]));
+const frontier = new Set(LEDGER.frontier || []);
+const cls = n =>
+  n.status === 'settled' ? 'settled' :
+  n.status === 'deferred' ? 'deferred' :
+  n.status === 'superseded' ? 'superseded' :
+  frontier.has(n.id) ? 'ready' : 'parked';
+const roots = (LEDGER.origin && byId[LEDGER.origin]) ? [LEDGER.origin] : undefined;
+const pan = cy ? cy.pan() : null, zoom = cy ? cy.zoom() : null;
+if (cy) cy.destroy();
+cy = cytoscape({
+  container: document.getElementById('cy'),
+  elements: [
+    ...LEDGER.nodes.map(n => { const L = (n.label || n.id).length;
+      const w = Math.max(64, Math.round(L * 7 + 30));
+      const h = n.kind === 'fact' ? Math.max(56, Math.min(w, 120)) : 42;
+      return { data: { ...n, w, h }, classes: cls(n) + (n.id === LEDGER.origin ? ' origin' : '') }; }),
+    ...LEDGER.nodes.flatMap(n => (n.prerequisites || []).map(p =>
+      ({ data: { source: p, target: n.id } })))
+  ],
+  layout: { name: 'breadthfirst', directed: true, spacingFactor: 1.4, circle: false, roots },
+  style: [
+    { selector: 'node', style: {
+      'label': 'data(label)', 'text-valign': 'center', 'text-halign': 'center',
+      'width': 'data(w)', 'height': 'data(h)', 'font-size': '12px' } },
+    { selector: 'node[kind = "fact"]', style: { 'shape': 'ellipse' } },
+    { selector: 'node[kind = "decision"]', style: { 'shape': 'round-rectangle' } },
+    { selector: '.settled', style: { 'background-color': '#2a7', 'color': '#fff' } },
+    { selector: '.ready', style: { 'background-color': '#c80', 'color': '#fff', 'border-width': 3, 'border-color': '#a60' } },
+    { selector: '.parked', style: { 'background-color': '#999', 'color': '#fff' } },
+    { selector: '.deferred', style: { 'background-color': '#36c', 'color': '#fff' } },
+    { selector: '.superseded', style: { 'background-color': '#fff', 'color': '#999', 'border-width': 2, 'border-style': 'dashed', 'border-color': '#999', 'opacity': 0.6 } },
+    { selector: 'node.origin', style: { 'border-width': 5, 'border-color': '#111', 'font-weight': 'bold' } },
+    { selector: 'edge', style: { 'width': 2, 'line-color': '#999', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#999', 'curve-style': 'bezier' } }
+  ]
+});
+if (pan && zoom) { cy.viewport({ zoom, pan }); } else { cy.fit(); }
+const tall = (arr) => (arr && arr.length ? arr : ['—']);
+const counts = { ready: 0, parked: 0, settled: 0, deferred: 0, superseded: 0 };
+LEDGER.nodes.forEach(n => counts[cls(n)]++);
+const decidable = LEDGER.nodes.filter(n => n.status !== 'superseded').length;
+const pct = decidable ? Math.round(100 * counts.settled / decidable) : 0;
+document.getElementById('title').textContent =
+  `Interrogate Ledger — ${LEDGER.goal || ''} (rev ${LEDGER.revision || 0})`;
+document.getElementById('counts').textContent =
+  `Decision ${Math.min(frontier.size, counts.ready + 1)} of ${counts.ready} ready (${counts.parked} parked) · ${counts.settled} settled · ${counts.deferred} deferred · ${counts.superseded} superseded`;
+document.querySelector('#bar > div').style.width = pct + '%';
+cy.on('tap', 'node', e => {
+  const n = e.target.data();
+  const row = (k, v) => v == null || v === '' ? '' : `<dt>${k}</dt><dd>${v}</dd>`;
+  document.getElementById('detail').innerHTML = `<h2>${n.label || n.id}</h2>
+    <dl>
+      ${row('id', n.id)}${row('kind', n.kind)}${row('status', n.status)}${row('question', n.question)}
+      ${row('evidence', tall(n.evidence).join('<br>'))}
+      ${row('owner', n.owner)}${row('gate', n.gate)}${row('recommendation', n.recommendation)}
+      ${row('answer', n.answer)}${row('authority', n.authority)}
+      ${row('prerequisites', tall(n.prerequisites).join(', '))}
+      ${row('defer reason', n.defer_reason)}${row('revisit when', n.revisit_condition)}${row('reopened', n.reopen_reason)}
+    </dl>`;
+});
+} // render
+function fallback() {
+  const banner = document.getElementById('cdn-banner');
+  banner.hidden = false;
+  banner.textContent = 'Graph library (CDN) unreachable — text fallback. Ledger data is intact; reconnect and reload for the graph.';
+  document.getElementById('title').textContent =
+    `Interrogate Ledger — ${LEDGER.goal || ''} (rev ${LEDGER.revision || 0})`;
+  document.getElementById('cy').innerHTML = '<ul>' + LEDGER.nodes.map(n =>
+    `<li><b>${n.label || n.id}</b> — ${n.status}${n.question ? ' — ' + n.question : ''}</li>`).join('') + '</ul>';
+}
+render();
+if (location.protocol.startsWith('http')) { poll(); setInterval(poll, 2000); }
+</script>
+</body>
+</html>
