@@ -120,6 +120,8 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         ledger = (SKILL_DIR / "references" / "ledger-transitions.md").read_text()
         self.assertIn("JSON serialization", ledger)
         self.assertIn("origin", ledger)
+        self.assertIn("Origin Is Pinned", ledger)
+        self.assertIn("rename", skill)
 
     # docs/ chain retired with the docs tree (prune): no design docs ship;
     # runs/ carry session evidence instead.

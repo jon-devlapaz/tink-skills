@@ -126,7 +126,7 @@ the first agreed beginning and the graph's gravity center. Then:
 
 1. Copy `assets/ledger-view.html` and `assets/ledger.json` from this skill into the workspace; set `origin` and the confirmed nodes in `ledger.json`.
 2. Serve the workspace: `python3 -m http.server 8137 --bind 127.0.0.1` (background; next free port if busy). Announce `http://localhost:<port>/ledger-view.html` at the start — that URL is the session's live view.
-3. Each turn, rewrite workspace `ledger.json` to the current ledger (schema: ledger reference §1). The page polls and updates itself (~2s); never hand-edit the served HTML.
+3. Each turn, rewrite workspace `ledger.json` to the current ledger (schema: ledger reference §1) — write to a temp file and rename over the original so polls never read a torn write. The page polls and updates itself (~2s); never hand-edit the served HTML.
 
 ## 5. Verify completion and save the pre-intent
 

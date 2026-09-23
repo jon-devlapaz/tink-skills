@@ -216,6 +216,13 @@ Nodes not dependent on the changed premise retain their settled status, answers,
 
 An unchanged repeated answer is a no-op; it does not increment revision or dirty descendants.
 
+### 6.9 Origin Is Pinned
+
+Invalidation never moves `origin`. The origin is history — the first agreed
+beginning — not current truth; reopened descendants re-derive against it via
+`reopen_reason`. If the session's goal itself is replaced (not refined),
+that is a new session with a new ledger, never a moved origin.
+
 ### Post-Traversal Readiness
 After traversal, recompute readiness: reopened descendants remain parked until their
 updated prerequisites settle. When re-asking a reopened question, explicitly state
