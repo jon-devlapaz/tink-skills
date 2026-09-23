@@ -108,7 +108,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         html = viewer.read_text()
         for required in ("cytoscape", "cdnjs.cloudflare.com", "integrity=\"sha384-",
                          "ledger-data", "__LEDGER_JSON__", "breadthfirst",
-                         "fetch('ledger.json", "setInterval(poll", "origin", "classes: cls(n)"):
+                         "fetch('ledger.json", "setInterval(poll", "origin", "classes: cls(n)", "cdn-banner", "fallback()"):
             with self.subTest(required=required):
                 self.assertIn(required, html)
         import json

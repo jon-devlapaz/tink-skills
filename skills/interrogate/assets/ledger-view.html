@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Interrogate Ledger</title>
+<link rel="icon" href="data:,">
 <!--
   Live viewer for the interrogate decision ledger.
   Served over localhost (see SKILL.md Step 4): the page fetches ledger.json
@@ -30,6 +31,8 @@
   aside dt { font-weight: 600; margin-top: 8px; }
   aside dd { margin: 2px 0 0; }
   #legend { padding: 8px 16px; border-top: 1px solid #8884; font-size: 12px; display: flex; gap: 16px; flex-wrap: wrap; }
+  #cdn-banner { padding: 10px 16px; background: #a60; color: #fff; font-size: 13px; }
+  #cy ul { font-size: 13px; line-height: 1.7; }
   .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: baseline; }
 </style>
 </head>
@@ -39,6 +42,7 @@
   <div id="counts"></div>
   <div id="bar"><div></div></div>
 </header>
+<div id="cdn-banner" hidden></div>
 <main>
   <div id="cy"></div>
   <aside id="detail"><h2>Node detail</h2><p>Click a node.</p></aside>
@@ -70,6 +74,7 @@ async function poll() {
   } catch { /* file:// or server down: keep current data */ }
 }
 function render() {
+if (typeof cytoscape === 'undefined') { fallback(); return; }
 const byId = Object.fromEntries(LEDGER.nodes.map(n => [n.id, n]));
 const frontier = new Set(LEDGER.frontier || []);
 const cls = n =>
@@ -83,7 +88,10 @@ if (cy) cy.destroy();
 cy = cytoscape({
   container: document.getElementById('cy'),
   elements: [
-    ...LEDGER.nodes.map(n => ({ data: { ...n }, classes: cls(n) + (n.id === LEDGER.origin ? ' origin' : '') })),
+    ...LEDGER.nodes.map(n => { const L = (n.label || n.id).length;
+      const w = Math.max(64, Math.round(L * 7 + 30));
+      const h = n.kind === 'fact' ? Math.max(56, Math.min(w, 120)) : 42;
+      return { data: { ...n, w, h }, classes: cls(n) + (n.id === LEDGER.origin ? ' origin' : '') }; }),
     ...LEDGER.nodes.flatMap(n => (n.prerequisites || []).map(p =>
       ({ data: { source: p, target: n.id } })))
   ],
@@ -91,7 +99,7 @@ cy = cytoscape({
   style: [
     { selector: 'node', style: {
       'label': 'data(label)', 'text-valign': 'center', 'text-halign': 'center',
-      'width': 'label', 'height': 'label', 'padding': '10px', 'font-size': '12px' } },
+      'width': 'data(w)', 'height': 'data(h)', 'font-size': '12px' } },
     { selector: 'node[kind = "fact"]', style: { 'shape': 'ellipse' } },
     { selector: 'node[kind = "decision"]', style: { 'shape': 'round-rectangle' } },
     { selector: '.settled', style: { 'background-color': '#2a7', 'color': '#fff' } },
@@ -100,7 +108,7 @@ cy = cytoscape({
     { selector: '.deferred', style: { 'background-color': '#36c', 'color': '#fff' } },
     { selector: '.superseded', style: { 'background-color': '#fff', 'color': '#999', 'border-width': 2, 'border-style': 'dashed', 'border-color': '#999', 'opacity': 0.6 } },
     { selector: 'node.origin', style: { 'border-width': 5, 'border-color': '#111', 'font-weight': 'bold' } },
-    { selector: 'edge', style: { 'width': 2, 'line-color': '#8888', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#8888', 'curve-style': 'bezier' } }
+    { selector: 'edge', style: { 'width': 2, 'line-color': '#999', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#999', 'curve-style': 'bezier' } }
   ]
 });
 if (pan && zoom) { cy.viewport({ zoom, pan }); } else { cy.fit(); }
@@ -128,6 +136,15 @@ cy.on('tap', 'node', e => {
     </dl>`;
 });
 } // render
+function fallback() {
+  const banner = document.getElementById('cdn-banner');
+  banner.hidden = false;
+  banner.textContent = 'Graph library (CDN) unreachable — text fallback. Ledger data is intact; reconnect and reload for the graph.';
+  document.getElementById('title').textContent =
+    `Interrogate Ledger — ${LEDGER.goal || ''} (rev ${LEDGER.revision || 0})`;
+  document.getElementById('cy').innerHTML = '<ul>' + LEDGER.nodes.map(n =>
+    `<li><b>${n.label || n.id}</b> — ${n.status}${n.question ? ' — ' + n.question : ''}</li>`).join('') + '</ul>';
+}
 render();
 if (location.protocol.startsWith('http')) { poll(); setInterval(poll, 2000); }
 </script>
