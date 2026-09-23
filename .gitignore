@@ -4,8 +4,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .eval-runs/
-skills/grill-me-with-jev/evals/results/
-skills/grill-me-with-jev/evals/dogfood-output/
+runs/
 .hermes/
 .agents/
 .tink/*
@@ -13,5 +12,4 @@ skills/grill-me-with-jev/evals/dogfood-output/
 !.tink/skills.lock
 .ci/
 .compound-engineering/
-docs/ce-reviews/
 node_modules/
