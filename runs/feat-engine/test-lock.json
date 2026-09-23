@@ -1,0 +1,11 @@
+{
+  "files": {
+    "tests/test_feat_engine.py": "fcf54818f47459f09fdc72da46a0065e6ca29b5da2210ba86731d06e1bd40f68"
+  },
+  "candidate": {
+    "head": "08655ff8aa8b7490bcfe99433dd9625364538d43",
+    "tree": "ac33bdf1f772b1859ec94316245485e28784e9f4dacb82e0a402a377f6a5f83d"
+  },
+  "review_source": "https://github.com/earendil-works/tink-skills/decisions/feat-engine#03-build-tests",
+  "failure_evidence": "Contract suite defining static AST analysis, vector determinism, and 4-factor risk gates"
+}

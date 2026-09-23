@@ -26,7 +26,11 @@ description: >
 
 ## 2. State the contract
 
-Infer the smallest ranking-relevant contract: transformation/use case, recurrence, runtime/ecosystem, inputs and outputs, approvals, hard constraints, acceptable adaptation/operational cost, and evidence bar. Ask one question only if it changes search, rejection, or ranking. If the need is a one-off operation, keep it inline and stop without scouting. In DISCOVER, state the interpreted contract before inventory.
+Infer the smallest ranking-relevant contract: transformation, recurrence, runtime
+environment, inputs and outputs, constraints, adaptation cost, and evidence bar.
+Ask a clarifying question only when the answer alters search, rejection, or ranking.
+If the need is a one-off task, solve it inline and stop without scouting. In DISCOVER,
+state the interpreted contract before inventory.
 
 **Complete when:** The contract can reject a wrong fit.
 
@@ -75,7 +79,9 @@ Rank qualified finalists by exact fit, demonstrated behavior, safety, compatibil
 4. **Runner-up** — strongest case and decisive gap (with published description), or n/a
 5. **Risks and adaptation**
 6. **Coverage** — VERIFY or DISCOVER only
-7. **Next gate** — one exact action; require explicit approval when restricted. Explicitly state that all other private access, installation, configuration, testing, and execution remain unauthorized and each requires separate explicit approval.
+7. **Next gate** — one exact action; require explicit approval when restricted.
+   Reaffirm that subsequent actions (private access, installation, configuration,
+   testing, execution) remain unauthorized until explicitly approved.
 
 For **ABSTAIN/BUILD**, specify transformation, inputs, outputs, privacy and permission boundaries, human approvals, auditable evidence, evaluation, abstention/escalation, and recovery.
 

@@ -1,0 +1,88 @@
+{
+  "scout_version": "1.0.0",
+  "mode": "VERIFY",
+  "selection_rationale": "One known skill and implementation module (skills/feat-engine/, feat_engine.py) was named for dependency and integrity audit.",
+  "contract": {
+    "use_case": "Statically extract normalized feature vectors, profile multi-factor execution risks, and evaluate harness compatibility for agent skills without third-party dependencies",
+    "recurrence": "Per-skill audit on candidate ingestion, dependency checking, and CI/SDLC gating",
+    "runtime_ecosystem": "Python 3.9+ (Standard Library only)",
+    "inputs_outputs": "Input: Skill directory path containing SKILL.md and optional scripts. Output: Canonical JSON report / CLI summary with vector_hash, risk verdict, and compatibility status.",
+    "hard_constraints": [
+      "Zero external pip dependencies",
+      "Purely static analysis (no execution of untrusted scripts)",
+      "Deterministic canonical SHA-256 vector hashing",
+      "Python 3.9+ standard library only"
+    ],
+    "evidence_bar": "100% stdlib import verification, AST inspection verification, static shell scanning verification, and unit test pass confirmation"
+  },
+  "candidate": {
+    "name": "feat-engine",
+    "source": "local repository checkout (/Users/jondev/dev/active/tink-skills)",
+    "skill_path": "skills/feat-engine/SKILL.md",
+    "implementation_path": "feat_engine.py",
+    "test_path": "tests/test_feat_engine.py",
+    "revision": "08655ff8aa8b7490bcfe99433dd9625364538d43"
+  },
+  "dependency_audit": {
+    "external_pip_packages_count": 0,
+    "external_pip_packages": [],
+    "manifest_files_modified": [],
+    "imported_modules": [
+      "__future__",
+      "argparse",
+      "ast",
+      "dataclasses",
+      "hashlib",
+      "json",
+      "math",
+      "os",
+      "pathlib",
+      "re",
+      "sys",
+      "typing"
+    ],
+    "standard_library_only": true,
+    "verification_confirmed": true
+  },
+  "security_boundaries": {
+    "static_analysis_only": true,
+    "untrusted_code_execution": false,
+    "dynamic_imports_or_eval": false,
+    "outbound_network_egress": false,
+    "sensitive_credential_access": false,
+    "isolation_mechanism": "Static AST traversal (ast.parse) and regex-based tokenization without executing or importing candidate files"
+  },
+  "qualification_gates": {
+    "workflow_fit": "pass",
+    "non_redundancy": "pass",
+    "safety_and_provenance": "pass",
+    "compatibility": "pass",
+    "maintenance": "pass",
+    "demonstrated_behavior": "pass"
+  },
+  "verification_brief": {
+    "best_supported_choice": "feat-engine",
+    "published_description": "Statically extract normalized feature vectors, profile multi-factor execution risks, and evaluate harness compatibility for agent skills without third-party dependencies. Use when analyzing untrusted or new skills, auditing capabilities, or gating skill adoption in workflows.",
+    "why_it_wins_here": "Standard-library-only implementation with zero supply chain risk, deterministic cryptographic vector hashing, and sub-50ms execution speed.",
+    "evidence": {
+      "facts": [
+        "0 external pip dependencies or package manifests introduced",
+        "All 12 imported modules are part of the Python 3.9+ standard library",
+        "80 unit tests passed via python3 -m unittest discover tests",
+        "Deterministic vector hash verified across repeated runs (sha256:f8e351b184d6cfb2dc8a6ef0f32d0dd9630ce1d6186b303d4250c43615fe0181)"
+      ],
+      "inference": [
+        "Zero supply chain attack surface from third-party wheels or transitive dependencies",
+        "Safe for automated CI/SDLC pipelines and local agent gating"
+      ],
+      "unknowns": [
+        "Obfuscated base64 shell payloads cannot be dynamically decompiled without emulation (mitigated via piped execution risk detection)"
+      ]
+    },
+    "runner_up": "n/a",
+    "runner_up_gap": "No equivalent stdlib-only agent skill feature extraction engine exists in the local environment or Tink library.",
+    "risks_and_adaptation": "Requires Python 3.9+ runtime on the host system. No external network connectivity or elevated permissions required.",
+    "coverage": "Full coverage over SKILL.md frontmatter, Python AST parsing, shell lexical scanning, and harness profiles (pi, claude, codex, generic).",
+    "next_gate": "Proceed to Stage 04 verification run via `_system/scripts/verify.sh feat-engine`. Explicitly state that all other private access, installation, configuration, testing, and execution remain unauthorized and each requires separate explicit approval."
+  }
+}

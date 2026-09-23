@@ -1,0 +1,7 @@
+{
+  "inputs": "b2825fe48864045d0165654aaa2e141e17859e7fbe7938eaaf5fb7263b44671d",
+  "decision": "approved",
+  "reviewer": "Lead SDLC Orchestrator (Gemini 3.8)",
+  "source": "https://github.com/earendil-works/tink-skills/decisions/feat-engine#02-design",
+  "reason": "Approved spec: multi-modal static AST/frontmatter extraction, deterministic canonical vector hashing, 4-factor risk profiling, stdlib-only policy"
+}
