@@ -10,10 +10,6 @@ source = "https://github.com/everyinc/compound-engineering-plugin.git"
 path = "skills/ce-commit-push-pr"
 
 [[skills]]
-name = "code-review"
-source = ".agents/skills/code-review"
-
-[[skills]]
 name = "eli5"
 source = "https://github.com/dreambigou/eli5.git"
 path = "skills/eli5"
@@ -22,6 +18,10 @@ path = "skills/eli5"
 name = "epistemic-matrix"
 source = "https://github.com/eddiebelaval/squire.git"
 path = "skills/epistemic-matrix"
+
+[[skills]]
+name = "grill-me-with-jev"
+source = "skills/grill-me-with-jev"
 
 [[skills]]
 name = "interrogate"
@@ -37,6 +37,9 @@ source = "https://github.com/ilamanov/skills.git"
 path = "skills/skill-cleaner"
 
 [[skills]]
+name = "skill-gate"
+source = "skills/skill-gate"
+
+[[skills]]
 name = "skill-scout"
-source = "https://github.com/jon-devlapaz/tink-skills.git"
-path = "skills/skill-scout"
+source = "skills/skill-scout"

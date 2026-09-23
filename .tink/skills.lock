@@ -3,7 +3,7 @@ version = 2
 [[skills]]
 name = "ai-native-sdlc"
 source = "skills/ai-native-sdlc"
-sha256 = "5f30d37e3d228e349a24df80d904a5b05b05207770558bc9857bcb200bc88869"
+sha256 = "43bc172ec0acff09c6f2a871fbe8e9a6265efe773ff59bbad937b40b7e43079b"
 
 [[skills]]
 name = "ce-commit-push-pr"
@@ -11,11 +11,6 @@ source = "https://github.com/everyinc/compound-engineering-plugin.git"
 revision = "4fbabcd32b6ca7d8ebb82f15840fe34ef7562a64"
 path = "skills/ce-commit-push-pr"
 sha256 = "f2c625f7279b8e85e3eb77667d3b1fbb426e163140309069c703adb288778991"
-
-[[skills]]
-name = "code-review"
-source = ".agents/skills/code-review"
-sha256 = "8bad5e49e1d86e4ff0a25f0e3907f888c298fd66eda364184c76d61e6862dea2"
 
 [[skills]]
 name = "eli5"
@@ -32,9 +27,14 @@ path = "skills/epistemic-matrix"
 sha256 = "bce355e60ed6c1439076b457d680e3fb609b84543327a62e26b6d88beaa01e2c"
 
 [[skills]]
+name = "grill-me-with-jev"
+source = "skills/grill-me-with-jev"
+sha256 = "06e90c7f1d98aab98dd7ce689cbe35e1707e6cbceb077ff1eb85f63e27af468c"
+
+[[skills]]
 name = "interrogate"
 source = "skills/interrogate"
-sha256 = "53163c63b5ee942af34544355799d9a0cd6150ebcb672fa51fa9ddc71629006b"
+sha256 = "73f1ba959e0dabaeee68eb3e294d3594405cb1dbba3c178b82f6f45f57ee74f9"
 
 [[skills]]
 name = "manage-tink"
@@ -46,11 +46,14 @@ name = "skill-cleaner"
 source = "https://github.com/ilamanov/skills.git"
 revision = "eaa0b453567dc4c804feeda4d366bda560fedf66"
 path = "skills/skill-cleaner"
-sha256 = "7722675866a6bac9e22e2ca0a45098157db594d3bb0f19d32cb2e4f0f6e7083c"
+sha256 = "b4ce2018a9131fc0114c97aea11da8ca1f458f350d23cdb2d6c3bb7de8417dcf"
+
+[[skills]]
+name = "skill-gate"
+source = "skills/skill-gate"
+sha256 = "329f2b9a5a5edf92aabfa384ed2699d73502e603b867c8c88d8ee689acd4b8fa"
 
 [[skills]]
 name = "skill-scout"
-source = "https://github.com/jon-devlapaz/tink-skills.git"
-revision = "c082a2bee33e4068655a095d141e8782129c75ae"
-path = "skills/skill-scout"
-sha256 = "4cd6cfd84ea1ac27d5f37bfb462675beaeb3be23748a64b9e8c8b951711b36d7"
+source = "skills/skill-scout"
+sha256 = "ba63491e4bdec2453b942a6395f2eea109243dbe863a93adc88ddc8f26cc88d4"

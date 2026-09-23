@@ -7,7 +7,7 @@ For light runs, write `runs/<slug>/brief.md` with problem, acceptance criteria,
 approach, implementation checklist, risks, and verification. Combine stages 01–03
 into one human-reviewed definition. Use stage 3 when recording that decision.
 For full runs, write `runs/<slug>/01-plan/output/intent.md`.
-Use `grill-me-with-jev` only for consequential unresolved decisions.
+Use `interrogate` only for consequential unresolved decisions.
 
 Gate: actual human acceptance recorded with `sdlc.py decide`; text status tags
 are not approval evidence. Follow `_system/scripts/status.sh <slug>`.
