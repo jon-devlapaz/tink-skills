@@ -100,6 +100,27 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         self.assertIn("\U0001f4dc Grounded:", content)
         self.assertIn("\U0001f464 Owner:", content)
 
+    def test_ledger_viewer_asset(self):
+        viewer = SKILL_DIR / "assets" / "ledger-view.html"
+        self.assertTrue(viewer.is_file())
+        sidecar = SKILL_DIR / "assets" / "ledger.json"
+        self.assertTrue(sidecar.is_file())
+        html = viewer.read_text()
+        for required in ("cytoscape", "cdnjs.cloudflare.com", "integrity=\"sha384-",
+                         "ledger-data", "__LEDGER_JSON__", "breadthfirst",
+                         "fetch('ledger.json", "setInterval(poll", "origin", "classes: cls(n)"):
+            with self.subTest(required=required):
+                self.assertIn(required, html)
+        import json
+        data = json.loads(sidecar.read_text())
+        self.assertIn(data["origin"], [n["id"] for n in data["nodes"]])
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        self.assertIn("assets/ledger-view.html", skill)
+        self.assertIn("localhost", skill)
+        ledger = (SKILL_DIR / "references" / "ledger-transitions.md").read_text()
+        self.assertIn("JSON serialization", ledger)
+        self.assertIn("origin", ledger)
+
     # docs/ chain retired with the docs tree (prune): no design docs ship;
     # runs/ carry session evidence instead.
 

@@ -1,12 +1,12 @@
 ---
 name: interrogate
-description: Stress-test a consequential plan, architecture, design, or technical decision — or turn a loose brainstorm, braindump, hunch, or idea into one — by investigating facts and surfacing unresolved choices and failure modes. Use for requests to grill, challenge assumptions, interrogate, pressure-test, find holes, or identify missing decisions, or think through a half-formed brainstorm, braindump, hunch, or idea. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
+description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed pre-intent through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to grill, challenge assumptions, interrogate, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
   version: "1.4.0"
 ---
 
-# Grill Me
+# Interrogate
 
 Resolve inspectable facts yourself; reserve questions for consequential user
 judgment. Keep actual answers separate from recommendations. Every claim carries
@@ -14,31 +14,28 @@ its receipt; every question names its owner.
 
 ## 1. Triage the ask and extract context
 
-- Open an interview for an explicit request to challenge a plan, surface
-  its missing decisions, or think through a loose brainstorm, braindump,
-  hunch, or idea. A half-formed input is valid entry — it gets shaped first,
-  not refused. Ordinary review, explanation, summary, execution, and
+- Open an interview for any input the user wants formalized — a plan, a loose brainstorm, braindump,
+  hunch, or idea. Every input takes the same path: shape a working draft first,
+  then grill it. Ordinary review, explanation, summary, execution, and
   explicit no-interview requests keep their requested format. Non-interactive
   requests skip the interview and retain their existing authorization.
 - Before opening the interview, read [ledger-transitions.md](references/ledger-transitions.md)
-  for decision ledger setup, frontier transitions, and ranking, and
-  [epistemic-lenses.md](references/epistemic-lenses.md) for the per-turn lens menu.
-  Maintain that decision ledger throughout; visible questions are a projection of this ledger.
+  for decision ledger setup, frontier transitions, and ranking. Maintain that decision ledger throughout; visible questions are a projection of this ledger. Read [epistemic-lenses.md](references/epistemic-lenses.md) only if the session opts into lenses (see Step 3) — otherwise leave it unread.
 - Extract the goal, explicit constraints, exclusions, accepted answers, and
   scope. Preserve settled choices and recorded exclusions faithfully without
   re-asking established decisions or proposing prohibited alternatives.
 
 **Complete when:** The goal and initial ledger are recorded, or the fast path ends.
 
-### Shape the working draft (braindump entry only; skip when a plan arrives)
+### Shape the working draft
 
-When the input is loose, synthesize a provisional draft before any grill
+Distill whatever arrived into a working draft before any grill
 turn: candidate goal, candidate proposed outcome, and candidate options with
-tradeoffs — each labeled PROVISIONAL assumption, never an answer or a claim.
+tradeoffs. Lines the input already settles become ledger nodes (facts
+to investigate, decisions to grill); anything uncertain, assumed, or missing is labeled PROVISIONAL assumption, never an answer or a claim.
 Provisional lines need no 📜 and spend no ungrounded budget; they are
-scaffolding for the user to correct. Present the draft in one tight block and
-ask what to keep, cut, or reshape. Confirmed lines become ledger nodes (facts
-to investigate, decisions to grill); rejected lines are dropped, not parked.
+scaffolding for the user to correct, and a braindump simply yields more of them than a polished plan does. Present the draft in one tight block and
+ask what to keep, cut, or reshape. Confirmed lines become ledger nodes; rejected lines are dropped, not parked.
 Only then does the frontier loop start.
 
 ## 2. Investigate facts before asking
@@ -61,11 +58,8 @@ Only then does the frontier loop start.
     evidence or scoped delegation.
   - Continue on accepted constraints, authorized defaults, or non-blocking deferrals;
     label assumptions and preserve necessary implementation work in the pre-intent.
-- Rank ready decisions by consequence, then risk (see [ledger-transitions.md](references/ledger-transitions.md)),
-  keeping dependent choices separated and blockers visible for single-decision pacing.
-- Resolve dependencies and break cycles using [ledger-transitions.md](references/ledger-transitions.md)
-  before presenting dependent choices. Hold dependent questions until prerequisite
-  investigations conclude.
+- Rank ready decisions by consequence, then risk, keeping dependent choices separated and blockers visible for single-decision pacing (ranking and dependency rules live in the ledger reference — follow them, don't restate them here).
+- Hold dependent questions until prerequisite investigations conclude.
 
 **Complete when:** Every discovered concern has evidence, an investigation,
 explicit disposition, or a ledger node. Ready independent questions can proceed.
@@ -73,8 +67,8 @@ explicit disposition, or a ledger node. Ready independent questions can proceed.
 ## 3. Present the Frontier
 
 Pace decisions by presenting exactly one ready decision per user turn to minimize
-cognitive load. Base recommendations strictly on the cited lines beneath them — nothing outside 📜 — never on another unanswered recommendation. Never re-ask what the user already answered or volunteered; record it and move on. No question goes out without at least
-one 📜 line; at most two ungrounded questions per session, each marked
+cognitive load. Ground each recommendation in the cited lines beneath it — a recommendation carries only what its 📜 lines support, never material from an unanswered recommendation. Never re-ask what the user already answered or volunteered; record it and move on. Every frontier question carries at least
+one 📜 line (the working draft in Step 1 is scaffolding, not a frontier question, so its PROVISIONAL lines are exempt); at most two ungrounded questions per session, each marked
 `⚠️ ungrounded — no delegation`, barred from carrying a ➡️ recommendation and
 from settling by delegation (see Step 4). Every frontier question names its decider and gate;
 `operator` alone suffices only for consequence-free clarifications. Queued and undisplayed nodes remain tracked blockers in
@@ -83,8 +77,8 @@ promptly as they arise.
 
 Per turn, and only for sessions opted into lenses (see session setup in
 [epistemic-lenses.md](references/epistemic-lenses.md)), the host may issue one
-lens-selection call: state (goal, ready
-node's evidence summaries, owner named so far) against
+lens-selection call: state the goal, the ready node's evidence summaries, and the
+owner named so far against
 [epistemic-lenses.md](references/epistemic-lenses.md) as a single Choice,
 applied per its gating rule. A skipped or failed call is a
 logged skip, never a badge and never a settlement. The lens advises the
@@ -110,8 +104,7 @@ are presented and the session is waiting for answers.
 
 ## 4. Settle answers and update the Frontier
 
-Apply ledger transitions from [ledger-transitions.md](references/ledger-transitions.md)
-for explicit answers, conditional choices, scoped delegation, skips, and changed
+Apply the ledger reference's transitions for explicit answers, conditional choices, scoped delegation, skips, and changed
 prerequisites. Record actual user choices and exclusions faithfully, reassess affected
 descendants, and recompute readiness. Select the next single ready decision to present,
 or proceed to completion review when the frontier is clear.
@@ -125,6 +118,15 @@ When the user asks to stop interviewing:
 
 **Complete when:** Responses and revisions are recorded and the next single ready decision,
 completion review, or user-requested stop is selected.
+
+### Visualize the ledger
+
+Once the working draft is confirmed, the confirmed goal becomes the `origin` node —
+the first agreed beginning and the graph's gravity center. Then:
+
+1. Copy `assets/ledger-view.html` and `assets/ledger.json` from this skill into the workspace; set `origin` and the confirmed nodes in `ledger.json`.
+2. Serve the workspace: `python3 -m http.server 8137 --bind 127.0.0.1` (background; next free port if busy). Announce `http://localhost:<port>/ledger-view.html` at the start — that URL is the session's live view.
+3. Each turn, rewrite workspace `ledger.json` to the current ledger (schema: ledger reference §1). The page polls and updates itself (~2s); never hand-edit the served HTML.
 
 ## 5. Verify completion and save the pre-intent
 

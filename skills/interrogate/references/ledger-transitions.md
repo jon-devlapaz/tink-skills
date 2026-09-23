@@ -38,6 +38,25 @@ Record default behaviors and engineering conventions as labeled **assumptions**,
 never as user answers. Fact nodes resolve through verified workspace evidence;
 consequential decisions strictly require explicit user choice or scoped delegation.
 
+### JSON serialization (`ledger.json`)
+
+The ledger is also kept as machine-readable JSON — the source the viewer renders
+(see `assets/ledger-view.html`). Same fields as above, plus:
+
+- `label`: short human title for the graph (ids stay stable and kebab-case).
+- `question`: the one-line ask, for `decision` nodes on the frontier.
+- `owner`, `gate`: decider and answer shape, per SKILL.md Step 3.
+- `frontier`: ordered array of ready node IDs at the top level (presentation order).
+  Ready = `unresolved` and listed here; parked = `unresolved` and absent.
+- `revision`, `goal`: top-level ledger revision number and session goal.
+- `origin`: the ID of the confirmed working draft's goal node — the first agreed
+  beginning after investigation, and the graph's gravity center. The viewer roots
+  its layout on this node; every later node descends from it.
+
+The agent serves the workspace over localhost and rewrites the workspace
+`ledger.json` copy each turn; counts and readiness are derived by the viewer,
+never hand-written.
+
 ### Node Statuses
 
 | Status | Meaning |
@@ -164,14 +183,38 @@ or “Use Redis only if cluster mode is supported”) are **conditional answers*
 ## 6. Cascading Invalidation
 
 When an accepted answer, constraint, or underlying piece of evidence changes semantically:
-1. **Increment Premise Revision**: Increment the ledger's premise revision number and invalidate any prior pre-intent confirmation.
-2. **Transitive Traversal**: Traverse all transitive descendant nodes in topological prerequisite order.
-3. **Preserve Valid Justifications**: Preserve answers whose justifications remain fully supported and freshly verified at the current revision despite the changed premise.
-4. **Reopen Invalidated Nodes**: Reopen nodes whose prerequisites or premises were altered, setting status back to `unresolved`, clearing or parking invalid answers, and recording `reopen_reason`.
-5. **Supersede Inactive Branches**: Mark branches rendered irrelevant by changed choices as `superseded`.
-6. **Reactivate Superseded Branches**: Re-evaluate previously superseded branches that become active under the new premise.
-7. **Preserve Independent Nodes**: Nodes not dependent on the changed premise retain their settled status, answers, and authority intact.
-8. **No-Op Protection**: An unchanged repeated answer is a no-op; it does not increment revision or dirty descendants.
+
+### 6.1 Increment Premise Revision
+
+Increment the ledger's premise revision number and invalidate any prior pre-intent confirmation.
+
+### 6.2 Transitive Traversal
+
+Traverse all transitive descendant nodes in topological prerequisite order.
+
+### 6.3 Preserve Valid Justifications
+
+Preserve answers whose justifications remain fully supported and freshly verified at the current revision despite the changed premise.
+
+### 6.4 Reopen Invalidated Nodes
+
+Reopen nodes whose prerequisites or premises were altered, setting status back to `unresolved`, clearing or parking invalid answers, and recording `reopen_reason`.
+
+### 6.5 Supersede Inactive Branches
+
+Mark branches rendered irrelevant by changed choices as `superseded`.
+
+### 6.6 Reactivate Superseded Branches
+
+Re-evaluate previously superseded branches that become active under the new premise.
+
+### 6.7 Preserve Independent Nodes
+
+Nodes not dependent on the changed premise retain their settled status, answers, and authority intact.
+
+### 6.8 No-Op Protection
+
+An unchanged repeated answer is a no-op; it does not increment revision or dirty descendants.
 
 ### Post-Traversal Readiness
 After traversal, recompute readiness: reopened descendants remain parked until their
