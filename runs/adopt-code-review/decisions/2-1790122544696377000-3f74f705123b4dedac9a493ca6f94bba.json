@@ -1,0 +1,7 @@
+{
+  "inputs": "d930748c2875749051301758d1d9d13916d7dc3c6b2ca4615f3bab9df02346d0",
+  "decision": "approved",
+  "reviewer": "Lead Systems Supervisor",
+  "source": "https://github.com/earendil-works/tink-skills/decisions/adopt-code-review#02-design",
+  "reason": "Approved spec: Clean two-axis review architecture with 12 smell heuristics"
+}

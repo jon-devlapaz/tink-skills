@@ -1,0 +1,55 @@
+{
+  "mode": "DISCOVER",
+  "contract": {
+    "transformation": "Automated two-axis code review (standards & spec) using sub-agents on git diffs",
+    "inputs": [
+      "git diff or commit range",
+      "optional spec file"
+    ],
+    "outputs": [
+      "Standards and Spec review reports"
+    ],
+    "constraints": [
+      "Must work with pi subagents / git",
+      "No private auth needed"
+    ],
+    "acceptable_adaptation": "Remove hardcoded references to external tools like /setup-matt-pocock-skills"
+  },
+  "candidates": [
+    {
+      "id": "code-review",
+      "source_class": "library",
+      "source": "tink library",
+      "skill_path": "/Users/jondev/.tink/skills/code-review/SKILL.md",
+      "gates": {
+        "workflow_fit": "pass",
+        "non_redundancy": "pass",
+        "safety_and_provenance": "pass",
+        "compatibility": "pass",
+        "maintenance": "pass",
+        "demonstrated_behavior": "pass"
+      },
+      "eligible_for_ranking": true,
+      "recommendation": "Adopt as primary"
+    },
+    {
+      "id": "clean-code",
+      "source_class": "library",
+      "source": "tink library",
+      "skill_path": "/Users/jondev/.tink/skills/clean-code/SKILL.md",
+      "gates": {
+        "workflow_fit": "pass",
+        "non_redundancy": "pass",
+        "safety_and_provenance": "pass",
+        "compatibility": "pass",
+        "maintenance": "pass",
+        "demonstrated_behavior": "pass"
+      },
+      "eligible_for_ranking": true,
+      "recommendation": "Runner-up"
+    }
+  ],
+  "winner": "code-review",
+  "runner_up": "clean-code",
+  "adaptation_needed": "Remove hardcoded Matt Pocock specific setup reference and streamline subagent invocation instructions."
+}

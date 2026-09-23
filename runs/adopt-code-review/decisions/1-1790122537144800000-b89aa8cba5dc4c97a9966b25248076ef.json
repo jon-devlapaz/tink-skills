@@ -1,0 +1,7 @@
+{
+  "inputs": "665d6fa9ce78ff78578860ed7dde33fa7e1b313aad62e81c5640579680dd0c8f",
+  "decision": "approved",
+  "reviewer": "Lead Systems Supervisor",
+  "source": "https://github.com/earendil-works/tink-skills/decisions/adopt-code-review#01-plan",
+  "reason": "Approved intent: Add automated two-axis code review capability to tink-skills"
+}
