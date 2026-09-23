@@ -1,0 +1,17 @@
+{
+ "require_tink": false,
+ "checks": [
+  {
+   "name": "unit",
+   "argv": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests"
+   ],
+   "timeout_seconds": 300
+  }
+ ]
+}

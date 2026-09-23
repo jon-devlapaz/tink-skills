@@ -1,0 +1,11 @@
+{
+  "result": "passed",
+  "candidate": {
+    "head": "1b2143b15c2d4167309b885d47c67fe228fa9955",
+    "tree": "357eff0da47fdce822538b4e1ba6594222ade5a8006d3645d4d535db80940bfc"
+  },
+  "inputs": "77910c5579f7e2f77f1ef762a77288e315bdcd6e661e1e9adc30b6cc43fb1cea",
+  "policy": "76750b349727590ca624c3285a747ccc5c81e74e0d4b534d4c13165f4503cac9",
+  "test_lock": null,
+  "log": "be11e7ef4f30d318be7c891197113bbd9a30f2dc9a65eb5e7a736e26fa198870"
+}

@@ -1,0 +1,56 @@
+version = 2
+
+[[skills]]
+name = "ai-native-sdlc"
+source = "skills/ai-native-sdlc"
+sha256 = "5f30d37e3d228e349a24df80d904a5b05b05207770558bc9857bcb200bc88869"
+
+[[skills]]
+name = "ce-commit-push-pr"
+source = "https://github.com/everyinc/compound-engineering-plugin.git"
+revision = "4fbabcd32b6ca7d8ebb82f15840fe34ef7562a64"
+path = "skills/ce-commit-push-pr"
+sha256 = "f2c625f7279b8e85e3eb77667d3b1fbb426e163140309069c703adb288778991"
+
+[[skills]]
+name = "code-review"
+source = ".agents/skills/code-review"
+sha256 = "8bad5e49e1d86e4ff0a25f0e3907f888c298fd66eda364184c76d61e6862dea2"
+
+[[skills]]
+name = "eli5"
+source = "https://github.com/dreambigou/eli5.git"
+revision = "a766623b062331fdde53467001379b4ddf3acc2f"
+path = "skills/eli5"
+sha256 = "aa7d936e4e5762729dbb65a13cd88eff1ad814f3ae9cefcfab9f10db14385d00"
+
+[[skills]]
+name = "epistemic-matrix"
+source = "https://github.com/eddiebelaval/squire.git"
+revision = "b5eea39086d4fa898eefd732430fe43dc0602e33"
+path = "skills/epistemic-matrix"
+sha256 = "bce355e60ed6c1439076b457d680e3fb609b84543327a62e26b6d88beaa01e2c"
+
+[[skills]]
+name = "grill-me-with-jev"
+source = "skills/grill-me-with-jev"
+sha256 = "e17d57d279197bd1c0cc84280595c803119f85af141ddc11ae7d9e8cacb97908"
+
+[[skills]]
+name = "manage-tink"
+source = "tink:embedded/manage-tink"
+sha256 = "71174d54ad4fb049e266cc41ff1dd9eb1fd02b4ff9636d6496ee5eab6bb4820c"
+
+[[skills]]
+name = "skill-cleaner"
+source = "https://github.com/ilamanov/skills.git"
+revision = "eaa0b453567dc4c804feeda4d366bda560fedf66"
+path = "skills/skill-cleaner"
+sha256 = "7722675866a6bac9e22e2ca0a45098157db594d3bb0f19d32cb2e4f0f6e7083c"
+
+[[skills]]
+name = "skill-scout"
+source = "https://github.com/jon-devlapaz/tink-skills.git"
+revision = "c082a2bee33e4068655a095d141e8782129c75ae"
+path = "skills/skill-scout"
+sha256 = "4cd6cfd84ea1ac27d5f37bfb462675beaeb3be23748a64b9e8c8b951711b36d7"

@@ -18,10 +18,10 @@ to spend attention; it never settles decisions or certifies completeness.
   its missing decisions. Ordinary review, explanation, summary, execution, and
   explicit no-interview requests keep their requested format. Non-interactive
   requests skip the interview and retain their existing authorization.
-- Before opening the interview, read [ledger-transitions.md](references/ledger-transitions.md)
-  for decision ledger setup, frontier transitions, and ranking. Consult
-  [typesafe-protocol.md](references/typesafe-protocol.md) when seeking model advice.
-  Maintain that decision ledger throughout; visible questions are a projection of this ledger.
+- Before opening the interview, consult [ledger-transitions.md](references/ledger-transitions.md)
+  for decision ledger setup, frontier transitions, and ranking, and
+  [typesafe-protocol.md](references/typesafe-protocol.md) when requesting model advice.
+  Maintain the decision ledger throughout; displayed questions project directly from this ledger.
 - Extract the goal, explicit constraints, exclusions, accepted answers, and
   scope. Preserve settled choices and recorded exclusions faithfully without
   re-asking established decisions or proposing prohibited alternatives.
@@ -37,17 +37,17 @@ to spend attention; it never settles decisions or certifies completeness.
 - Discover prerequisites and test consequence for each concern to maintain a
   minimal, sufficient decision set:
   - Investigate inspectable facts first.
-  - Ask only when two reasonable answers meaningfully change implementation,
-    risk, cost, reversibility, or product behavior. Derive consequences already
-    forced by settled choices; merge duplicate choices and resolve others via
-    evidence or scoped delegation.
+  - Ask only when contrasting choices produce materially different implementation,
+    risk, cost, reversibility, or product behavior. Derive consequences forced by
+    settled choices; consolidate duplicate options and resolve empirical points
+    through workspace evidence or scoped delegation.
   - Continue on accepted constraints, authorized defaults, or non-blocking deferrals;
     label assumptions and preserve necessary implementation work in the pre-intent.
 - Rank ready decisions by consequence, risk, or Jev triage score (see [ledger-transitions.md](references/ledger-transitions.md)),
   keeping dependent choices separated and blockers visible for single-decision pacing.
 - Consult [typesafe-protocol.md](references/typesafe-protocol.md) when model advice
-  could clarify the next step; user constraints and evidence-first routing take precedence
-  over model advice.
+  could clarify the next step; recorded user constraints and empirical workspace
+  evidence govern routing over model judgments.
 - Resolve dependencies and break cycles using [ledger-transitions.md](references/ledger-transitions.md)
   before presenting dependent choices. Hold dependent questions until prerequisite
   investigations conclude.
@@ -96,7 +96,8 @@ When the user asks to stop interviewing:
 - Immediately halt questioning.
 - Preserve any unresolved blockers in the ledger and report status as `stopped — incomplete`.
 - Concisely explain remaining blockers and current handoff status without reprinting the question list.
-- Treat premature approval (such as “looks fine, start coding”) as an incomplete stop; confirmation strictly requires deliberate review of the displayed pre-intent artifact.
+- Treat premature approval (e.g. “looks fine, start coding”) as an incomplete stop;
+  intake authorization requires deliberate review of the full displayed pre-intent artifact.
 - If the user explicitly directs a replacement workflow, record the departure directly as an intentional user redirection.
 
 **Complete when:** Responses and revisions are recorded and the next single ready decision,
@@ -109,14 +110,14 @@ active, parked, and undisplayed nodes are settled, cycles are resolved, and defe
 concerns are demonstrably non-blocking with documented reasons and revisit
 conditions. Unresolved blockers halt completion regardless of advisory model scores.
 
-Perform a local review of goal coverage, failure modes, security boundaries,
-recovery, and verification. Route newly identified blockers into the ledger and
-return to Step 2 immediately. Keep provisional review candidates distinct until
-their significance is assessed. When Jev is available, consult the **Empty-Frontier Gate (Noul)**
+Review goal coverage, failure modes, security boundaries, recovery, and verification
+locally. Route newly identified blockers into the ledger and return to Step 2
+immediately. Keep provisional review candidates distinct until their significance
+is assessed. When Jev is available, consult the **Empty-Frontier Gate (Noul)**
 in [typesafe-protocol.md](references/typesafe-protocol.md): a candidate with
-`probability > 0.80` returns that named candidate to triage. Treat scores as advisory
-review inputs rather than completeness certification; evaluate candidates once
-per premise revision, preserving settled decisions unless evidence changes.
+`probability > 0.80` returns to triage. Model scores remain advisory review inputs
+rather than completeness certifications; evaluate candidates once per premise revision,
+preserving settled decisions unless evidence changes.
 
 Once the local review and any candidate checks are resolved:
 
@@ -125,15 +126,15 @@ Once the local review and any candidate checks are resolved:
    (consulted, partly unavailable, or skipped). State completion as “local completeness
    review complete” to reflect local verification rather than model certification.
 2. Ask the user to confirm that displayed revision. Confirmation applies strictly
-   to the displayed content; material changes invalidate confirmation and require
+   to the displayed content; material changes invalidate prior confirmation and require
    renewed review.
 3. On confirmation, save that revision to repository-root `pre-intent.md`. Inspect
-   an existing file first: update only the known session artifact, preserving
-   unrelated content. If an existing file belongs to other work, keep it intact and
+   existing files first: update only the known session artifact, preserving
+   unrelated content. When an existing file belongs to other work, preserve it and
    resolve an alternate destination with the user. Ensure the write succeeds before
    treating the pre-intent as saved.
 4. Report the saved path as discovery input for downstream planning or
-   implementation workflows, and stop. Leave commits to the user, and reserve
+   implementation workflows, and stop. Release commits to the user, and reserve
    downstream initialization, stage advancement, or implementation approval
    for subsequent workflows.
 

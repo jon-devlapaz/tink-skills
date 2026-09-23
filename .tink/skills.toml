@@ -1,0 +1,42 @@
+version = 1
+
+[[skills]]
+name = "ai-native-sdlc"
+source = "skills/ai-native-sdlc"
+
+[[skills]]
+name = "ce-commit-push-pr"
+source = "https://github.com/everyinc/compound-engineering-plugin.git"
+path = "skills/ce-commit-push-pr"
+
+[[skills]]
+name = "code-review"
+source = ".agents/skills/code-review"
+
+[[skills]]
+name = "eli5"
+source = "https://github.com/dreambigou/eli5.git"
+path = "skills/eli5"
+
+[[skills]]
+name = "epistemic-matrix"
+source = "https://github.com/eddiebelaval/squire.git"
+path = "skills/epistemic-matrix"
+
+[[skills]]
+name = "grill-me-with-jev"
+source = "skills/grill-me-with-jev"
+
+[[skills]]
+name = "manage-tink"
+source = "tink:embedded/manage-tink"
+
+[[skills]]
+name = "skill-cleaner"
+source = "https://github.com/ilamanov/skills.git"
+path = "skills/skill-cleaner"
+
+[[skills]]
+name = "skill-scout"
+source = "https://github.com/jon-devlapaz/tink-skills.git"
+path = "skills/skill-scout"
