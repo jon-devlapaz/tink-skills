@@ -7,8 +7,6 @@ Evidence-oriented Agent Skills for AI coding workflows:
 - **ai-native-sdlc** — Runs an evidence-based software development lifecycle with stage contracts, verified test receipts, and test locks.
 - **skill-gate** — Statically extracts feature vectors, profiles execution risk, and evaluates harness compatibility for agent skills.
 
-*(Note: `triangulate-me` is deprecated; use `interrogate` for decision-tree interrogation and grounded planning.)*
-
 ```mermaid
 flowchart LR
     intent["intent / idea"] --> interrogate["interrogate"]
