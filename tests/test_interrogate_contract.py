@@ -148,32 +148,14 @@ class TestThroughlineSkillOrder(unittest.TestCase):
         self.assertLess(positions[1], positions[2])
         self.assertNotIn("grill-me-with-jev", diagram)
         self.assertNotRegex(diagram, r"interrogate\s*-->(?:\|[^|]*\|)?\s*implementation\[")
-        self.assertIn(
-            "`grill-me-with-jev` are deprecated; use `interrogate`",
-            readme,
-        )
+        self.assertNotIn("grill-me", readme)
 
-    def test_grill_me_with_jev_is_a_redirect(self):
-        path = ROOT / "skills" / "grill-me-with-jev" / "SKILL.md"
-        content = path.read_text()
-        frontmatter = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
-        self.assertIsNotNone(frontmatter)
-        name = re.search(r"(?m)^name:\s*(\S+)\s*$", frontmatter.group(1))
-        self.assertIsNotNone(name)
-        self.assertEqual(name.group(1), "grill-me-with-jev")
-        self.assertIn("Deprecated alias", frontmatter.group(1))
-        self.assertIn("Use the `interrogate` skill", frontmatter.group(1))
-        self.assertIn("Use **`interrogate`** instead", content)
-        self.assertIn("../interrogate/SKILL.md", content)
-        self.assertIn("canonical skill is `interrogate`", content)
-        heading = re.search(r"(?m)^# .+$", content)
-        self.assertIsNotNone(heading)
-        self.assertIn("deprecated", heading.group(0).lower())
-        self.assertNotRegex(content, r"(?i)canonical interview")
-        self.assertNotRegex(
-            content,
-            r"(?i)canonical (?:interview )?skill is `grill-me-with-jev`",
-        )
+    def test_grill_me_with_jev_is_removed(self):
+        self.assertFalse((ROOT / "skills" / "grill-me-with-jev").exists())
+        for relative in (".tink/skills.toml", ".tink/skills.lock", "README.md"):
+            text = (ROOT / relative).read_text()
+            with self.subTest(path=relative):
+                self.assertNotIn("grill-me", text)
 
 
 if __name__ == "__main__":
