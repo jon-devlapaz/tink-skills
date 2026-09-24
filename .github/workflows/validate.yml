@@ -1,0 +1,41 @@
+name: Validate repository
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Check the published SDLC package
+        run: python3 skills/ai-native-sdlc/scripts/package.py --check
+
+      - name: Compile Python sources
+        run: python3 -m compileall -q skills _system tests
+
+      - name: Check shell scripts
+        run: bash -n _system/scripts/*.sh skills/ai-native-sdlc/assets/_system/scripts/*.sh
+
+      - name: Check whitespace
+        run: git diff --check HEAD^ HEAD
