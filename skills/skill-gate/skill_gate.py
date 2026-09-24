@@ -293,6 +293,13 @@ def analyze_python_code(code: str) -> CodeAnalysis:
                     if call_name == target or call_name.endswith("." + target):
                         dangerous.add(call_name)
 
+                shell_true = any(
+                    kw.arg == "shell" and isinstance(kw.value, ast.Constant) and kw.value.value is True
+                    for kw in node.keywords
+                )
+                if shell_true and (call_name.startswith("subprocess.") or call_name in {"subprocess.run", "subprocess.Popen", "subprocess.call", "subprocess.check_call", "subprocess.check_output"}):
+                    dangerous.add(f"{call_name}:shell=True")
+
                 # Environment variable lookups via calls: os.environ.get(...), os.getenv(...)
                 if call_name in ("os.environ.get", "os.getenv", "environ.get", "getenv"):
                     if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
@@ -318,6 +325,10 @@ def analyze_python_code(code: str) -> CodeAnalysis:
                     fs_calls.add("Path.write_bytes")
                 elif call_name.endswith(".write") or call_name == "write":
                     fs_calls.add("write")
+                elif call_name in ("os.remove", "os.unlink", "pathlib.Path.unlink", "Path.unlink"):
+                    fs_calls.add("remove")
+                elif call_name in ("os.rename", "os.replace", "shutil.copy", "shutil.copy2", "shutil.copyfile", "shutil.move"):
+                    fs_calls.add("file_mutation")
 
         # Environment variable lookups via subscript: os.environ[...] or environ[...]
         elif isinstance(node, ast.Subscript):
@@ -342,6 +353,13 @@ def analyze_python_code(code: str) -> CodeAnalysis:
 # Shell Script Lexical Scanner
 # ============================================================================
 
+def _shell_scan_text(line: str) -> str:
+    """Normalize shell text to reduce lexical false positives from URLs and inline comments."""
+    cleaned = re.sub(r"https?://\S+", " ", line)
+    cleaned = re.sub(r"#.*$", " ", cleaned)
+    return cleaned
+
+
 def scan_shell_script(script: str) -> Dict[str, Any]:
     """Lexical scanner for shell commands:
 
@@ -359,48 +377,51 @@ def scan_shell_script(script: str) -> Dict[str, Any]:
     lines = script.splitlines()
     for raw_line in lines:
         line = raw_line.strip()
-        if not line or line.startswith("#"):
+        if not line:
+            continue
+
+        scan_line = _shell_scan_text(line)
+        if not scan_line.strip():
             continue
 
         # Destructive patterns
-        if re.search(r"\brm\s+-[a-zA-Z]*[rf][a-zA-Z]*\b", line):
+        if re.search(r"\brm\b(?=[^\n]*(?:\s-(?:[A-Za-z]*[rf][A-Za-z]*|r|f)|\s+--(?:recursive|force|no-preserve-root)))[^\n]*", scan_line, re.IGNORECASE):
             matched_destructive.add("rm -rf")
-        if re.search(r"\btruncate\b", line):
+        if re.search(r"\btruncate\b", scan_line):
             matched_destructive.add("truncate")
-        if "dd if=" in line or re.search(r"\bdd\s+if=", line):
+        if "dd if=" in scan_line or re.search(r"\bdd\s+if=", scan_line):
             matched_destructive.add("dd if=")
-        if re.search(r"\b(mkfs|shred|wipefs)\b", line):
-            m = re.search(r"\b(mkfs|shred|wipefs)\b", line)
+        if re.search(r"\b(mkfs|shred|wipefs)\b", scan_line):
+            m = re.search(r"\b(mkfs|shred|wipefs)\b", scan_line)
             if m:
                 matched_destructive.add(m.group(1))
 
         # Network utilities
         for net_cmd in ("curl", "wget", "nc", "ncat", "netcat", "socat"):
-            if re.search(rf"\b{net_cmd}\b", line):
+            if re.search(rf"\b{net_cmd}\b", scan_line):
                 matched_network.add(net_cmd)
 
         # Credentials and secrets
-        if "~/.ssh" in line or re.search(r"~/\.ssh\b", line):
+        if "~/.ssh" in scan_line or re.search(r"~/\.ssh\b", scan_line):
             matched_credentials.add("~/.ssh")
-        if re.search(r"\.env\b", line):
+        if re.search(r"\.env\b", scan_line):
             matched_credentials.add(".env")
         for cred in ("id_rsa", "id_ed25519", "id_ecdsa", "id_dsa", "/etc/shadow", "/etc/passwd"):
-            if cred in line:
+            if cred in scan_line:
                 matched_credentials.add(cred)
-        if re.search(r"\bAWS_SECRET_ACCESS_KEY\b", line):
+        if re.search(r"\bAWS_SECRET_ACCESS_KEY\b", scan_line):
             matched_credentials.add("AWS_SECRET_ACCESS_KEY")
 
         # Autonomy escalation
-        if re.search(r"\bnohup\b", line):
+        if re.search(r"\bnohup\b", scan_line):
             matched_autonomy.add("nohup")
-        if re.search(r"\bkill\s+-9\b", line):
+        if re.search(r"\bkill\s+-9\b", scan_line):
             matched_autonomy.add("kill -9")
-        if re.search(r"\b(disown|pkill|killall)\b", line):
-            m = re.search(r"\b(disown|pkill|killall)\b", line)
+        if re.search(r"\b(disown|pkill|killall)\b", scan_line):
+            m = re.search(r"\b(disown|pkill|killall)\b", scan_line)
             if m:
                 matched_autonomy.add(m.group(1))
-        # Backgrounding ampersand: standalone & not preceded by & and not followed by & or >
-        if re.search(r"(?<!&)&(?!&|>)", line):
+        if re.search(r"(?<!&)&(?!&|>)", scan_line):
             matched_autonomy.add("&")
 
     return {
@@ -448,16 +469,20 @@ def extract_features(skill_dir: str) -> SkillFeatures:
 
     # Parse SKILL.md if present
     skill_md = path / "SKILL.md"
+    body_scan_text = ""
     if skill_md.is_file():
         try:
             content = skill_md.read_text(encoding="utf-8", errors="replace")
-            fm, _ = parse_frontmatter(content)
+            fm, body = parse_frontmatter(content)
+            body_scan_text = body
             if "name" in fm and fm["name"]:
                 skill_name = str(fm["name"])
             if "description" in fm and fm["description"]:
                 description = str(fm["description"])
             if "tools" in fm and isinstance(fm["tools"], list):
                 tools = [str(t) for t in fm["tools"]]
+            if description:
+                body_scan_text = f"{description}\n{body_scan_text}"
         except Exception:
             pass
 
@@ -476,6 +501,13 @@ def extract_features(skill_dir: str) -> SkillFeatures:
     all_matched_network: Set[str] = set()
     all_matched_credentials: Set[str] = set()
     all_matched_autonomy: Set[str] = set()
+
+    if body_scan_text:
+        body_scan = scan_shell_script(body_scan_text)
+        all_matched_destructive.update(body_scan["matched_destructive"])
+        all_matched_network.update(body_scan["matched_network"])
+        all_matched_credentials.update(body_scan["matched_credentials"])
+        all_matched_autonomy.update(body_scan["matched_autonomy"])
 
     # Discover and inspect files deterministically
     if path.is_dir():
@@ -648,11 +680,9 @@ def profile_risk(features: SkillFeatures, policy: Optional[Dict[str, Any]] = Non
     - credential_exposure (weight 0.25)
     - autonomy_escalation (weight 0.15)
     Triggers redlines on critical threats (rm -rf /, eval, raw exfiltration).
-    Produces verdict:
-    - ALLOW (< 0.30 and no redlines)
-    - WARN (0.30 - 0.70 and no redlines)
-    - BLOCK (>= 0.70 or redlines)
+    Produces verdict based on an explicit threshold, which keeps exit policy and verdict semantics aligned.
     """
+    threshold = float((policy or {}).get("risk_threshold", 0.70))
     redlines: List[str] = []
 
     # 1. Inspect Python & Shell for Redlines
@@ -789,8 +819,8 @@ def profile_risk(features: SkillFeatures, policy: Optional[Dict[str, Any]] = Non
 
     if unique_redlines:
         verdict = "BLOCK"
-        overall_score = max(weighted_score, 0.70)
-    elif weighted_score >= 0.70:
+        overall_score = max(weighted_score, max(0.70, threshold))
+    elif weighted_score >= threshold:
         verdict = "BLOCK"
         overall_score = weighted_score
     elif weighted_score >= 0.30:
@@ -949,6 +979,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     target_harness = args.check_compat if args.check_compat else "pi"
     try:
         audit = analyze_skill(str(skill_path), target_harness=target_harness)
+        audit.risk = profile_risk(audit.features, policy={"risk_threshold": args.risk_threshold})
     except Exception as e:
         sys.stderr.write(f"Error analyzing skill: {e}\n")
         return 1
