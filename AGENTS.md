@@ -1,4 +1,8 @@
-This project uses Tink to manage Agent Skills under `.agents/skills/`.
+Canonical skill tree: `skills/`
+
+Read published skills from `skills/`. That directory is the source for this repository, including `interrogate` and `skill-gate`.
+
+Tink installs the locked set from `.tink/skills.toml` into `.agents/skills/`. `.agents/` is installed state, not source, and is gitignored. Every local `skills/<name>` skill, including `skill-gate`, belongs in that install and must match `skills/<name>`. `tink skill sync` copies a missing install from the published tree. Sync refuses to overwrite an install whose body already differs; remove that `.agents/skills/<name>/` directory and run `tink skill sync` again. Do not edit the installed copy.
 
 
 <!-- AI-Native SDLC Router -->

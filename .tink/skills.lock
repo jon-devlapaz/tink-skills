@@ -3,7 +3,7 @@ version = 2
 [[skills]]
 name = "ai-native-sdlc"
 source = "skills/ai-native-sdlc"
-sha256 = "43bc172ec0acff09c6f2a871fbe8e9a6265efe773ff59bbad937b40b7e43079b"
+sha256 = "129d91f16c0157041eda9a3c278dd8784d80ab2ee293748e3e44d945146b5e21"
 
 [[skills]]
 name = "ce-commit-push-pr"
@@ -56,4 +56,4 @@ sha256 = "329f2b9a5a5edf92aabfa384ed2699d73502e603b867c8c88d8ee689acd4b8fa"
 [[skills]]
 name = "skill-scout"
 source = "skills/skill-scout"
-sha256 = "ba63491e4bdec2453b942a6395f2eea109243dbe863a93adc88ddc8f26cc88d4"
+sha256 = "295e79e4a7b9c2c26e42ad7173df819225e140563e2a425ff0330b4e296fdf96"
