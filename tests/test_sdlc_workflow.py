@@ -72,7 +72,7 @@ class WorkflowTests(unittest.TestCase):
         (directory / 'test-log.md').write_text('all passed')
         out = self.cli('status', 'example')
         self.assertIn('Stage 3: pending', out)
-        self.assertIn('Verification: missing', out)
+        self.assertIn('Verification: not run (implementation may be pending; a text log is not passing evidence)', out)
         self.cli('verify', 'example', ok=False)
 
     def test_verification_wrapper_requires_run_id(self):

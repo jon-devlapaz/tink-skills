@@ -293,9 +293,9 @@ def status(args):
                 pass
         print('Verification: ' + ('current' if verified and not blocked else 'failed, stale, or blocked'))
     else:
-        print('Verification: missing (a text log is not passing evidence)')
+        print('Verification: not run (implementation may be pending; a text log is not passing evidence)')
     if not blocked:
-        print('Next: independent PR review and release checks.' if verified else 'Next: run verification.')
+        print('Next: independent PR review and release checks.' if verified else 'Next: implement the approved brief, then run verification.')
     print('Deployment: not inferred from local review files; consult the deployment system.')
 
 
