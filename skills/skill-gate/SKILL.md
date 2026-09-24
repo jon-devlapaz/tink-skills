@@ -22,9 +22,9 @@ derive deterministic vectors and evaluate risk boundaries.
 When evaluating a candidate skill (e.g. under `skills/<name>` or an untrusted external directory):
 
 1. **Run Static Audit**:
-   Execute `skill_gate.py` against the target skill directory:
+   Execute `skill_gate.py` against the target skill directory from the repo root:
    ```sh
-   python3 skill_gate.py <skill_dir> --json --check-compat pi
+   python3 skills/skill-gate/skill_gate.py <skill_dir> --json --check-compat pi
    ```
 2. **Evaluate the Risk Verdict**:
    - **ALLOW** (`score < 0.30`, no redlines): Safe for adoption; conforms to static boundaries.
@@ -91,20 +91,20 @@ Any critical redline immediately produces a `BLOCK` verdict and forces `overall_
 ## CLI Command Reference
 
 ```sh
-# Basic summary audit of a skill
-python3 skill_gate.py <skill_dir>
+# Basic summary audit of a skill (run from the repo root)
+python3 skills/skill-gate/skill_gate.py <skill_dir>
 
 # JSON output with harness compatibility check
-python3 skill_gate.py <skill_dir> --json --check-compat pi
+python3 skills/skill-gate/skill_gate.py <skill_dir> --json --check-compat pi
 
 # Check compatibility against another harness
-python3 skill_gate.py <skill_dir> --check-compat claude
+python3 skills/skill-gate/skill_gate.py <skill_dir> --check-compat claude
 
 # Custom risk threshold gating
-python3 skill_gate.py <skill_dir> --risk-threshold 0.50
+python3 skills/skill-gate/skill_gate.py <skill_dir> --risk-threshold 0.50
 
 # Save audit report to file
-python3 skill_gate.py <skill_dir> --json --output audit.json
+python3 skills/skill-gate/skill_gate.py <skill_dir> --json --output audit.json
 ```
 
 ### Options
