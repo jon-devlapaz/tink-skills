@@ -46,7 +46,7 @@ sha256 = "b4ce2018a9131fc0114c97aea11da8ca1f458f350d23cdb2d6c3bb7de8417dcf"
 [[skills]]
 name = "skill-gate"
 source = "skills/skill-gate"
-sha256 = "6b1238c703954f6cc0edb2dfd7a45fbb1a657926969ad34052705b9dab938183"
+sha256 = "9b4a2c1d9baa61cf40795e6abfaa00741ce4ed2226bf8a04988df820f5618d7b"
 
 [[skills]]
 name = "skill-scout"
