@@ -54,6 +54,7 @@ HARNESS_PROFILES: Dict[str, Set[str]] = {
 
 SENSITIVE_ENV_PATTERNS = [
     r"(?:^|_)(?:SECRET|TOKEN|PASSWORD|PASSWD|CREDENTIAL|PRIVATE|ACCESS_KEY|APIKEY|SIGNING|SESSION)(?:$|_)",
+    r"(?:^|_)API_KEY(?:$|_)",
     r"(?:^|_)(?:CLIENT_SECRET|AUTH_TOKEN|REFRESH_TOKEN)(?:$|_)",
 ]
 
@@ -300,6 +301,23 @@ def analyze_python_code(code: str) -> CodeAnalysis:
                     if call_name == target or call_name.endswith("." + target):
                         dangerous.add(call_name)
 
+                if call_name in {
+                    "os.system", "os.popen", "subprocess.run", "subprocess.Popen",
+                    "subprocess.call", "subprocess.check_call", "subprocess.check_output",
+                }:
+                    literal_parts: List[str] = []
+                    for arg in node.args:
+                        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                            literal_parts.append(arg.value)
+                        elif isinstance(arg, (ast.List, ast.Tuple)):
+                            literal_parts.extend(
+                                str(item.value)
+                                for item in arg.elts
+                                if isinstance(item, ast.Constant) and isinstance(item.value, str)
+                            )
+                    if scan_shell_script(" ".join(literal_parts)).get("has_root_destructive"):
+                        dangerous.add("rm -rf /")
+
                 shell_true = any(
                     kw.arg == "shell" and isinstance(kw.value, ast.Constant) and kw.value.value is True
                     for kw in node.keywords
@@ -325,6 +343,14 @@ def analyze_python_code(code: str) -> CodeAnalysis:
                             is_write = True
                     elif node.args:
                         fs_calls.add("open:unknown_mode")
+                    for kw in node.keywords:
+                        if kw.arg == "mode":
+                            if isinstance(kw.value, ast.Constant):
+                                mode = str(kw.value.value)
+                                if any(m in mode for m in ("w", "a", "x", "+")):
+                                    is_write = True
+                            else:
+                                fs_calls.add("open:unknown_mode")
                     if is_write:
                         fs_calls.add("open:write")
                 elif call_name == "open":
@@ -601,11 +627,17 @@ def extract_features(skill_dir: str) -> SkillFeatures:
                 except OSError as e:
                     shebang = ""
                     warnings.append(f"ReadError: {entry}: {e}")
-                shell_shebang = bool(re.search(
-                    r"#!\s*(?:(?:/usr/bin/env\s+)|(?:/bin/))?(?:ba)?sh\b|"
-                    r"#!\s*(?:(?:/usr/bin/env\s+)|(?:/bin/))?(?:zsh|fish|dash|ksh|ash)\b",
-                    shebang,
-                ))
+                shebang_parts = shebang[2:].strip().split()
+                interpreter = ""
+                if shebang_parts:
+                    interpreter = Path(shebang_parts[0]).name
+                    if interpreter == "env" and len(shebang_parts) > 1:
+                        interpreter = next(
+                            (part for part in shebang_parts[1:] if not part.startswith("-")),
+                            "",
+                        )
+                        interpreter = Path(interpreter).name
+                shell_shebang = interpreter in {"sh", "bash", "zsh", "fish", "dash", "ksh", "ash"}
                 if entry.suffix not in (".sh", ".bash") and not shell_shebang:
                     continue
                 shell_files_count += 1
@@ -763,6 +795,8 @@ def profile_risk(features: SkillFeatures, policy: Optional[Dict[str, Any]] = Non
     for d in py.dangerous_calls:
         if d in ("eval", "exec") or d.endswith(".eval") or d.endswith(".exec"):
             redlines.append(f"Dynamic code evaluation detected ({d})")
+        if d == "rm -rf /":
+            redlines.append("Destructive removal of root filesystem (rm -rf /)")
 
     # Redline: rm -rf / or shutil.rmtree('/')
     path = Path(features.skill_dir)
