@@ -36,4 +36,4 @@ jobs:
         run: bash -n _system/scripts/*.sh skills/ai-native-sdlc/assets/_system/scripts/*.sh
 
       - name: Check whitespace
-        run: git diff --check
+        run: git diff --check HEAD^ HEAD
