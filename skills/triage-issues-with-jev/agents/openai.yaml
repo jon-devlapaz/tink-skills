@@ -1,0 +1,4 @@
+interface:
+  display_name: "Triage issues with Jev"
+  short_description: "Read-only backlog clustering and accept or deny recommendations"
+  default_prompt: "Use $triage-issues-with-jev to cluster my open issues and recommend accept or deny without writing to GitHub."

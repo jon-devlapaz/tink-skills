@@ -6,6 +6,7 @@ Evidence-oriented Agent Skills for AI coding workflows:
 - **skill-scout** — Finds, inspects, and qualifies existing agent skills before you build a new one.
 - **ai-native-sdlc** — Runs an evidence-based software development lifecycle with stage contracts, verified test receipts, and test locks.
 - **skill-gate** — Statically extracts feature vectors, profiles execution risk, and evaluates harness compatibility for agent skills.
+- **triage-issues-with-jev** — Clusters your own open issues and recommends accept or deny. Read-only unless you explicitly grant GitHub writes.
 
 ```mermaid
 flowchart LR
@@ -23,6 +24,7 @@ tink skill add jon-devlapaz/tink-skills --skill interrogate
 tink skill add jon-devlapaz/tink-skills --skill skill-scout
 tink skill add jon-devlapaz/tink-skills --skill ai-native-sdlc
 tink skill add jon-devlapaz/tink-skills --skill skill-gate
+tink skill add jon-devlapaz/tink-skills --skill triage-issues-with-jev
 ```
 
 Refresh an installed skill with `tink skill refresh NAME`.
@@ -95,6 +97,19 @@ Full contract: [`skills/skill-gate/SKILL.md`](skills/skill-gate/SKILL.md)
 
 ---
 
+## triage-issues-with-jev
+
+`triage-issues-with-jev` clusters issues you filed yourself, keeps orthogonal or narrower requests separate, and recommends accept or deny.
+
+### How it works
+- **Read-only by default:** A request to triage or clean up does not authorize comments, labels, closes, or retitles.
+- **Jev for judgments only:** Yes/no questions share a request. Code applies the combine and accept/deny cuts.
+- **Your backlog is in scope:** Issues you authored are triaged. Reproduction, briefs, and GitHub writes stay outside Jev.
+
+Full contract: [`skills/triage-issues-with-jev/SKILL.md`](skills/triage-issues-with-jev/SKILL.md)
+
+---
+
 ## Repository Structure
 
 ```text
@@ -103,7 +118,8 @@ Full contract: [`skills/skill-gate/SKILL.md`](skills/skill-gate/SKILL.md)
 │   ├── ai-native-sdlc/
 │   ├── interrogate/
 │   ├── skill-gate/
-│   └── skill-scout/
+│   ├── skill-scout/
+│   └── triage-issues-with-jev/
 └── tests/               # Python contract and fit tests
 ```
 
