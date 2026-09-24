@@ -53,8 +53,8 @@ HARNESS_PROFILES: Dict[str, Set[str]] = {
 }
 
 SENSITIVE_ENV_PATTERNS = [
-    r"SECRET", r"KEY", r"TOKEN", r"PASSWORD", r"PASSWD", r"CREDENTIAL",
-    r"PRIVATE", r"AUTH", r"ACCESS_KEY", r"APIKEY", r"SIGNING"
+    r"(?:^|_)(?:SECRET|TOKEN|PASSWORD|PASSWD|CREDENTIAL|PRIVATE|ACCESS_KEY|APIKEY|SIGNING|SESSION)(?:$|_)",
+    r"(?:^|_)(?:CLIENT_SECRET|AUTH_TOKEN|REFRESH_TOKEN)(?:$|_)",
 ]
 
 BENIGN_ENV_NAMES = {
@@ -237,6 +237,11 @@ def _get_call_name(node: ast.AST) -> str:
     while isinstance(curr, ast.Attribute):
         parts.append(curr.attr)
         curr = curr.value
+    if isinstance(curr, ast.Call):
+        called = _get_call_name(curr.func)
+        if called:
+            parts.append(called)
+        return ".".join(reversed(parts))
     if isinstance(curr, ast.Name):
         parts.append(curr.id)
         parts.reverse()
@@ -268,7 +273,9 @@ def analyze_python_code(code: str) -> CodeAnalysis:
     DANGEROUS_TARGETS = {
         "shutil.rmtree", "os.system", "subprocess.run", "subprocess.Popen",
         "subprocess.call", "subprocess.check_call", "subprocess.check_output",
-        "eval", "exec", "os.popen", "rmtree", "system"
+        "eval", "exec", "os.popen", "rmtree", "system", "os.remove",
+        "os.unlink", "os.rename", "os.replace", "shutil.copy",
+        "shutil.copy2", "shutil.copyfile", "shutil.move"
     }
 
     for node in ast.walk(tree):
@@ -300,30 +307,49 @@ def analyze_python_code(code: str) -> CodeAnalysis:
                 if shell_true and (call_name.startswith("subprocess.") or call_name in {"subprocess.run", "subprocess.Popen", "subprocess.call", "subprocess.check_call", "subprocess.check_output"}):
                     dangerous.add(f"{call_name}:shell=True")
 
+                # Dynamic dispatch/tripwire: __import__(...) and getattr(...)
+                if call_name in ("__import__", "getattr") or call_name.endswith(".__import__") or call_name.endswith(".getattr"):
+                    dangerous.add(call_name)
+
                 # Environment variable lookups via calls: os.environ.get(...), os.getenv(...)
                 if call_name in ("os.environ.get", "os.getenv", "environ.get", "getenv"):
                     if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
                         env_lookups.add(node.args[0].value)
 
                 # Filesystem write operations
-                if call_name == "open":
+                if call_name.endswith(".open"):
+                    is_write = False
+                    if node.args and isinstance(node.args[0], ast.Constant):
+                        mode = str(node.args[0].value)
+                        if any(m in mode for m in ("w", "a", "x", "+")):
+                            is_write = True
+                    elif node.args:
+                        fs_calls.add("open:unknown_mode")
+                    if is_write:
+                        fs_calls.add("open:write")
+                elif call_name == "open":
                     is_write = False
                     if len(node.args) >= 2 and isinstance(node.args[1], ast.Constant):
                         mode = str(node.args[1].value)
                         if any(m in mode for m in ("w", "a", "x", "+")):
                             is_write = True
+                    elif len(node.args) >= 2:
+                        fs_calls.add("open:unknown_mode")
                     for kw in node.keywords:
-                        if kw.arg == "mode" and isinstance(kw.value, ast.Constant):
-                            mode = str(kw.value.value)
-                            if any(m in mode for m in ("w", "a", "x", "+")):
-                                is_write = True
+                        if kw.arg == "mode":
+                            if isinstance(kw.value, ast.Constant):
+                                mode = str(kw.value.value)
+                                if any(m in mode for m in ("w", "a", "x", "+")):
+                                    is_write = True
+                            else:
+                                fs_calls.add("open:unknown_mode")
                     if is_write:
                         fs_calls.add("open:write")
                 elif call_name.endswith(".write_text") or call_name == "write_text":
                     fs_calls.add("Path.write_text")
                 elif call_name.endswith(".write_bytes") or call_name == "write_bytes":
                     fs_calls.add("Path.write_bytes")
-                elif call_name.endswith(".write") or call_name == "write":
+                elif (call_name.endswith(".write") or call_name == "write") and not call_name.startswith(("sys.", "StringIO.")):
                     fs_calls.add("write")
                 elif call_name in ("os.remove", "os.unlink", "pathlib.Path.unlink", "Path.unlink"):
                     fs_calls.add("remove")
@@ -360,6 +386,13 @@ def _shell_scan_text(line: str) -> str:
     return cleaned
 
 
+def _shell_has_background_operator(line: str) -> bool:
+    """Detect command-backgrounding ampersands, excluding quoted text and redirections."""
+    unquoted = re.sub(r'(?:"[^"]*"|\'[^\']*\'|`[^`]*`)', " ", line)
+    unquoted = re.sub(r"#.*$", " ", unquoted)
+    return bool(re.search(r"(?:^|[\s;|])&(?:\s|$|[;|])", unquoted))
+
+
 def scan_shell_script(script: str) -> Dict[str, Any]:
     """Lexical scanner for shell commands:
 
@@ -373,6 +406,7 @@ def scan_shell_script(script: str) -> Dict[str, Any]:
     matched_network: Set[str] = set()
     matched_credentials: Set[str] = set()
     matched_autonomy: Set[str] = set()
+    matched_root_destructive: Set[str] = set()
 
     lines = script.splitlines()
     for raw_line in lines:
@@ -387,6 +421,8 @@ def scan_shell_script(script: str) -> Dict[str, Any]:
         # Destructive patterns
         if re.search(r"\brm\b(?=[^\n]*(?:\s-(?:[A-Za-z]*[rf][A-Za-z]*|r|f)|\s+--(?:recursive|force|no-preserve-root)))[^\n]*", scan_line, re.IGNORECASE):
             matched_destructive.add("rm -rf")
+        if re.search(r"\brm\b[^\n]*(?:^|[\s])/(?:\s|$|[;&|])", scan_line):
+            matched_root_destructive.add("rm -rf /")
         if re.search(r"\btruncate\b", scan_line):
             matched_destructive.add("truncate")
         if "dd if=" in scan_line or re.search(r"\bdd\s+if=", scan_line):
@@ -406,7 +442,7 @@ def scan_shell_script(script: str) -> Dict[str, Any]:
             matched_credentials.add("~/.ssh")
         if re.search(r"\.env\b", scan_line):
             matched_credentials.add(".env")
-        for cred in ("id_rsa", "id_ed25519", "id_ecdsa", "id_dsa", "/etc/shadow", "/etc/passwd"):
+        for cred in ("id_rsa", "id_ed25519", "id_ecdsa", "id_dsa", "/etc/shadow"):
             if cred in scan_line:
                 matched_credentials.add(cred)
         if re.search(r"\bAWS_SECRET_ACCESS_KEY\b", scan_line):
@@ -421,7 +457,7 @@ def scan_shell_script(script: str) -> Dict[str, Any]:
             m = re.search(r"\b(disown|pkill|killall)\b", scan_line)
             if m:
                 matched_autonomy.add(m.group(1))
-        if re.search(r"(?<!&)&(?!&|>)", scan_line):
+        if "nohup" not in matched_autonomy and _shell_has_background_operator(line):
             matched_autonomy.add("&")
 
     return {
@@ -433,6 +469,8 @@ def scan_shell_script(script: str) -> Dict[str, Any]:
         "matched_network": sorted(matched_network),
         "matched_credentials": sorted(matched_credentials),
         "matched_autonomy": sorted(matched_autonomy),
+        "has_root_destructive": bool(matched_root_destructive),
+        "matched_root_destructive": sorted(matched_root_destructive),
     }
 
 
@@ -452,6 +490,7 @@ class SkillFeatures:
     shell_files_count: int
     python_analysis: CodeAnalysis
     shell_analysis: Dict[str, Any]
+    warnings: List[str]
     vector: List[float]
     vector_hash: str
 
@@ -466,6 +505,7 @@ def extract_features(skill_dir: str) -> SkillFeatures:
     skill_name = path.name
     description = ""
     tools: List[str] = []
+    warnings: List[str] = []
 
     # Parse SKILL.md if present
     skill_md = path / "SKILL.md"
@@ -474,6 +514,8 @@ def extract_features(skill_dir: str) -> SkillFeatures:
         try:
             content = skill_md.read_text(encoding="utf-8", errors="replace")
             fm, body = parse_frontmatter(content)
+            if content.lstrip().startswith("---") and not re.search(r"(?m)^---\s*$", content.split("\n", 1)[-1]):
+                warnings.append("Frontmatter appears to be unclosed or malformed")
             body_scan_text = body
             if "name" in fm and fm["name"]:
                 skill_name = str(fm["name"])
@@ -483,8 +525,8 @@ def extract_features(skill_dir: str) -> SkillFeatures:
                 tools = [str(t) for t in fm["tools"]]
             if description:
                 body_scan_text = f"{description}\n{body_scan_text}"
-        except Exception:
-            pass
+        except Exception as e:
+            warnings.append(f"ReadError: {skill_md}: {e}")
 
     file_count = 0
     total_bytes = 0
@@ -501,6 +543,7 @@ def extract_features(skill_dir: str) -> SkillFeatures:
     all_matched_network: Set[str] = set()
     all_matched_credentials: Set[str] = set()
     all_matched_autonomy: Set[str] = set()
+    all_matched_root_destructive: Set[str] = set()
 
     if body_scan_text:
         body_scan = scan_shell_script(body_scan_text)
@@ -508,7 +551,9 @@ def extract_features(skill_dir: str) -> SkillFeatures:
         all_matched_network.update(body_scan["matched_network"])
         all_matched_credentials.update(body_scan["matched_credentials"])
         all_matched_autonomy.update(body_scan["matched_autonomy"])
+        all_matched_root_destructive.update(body_scan["matched_root_destructive"])
 
+    file_hashes: Dict[str, str] = {}
     # Discover and inspect files deterministically
     if path.is_dir():
         file_entries = sorted(path.rglob("*"))
@@ -527,6 +572,13 @@ def extract_features(skill_dir: str) -> SkillFeatures:
             except OSError:
                 size = 0
 
+            try:
+                rel_path = entry.relative_to(path).as_posix()
+                file_bytes = entry.read_bytes()
+                file_hashes[rel_path] = hashlib.sha256(file_bytes).hexdigest()
+            except OSError:
+                pass
+
             # Scan Python files
             if entry.suffix == ".py":
                 python_files_count += 1
@@ -542,7 +594,20 @@ def extract_features(skill_dir: str) -> SkillFeatures:
                     all_syntax_errors.append(f"ReadError: {e}")
 
             # Scan Shell files
-            elif entry.suffix in (".sh", ".bash"):
+            else:
+                try:
+                    first_line = entry.read_text(encoding="utf-8", errors="replace").splitlines()[:1]
+                    shebang = first_line[0] if first_line else ""
+                except OSError as e:
+                    shebang = ""
+                    warnings.append(f"ReadError: {entry}: {e}")
+                shell_shebang = bool(re.search(
+                    r"#!\s*(?:(?:/usr/bin/env\s+)|(?:/bin/))?(?:ba)?sh\b|"
+                    r"#!\s*(?:(?:/usr/bin/env\s+)|(?:/bin/))?(?:zsh|fish|dash|ksh|ash)\b",
+                    shebang,
+                ))
+                if entry.suffix not in (".sh", ".bash") and not shell_shebang:
+                    continue
                 shell_files_count += 1
                 try:
                     script = entry.read_text(encoding="utf-8", errors="replace")
@@ -551,8 +616,9 @@ def extract_features(skill_dir: str) -> SkillFeatures:
                     all_matched_network.update(s_scan["matched_network"])
                     all_matched_credentials.update(s_scan["matched_credentials"])
                     all_matched_autonomy.update(s_scan["matched_autonomy"])
-                except Exception:
-                    pass
+                    all_matched_root_destructive.update(s_scan["matched_root_destructive"])
+                except Exception as e:
+                    warnings.append(f"ReadError: {entry}: {e}")
 
     combined_python = CodeAnalysis(
         imported_modules=sorted(all_imported),
@@ -571,6 +637,8 @@ def extract_features(skill_dir: str) -> SkillFeatures:
         "matched_network": sorted(all_matched_network),
         "matched_credentials": sorted(all_matched_credentials),
         "matched_autonomy": sorted(all_matched_autonomy),
+        "has_root_destructive": bool(all_matched_root_destructive),
+        "matched_root_destructive": sorted(all_matched_root_destructive),
     }
 
     # Continuous vector metrics [0.0 - 1.0]
@@ -602,7 +670,7 @@ def extract_features(skill_dir: str) -> SkillFeatures:
     dim_autonomy = min(1.0, auton_count * 0.4)
 
     # Dimension 5: General python intensity
-    py_activity = len(combined_python.dangerous_calls) + len(combined_python.filesystem_calls) + len(combined_python.env_lookups)
+    py_activity = len(combined_python.filesystem_calls) + len(combined_python.env_lookups)
     dim_py_intensity = min(1.0, py_activity / 10.0)
 
     # Dimension 6: File count scale (log normalized)
@@ -631,6 +699,7 @@ def extract_features(skill_dir: str) -> SkillFeatures:
         "tools": sorted(tools),
         "file_count": file_count,
         "total_bytes": total_bytes,
+        "file_hashes": {k: file_hashes[k] for k in sorted(file_hashes)},
         "vector": vector,
     }
     canonical_bytes = json.dumps(canonical_data, sort_keys=True).encode("utf-8")
@@ -647,6 +716,7 @@ def extract_features(skill_dir: str) -> SkillFeatures:
         shell_files_count=shell_files_count,
         python_analysis=combined_python,
         shell_analysis=combined_shell,
+        warnings=sorted(warnings),
         vector=vector,
         vector_hash=vector_hash,
     )
@@ -695,18 +765,14 @@ def profile_risk(features: SkillFeatures, policy: Optional[Dict[str, Any]] = Non
             redlines.append(f"Dynamic code evaluation detected ({d})")
 
     # Redline: rm -rf / or shutil.rmtree('/')
-    # Check shell files and Python files for root filesystem removal
     path = Path(features.skill_dir)
     if path.is_dir():
         for f in path.rglob("*"):
             if not f.is_file():
                 continue
-            if f.suffix in (".py", ".sh", ".bash"):
+            if f.suffix == ".py":
                 try:
                     text_content = f.read_text(encoding="utf-8", errors="replace")
-                    # Check rm -rf /
-                    if re.search(r"rm\s+-[a-zA-Z]*[rf][a-zA-Z]*\s+/\s*(?:$|[;|&])", text_content) or "rm -rf /" in text_content:
-                        redlines.append("Destructive removal of root filesystem (rm -rf /)")
                     if "shutil.rmtree('/')" in text_content or 'shutil.rmtree("/")' in text_content:
                         redlines.append("Destructive removal of root directory via shutil.rmtree('/')")
                     # Raw exfiltration: credential piped or sent directly to network utility
@@ -714,6 +780,8 @@ def profile_risk(features: SkillFeatures, policy: Optional[Dict[str, Any]] = Non
                         redlines.append("Raw credential exfiltration via network utility pipe")
                 except Exception:
                     pass
+    if sh.get("has_root_destructive"):
+        redlines.append("Destructive removal of root filesystem (rm -rf /)")
 
     # Factor 1: Destructive operations (weight 0.35)
     dest_findings: List[str] = []
@@ -884,20 +952,19 @@ class SkillAuditReport:
 
     @property
     def vector_hash(self) -> str:
-        return self.features.vector_hash if self.features else ""
+        return self.features.vector_hash
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "schema_version": self.schema_version,
             "skill_name": self.skill_name,
             "skill_dir": self.skill_dir,
-            "vector_hash": self.vector_hash,
+            "vector_hash": self.features.vector_hash,
             "features": {
                 "file_count": self.features.file_count,
                 "total_bytes": self.features.total_bytes,
                 "tools": self.features.tools,
                 "vector": self.features.vector,
-                "vector_hash": self.features.vector_hash,
                 "python_files_count": self.features.python_files_count,
                 "shell_files_count": self.features.shell_files_count,
             },
