@@ -3,7 +3,7 @@ version = 2
 [[skills]]
 name = "ai-native-sdlc"
 source = "skills/ai-native-sdlc"
-sha256 = "7f4225c89675341dafa08b2600ffb3eace70f0a8760b6a1d9c13c93aca3360f6"
+sha256 = "f9cd21afd4939e781db3dcc5200eac9eb5ef57d1fb3a517d30008b2701d72604"
 
 [[skills]]
 name = "ce-commit-push-pr"
