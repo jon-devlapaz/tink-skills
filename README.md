@@ -7,7 +7,7 @@ Evidence-oriented Agent Skills for AI coding workflows:
 - **ai-native-sdlc** — Runs an evidence-based software development lifecycle with stage contracts, verified test receipts, and test locks.
 - **skill-gate** — Statically extracts feature vectors, profiles execution risk, and evaluates harness compatibility for agent skills.
 
-*(Note: `triangulate-me` and `grill-me-with-jev` are deprecated; use `interrogate` for decision-tree interrogation and grounded planning. A thin redirect remains at `skills/grill-me-with-jev/` for older install links.)*
+*(Note: `triangulate-me` is deprecated; use `interrogate` for decision-tree interrogation and grounded planning.)*
 
 ```mermaid
 flowchart LR
@@ -105,8 +105,7 @@ Full contract: [`skills/skill-gate/SKILL.md`](skills/skill-gate/SKILL.md)
 │   ├── ai-native-sdlc/
 │   ├── interrogate/
 │   ├── skill-gate/
-│   ├── skill-scout/
-│   └── grill-me-with-jev/   # deprecated redirect → interrogate
+│   └── skill-scout/
 └── tests/               # Python contract and fit tests
 ```
 

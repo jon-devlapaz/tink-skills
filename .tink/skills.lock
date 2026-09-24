@@ -27,11 +27,6 @@ path = "skills/epistemic-matrix"
 sha256 = "bce355e60ed6c1439076b457d680e3fb609b84543327a62e26b6d88beaa01e2c"
 
 [[skills]]
-name = "grill-me-with-jev"
-source = "skills/grill-me-with-jev"
-sha256 = "06e90c7f1d98aab98dd7ce689cbe35e1707e6cbceb077ff1eb85f63e27af468c"
-
-[[skills]]
 name = "interrogate"
 source = "skills/interrogate"
 sha256 = "73f1ba959e0dabaeee68eb3e294d3594405cb1dbba3c178b82f6f45f57ee74f9"
