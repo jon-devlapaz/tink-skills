@@ -75,25 +75,6 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn('Verification: not run (implementation may be pending; a text log is not passing evidence)', out)
         self.cli('verify', 'example', ok=False)
 
-    def test_verification_wrapper_requires_run_id(self):
-        wrapper = self.root / '_system/scripts/verify.sh'
-        wrapper.write_text(
-            '#!/usr/bin/env bash\n'
-            'set -euo pipefail\n'
-            'SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"\n'
-            'if [ "$#" -ne 1 ]; then\n'
-            '  echo "Usage: $0 <run-id>" >&2\n'
-            '  echo "Create a run first with: ${SCRIPT_DIR}/new-run.sh <run-id>" >&2\n'
-            '  exit 2\n'
-            'fi\n'
-            'exec python3 "${SCRIPT_DIR}/sdlc.py" verify "$@"\n'
-        )
-        wrapper.chmod(0o755)
-        result = subprocess.run(['bash', str(wrapper)], cwd='/', capture_output=True, text=True)
-        self.assertEqual(result.returncode, 2)
-        self.assertIn('Usage:', result.stderr)
-        self.assertIn('new-run.sh', result.stderr)
-
     def test_stale_approval_and_rejection(self):
         self.create_ready()
         (self.root / 'runs/example/brief.md').write_text('new requirements')

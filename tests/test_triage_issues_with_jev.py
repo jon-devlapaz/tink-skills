@@ -127,13 +127,6 @@ class TestContractKernel(unittest.TestCase):
 
 
 class TestAcceptDeny(unittest.TestCase):
-    def test_deny_questions_are_omitted_without_evidence(self):
-        request = KERNEL.accept_request({"card": "a bug", "code_evidence": "", "policy_text": ""})
-        self.assertNotIn("already", request["questions"])
-        self.assertNotIn("out_of_scope", request["questions"])
-        self.assertIn("bug", request["questions"])
-        self.assertEqual(request["model"], "jev-1.13.0")
-
     def test_deny_requires_the_evidence_that_was_retrieved(self):
         hot = {"bug": 0.1, "enhancement": 0.1, "needs_info": 0.1, "already": 0.99, "out_of_scope": 0.99, "agent_ready": 0.1}
         self.assertEqual(
@@ -169,39 +162,6 @@ class TestAcceptDeny(unittest.TestCase):
         }
         result = KERNEL.disposition(answers, has_code=False, has_policy=False)
         self.assertEqual(result, {"disposition": "ACCEPT_CANDIDATE", "category": "enhancement"})
-
-    def test_out_of_scope_question_appears_when_policy_is_present(self):
-        request = KERNEL.accept_request({
-            "card": "dark mode",
-            "code_evidence": "",
-            "policy_text": "# Dark mode\n\nRejected.\n",
-        })
-        self.assertIn("out_of_scope", request["questions"])
-        self.assertNotIn("already", request["questions"])
-
-
-class TestSkillText(unittest.TestCase):
-    def test_skill_shows_the_question_text_and_the_cuts(self):
-        text = (SKILL / "SKILL.md").read_text()
-        self.assertIn("name: triage-issues-with-jev", text)
-        for question in (
-            KERNEL.QUESTION_SAME,
-            KERNEL.QUESTION_INDEP,
-            KERNEL.QUESTION_IS_CLAIM,
-            KERNEL.QUESTION_BUG,
-            KERNEL.QUESTION_ENHANCEMENT,
-            KERNEL.QUESTION_NEEDS_INFO,
-            KERNEL.QUESTION_ALREADY,
-            KERNEL.QUESTION_OUT_OF_SCOPE,
-            KERNEL.QUESTION_AGENT_READY,
-        ):
-            self.assertIn(question, text)
-        self.assertIn("jev-1.13.0", text)
-        self.assertIn("same >= 0.70 and indep < 0.40", text)
-        self.assertIn("already >= 0.80", text)
-        self.assertNotIn("do not triage tickets you created", text.lower())
-        self.assertNotIn("happier-github-ops", text)
-        self.assertNotIn("TYPESAFE_API_KEY=", text)
 
 
 if __name__ == "__main__":

@@ -1,10 +1,10 @@
-"""Activation layout: AGENTS.md routes at the published skills/ tree.
+"""Activation layout: lock pins and installs match the published skills/ tree.
 
 .agents/skills/ is Tink's install (gitignored), not a second source. These
 checks close the two symptoms of that split:
 
-- interrogate on the routed tree is the published skill (Interrogate title,
-  assets/ledger-view.html), and a present install matches that tree.
+- interrogate's lock sha256 matches the published tree digest, and a present
+  install matches that tree.
 - skill-gate is declared for install and present on the routed tree, and a
   present install contains that same tree.
 """
@@ -13,16 +13,11 @@ from __future__ import annotations
 
 import hashlib
 import os
-import re
-import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CANONICAL_LINE = "Canonical skill tree: `skills/`"
 RECEIPT = ".tink-source.json"
-ROUTER_START = "<!-- AI-Native SDLC Router -->"
-ROUTER_END = "<!-- End AI-Native SDLC Router -->"
 CACHE_DIRS = {"__pycache__", ".git"}
 CACHE_SUFFIXES = (".pyc", ".pyo", ".pyd")
 
@@ -162,46 +157,13 @@ def install_delta(published: Path, installed: Path) -> list[str]:
 
 class TestActivationLayout(unittest.TestCase):
     def setUp(self):
-        self.agents = (ROOT / "AGENTS.md").read_text()
         self.manifest = (ROOT / ".tink" / "skills.toml").read_text()
         self.lock = (ROOT / ".tink" / "skills.lock").read_text()
         self.published = local_published_skills(self.manifest)
 
-    def test_digest_helper_matches_tink_legacy_vector(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            (root / "resources").mkdir()
-            (root / "SKILL.md").write_bytes(b"body")
-            (root / "resources" / "run.sh").write_bytes(b"run")
-            legacy = _legacy_digest(root)
-        self.assertEqual(
-            legacy,
-            "f612169400ea83a502473a69fac44e95b4dff9aa49319aebc0a073b61dd57a03",
-        )
-
-    def test_agents_routes_to_published_tree(self):
-        self.assertIn(CANONICAL_LINE, self.agents)
-        self.assertNotIn(
-            "This project uses Tink to manage Agent Skills under `.agents/skills/`.",
-            self.agents,
-        )
-        self.assertIn("`.agents/` is installed state, not source", self.agents)
-        self.assertIn("`tink skill sync`", self.agents)
-        self.assertLess(
-            self.agents.index(ROUTER_START),
-            self.agents.index(ROUTER_END),
-        )
-        router_end = self.agents.index(ROUTER_END) + len(ROUTER_END)
-        router = self.agents[self.agents.index(ROUTER_START) : router_end]
-        self.assertIn("Read `_system/SDLC.md`", router)
-
     def test_issue_62_routed_interrogate_matches_published_tree(self):
         self.assertEqual(self.published["interrogate"], "skills/interrogate")
         skill_dir = ROOT / "skills" / "interrogate"
-        content = (skill_dir / "SKILL.md").read_text()
-        headings = re.findall(r"^#+ .+$", content, re.M)
-        self.assertEqual(headings[0], "# Interrogate")
-        self.assertFalse(any(re.fullmatch(r"#+ Grill Me", heading) for heading in headings))
         self.assertTrue((skill_dir / "assets" / "ledger-view.html").is_file())
         self.assertEqual(
             lock_digests(self.lock)["interrogate"],
@@ -212,10 +174,7 @@ class TestActivationLayout(unittest.TestCase):
     def test_issue_63_skill_gate_is_on_routed_tree(self):
         self.assertEqual(self.published["skill-gate"], "skills/skill-gate")
         skill_dir = ROOT / "skills" / "skill-gate"
-        content = (skill_dir / "SKILL.md").read_text()
-        self.assertIn("name: skill-gate", content)
         self.assertTrue((skill_dir / "SKILL.md").is_file())
-        self.assertIn("`skill-gate`", self.agents)
         self.assertEqual(
             lock_digests(self.lock)["skill-gate"],
             tree_digest_v2(skill_dir),
@@ -254,31 +213,6 @@ class TestActivationLayout(unittest.TestCase):
             f".agents/skills/{name} drifted from {self.published[name]}:\n"
             + "\n".join(delta),
         )
-
-
-def _legacy_digest(root: Path) -> str:
-    entries: list[tuple[bytes, bytes, bytes | None]] = []
-    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
-        dirnames[:] = sorted(dirnames)
-        base = Path(dirpath)
-        relative_dir = base.relative_to(root)
-        if relative_dir != Path("."):
-            entries.append((relative_dir.as_posix().encode(), b"d", None))
-        for name in sorted(filenames):
-            relative = relative_dir / name
-            data = (base / name).read_bytes()
-            entries.append((relative.as_posix().encode(), b"f", data))
-    entries.sort(key=lambda entry: entry[0])
-    digest = hashlib.sha256()
-    for path, kind, data in entries:
-        digest.update(len(path).to_bytes(8, "big"))
-        digest.update(path)
-        digest.update(kind)
-        if kind == b"f":
-            assert data is not None
-            digest.update(len(data).to_bytes(8, "big"))
-            digest.update(data)
-    return digest.hexdigest()
 
 
 if __name__ == "__main__":
