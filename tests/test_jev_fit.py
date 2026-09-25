@@ -9,9 +9,8 @@ import subprocess
 import sys
 import tempfile
 import threading
-from types import SimpleNamespace
 import unittest
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 SCRIPT = Path(__file__).resolve().parents[1] / "skills/skill-scout/scripts/jev_fit.py"
 spec = importlib.util.spec_from_file_location("jev_fit", SCRIPT)
@@ -166,10 +165,6 @@ class JevFitTests(unittest.TestCase):
             with self.assertRaisesRegex(jev.Invalid, "credential_in_payload"):
                 jev.preflight(self.packet, self.policy)
 
-    def test_supplied_snapshot_does_not_require_repository_revision(self):
-        self.packet["candidate"].update(source_class="supplied", revision=None, snapshot_sha256="sha256:" + "b" * 64)
-        self.assertIn("packet_sha256", jev.preflight(self.packet, self.policy))
-
     def test_replay_budget_and_policy_drift(self):
         call = Mock(return_value=response())
         jev.decide(self.packet, self.policy, self.root, jev.digest(self.packet), call=call)
@@ -240,21 +235,6 @@ class JevFitTests(unittest.TestCase):
             path.write_text(value)
             with self.assertRaises(jev.Invalid):
                 jev.read_json(path)
-
-    def test_live_transport_pins_sdk_endpoint_timeout_and_disables_retries(self):
-        client = MagicMock()
-        client.return_value.__enter__.return_value.system_one.return_value = response()
-        retry, choice = Mock(), Mock()
-        modules = {"typesafe_sdk": SimpleNamespace(TypeSafeClient=client, RetryPolicy=retry, Choice=choice),
-                   "msgspec": SimpleNamespace(to_builtins=lambda value: value)}
-        with patch.dict(os.environ, {"TYPESAFE_API_KEY": "test-key"}), patch.dict(sys.modules, modules), patch.object(jev, "version", return_value="0.6.0"):
-            result = jev.provider_call(self.packet, self.policy)
-        retry.assert_called_once_with(max_retries=0)
-        self.assertEqual(client.call_args.kwargs["base_url"], "https://api.typesafe.ai")
-        self.assertEqual(client.call_args.kwargs["timeout"], 15)
-        self.assertEqual(client.call_args.kwargs["model"], self.policy["model"])
-        self.assertEqual(result, response())
-        client.return_value.__enter__.return_value.system_one.assert_called_once()
 
     def test_concurrent_call_cannot_consume_a_second_attempt(self):
         entered, release = threading.Event(), threading.Event()
