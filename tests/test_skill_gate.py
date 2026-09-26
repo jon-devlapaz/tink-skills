@@ -419,7 +419,7 @@ class TestSkillGateE2E(unittest.TestCase):
         # Statically analyze active repo skills
         skill_dirs = [
             ROOT / "skills/skill-scout",
-            ROOT / "skills/interrogate",
+            ROOT / "skills/seed-me",
         ]
         for skill_dir in skill_dirs:
             self.assertTrue(skill_dir.is_dir(), f"Missing expected skill dir: {skill_dir}")

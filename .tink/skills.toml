@@ -16,8 +16,8 @@ source = "https://github.com/eddiebelaval/squire.git"
 path = "skills/epistemic-matrix"
 
 [[skills]]
-name = "interrogate"
-source = "skills/interrogate"
+name = "seed-me"
+source = "skills/seed-me"
 
 [[skills]]
 name = "manage-tink"

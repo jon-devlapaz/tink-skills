@@ -1,4 +1,4 @@
-"""Structural contract checks for interrogate.
+"""Structural contract checks for seed-me.
 
 These checks must not be reported as proof of transition or authorization behavior.
 """
@@ -9,7 +9,7 @@ import unittest
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL_DIR = ROOT / "skills" / "interrogate"
+SKILL_DIR = ROOT / "skills" / "seed-me"
 
 
 class TestGrillMeWithJevContract(unittest.TestCase):
@@ -134,8 +134,8 @@ class TestThroughlineSkillOrder(unittest.TestCase):
         self.assertIsNotNone(mermaid)
         diagram = mermaid.group(1)
         edges = (
-            'intent["intent / idea"] --> interrogate["interrogate"]',
-            'interrogate -->|settled pre-intent| scout["skill-scout"]',
+            'intent["intent / idea"] --> seed_me["seed-me"]',
+            'seed_me -->|settled pre-intent| scout["skill-scout"]',
             'scout -->|qualified skill / none| implementation["ai-native-sdlc"]',
         )
         positions = []
@@ -147,7 +147,7 @@ class TestThroughlineSkillOrder(unittest.TestCase):
         self.assertLess(positions[0], positions[1])
         self.assertLess(positions[1], positions[2])
         self.assertNotIn("grill-me-with-jev", diagram)
-        self.assertNotRegex(diagram, r"interrogate\s*-->(?:\|[^|]*\|)?\s*implementation\[")
+        self.assertNotRegex(diagram, r"seed_me\s*-->(?:\|[^|]*\|)?\s*implementation\[")
         self.assertNotIn("grill-me", readme)
 
     def test_grill_me_with_jev_is_removed(self):
