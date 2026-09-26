@@ -180,13 +180,14 @@ Once the local review and close checklist are resolved:
 The displayed and saved revision must contain:
 
 - Title and provenance: originator when known, date, revision, and status
-  `pre-intent — confirmed for intake; not approved for implementation`.
+  `unconfirmed — awaiting affirmation` while the revision is displayed, and
+  `pre-intent — confirmed for intake; not approved for implementation` on the saved file.
 - Problem statement: current behavior, evidence, and why it matters.
 - Proposed outcome: desired user-visible results and success criteria.
 - Acceptance criteria: standalone testable checks, each independently
-  verifiable without re-reading the interview. Every check carries its exact command,
-  expected output, and where it runs — prose without literals is
-  not a criterion. This section is the executable core of the intake —
+  verifiable without re-reading the interview. Every check copies a settled command as its exact command,
+  with that command's settled expected output and where it runs — prose without those literals is
+  not a criterion, and a substitute or extra command is not a check. This section is the executable core of the intake —
   downstream stages consume it verbatim.
 - Affected users and systems: relevant repositories, modules, and execution paths.
 - Constraints and boundaries: non-negotiables, exclusions, and rejected alternatives.
