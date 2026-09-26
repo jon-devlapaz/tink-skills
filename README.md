@@ -2,7 +2,7 @@
 
 Evidence-oriented Agent Skills for AI coding workflows:
 
-- **interrogate** — Pressure-tests your engineering plan through a step-by-step interview, resolving facts in the codebase first and asking one consequential decision at a time.
+- **seed-me** — Pressure-tests your engineering plan through a step-by-step interview, resolving facts in the codebase first and asking one consequential decision at a time.
 - **skill-scout** — Finds, inspects, and qualifies existing agent skills before you build a new one.
 - **ai-native-sdlc** — Runs an evidence-based software development lifecycle with stage contracts, verified test receipts, and test locks.
 - **skill-gate** — Statically extracts feature vectors, profiles execution risk, and evaluates harness compatibility for agent skills.
@@ -10,8 +10,8 @@ Evidence-oriented Agent Skills for AI coding workflows:
 
 ```mermaid
 flowchart LR
-    intent["intent / idea"] --> interrogate["interrogate"]
-    interrogate -->|settled pre-intent| scout["skill-scout"]
+    intent["intent / idea"] --> seed_me["seed-me"]
+    seed_me -->|settled pre-intent| scout["skill-scout"]
     scout -->|qualified skill / none| implementation["ai-native-sdlc"]
 ```
 
@@ -20,20 +20,25 @@ flowchart LR
 Install the skills from this repository with [Tink](https://github.com/jon-devlapaz/tink):
 
 ```console
-tink skill add jon-devlapaz/tink-skills --skill interrogate
+tink skill add jon-devlapaz/tink-skills --skill seed-me
 tink skill add jon-devlapaz/tink-skills --skill skill-scout
-tink skill add jon-devlapaz/tink-skills --skill ai-native-sdlc
 tink skill add jon-devlapaz/tink-skills --skill skill-gate
 tink skill add jon-devlapaz/tink-skills --skill triage-issues-with-jev
+```
+
+Companion standalone skills in this ecosystem:
+
+```console
+tink skill add jon-devlapaz/ai-native-sdlc
 ```
 
 Refresh an installed skill with `tink skill refresh NAME`.
 
 ---
 
-## interrogate
+## seed-me
 
-`interrogate` stress-tests your architectural plan or technical decision through a focused, single-question interview before you write code.
+`seed-me` stress-tests your architectural plan or technical decision through a focused, single-question interview before you write code.
 
 ### How it works
 - **Investigates facts first:** Checks repository code, configs, and schemas before asking you anything. If a fact is discoverable, it won't interrupt you for it.
@@ -50,8 +55,8 @@ Decision 1 of 3 ready (2 parked)
 📜 Grounded: workspace evidence summary.
 ```
 
-Full contract: [`skills/interrogate/SKILL.md`](skills/interrogate/SKILL.md)  
-Operational references: [`ledger-transitions.md`](skills/interrogate/references/ledger-transitions.md) · [`epistemic-lenses.md`](skills/interrogate/references/epistemic-lenses.md)
+Full contract: [`skills/seed-me/SKILL.md`](skills/seed-me/SKILL.md)
+Operational references: [`ledger-transitions.md`](skills/seed-me/references/ledger-transitions.md) · [`epistemic-lenses.md`](skills/seed-me/references/epistemic-lenses.md)
 
 ---
 
@@ -71,6 +76,8 @@ Jev fit reference: [`skills/skill-scout/references/jev-fit.md`](skills/skill-sco
 
 ## ai-native-sdlc
 
+> **Note:** `ai-native-sdlc` is maintained in its own dedicated repository: [jon-devlapaz/ai-native-sdlc](https://github.com/jon-devlapaz/ai-native-sdlc).
+
 `ai-native-sdlc` installs and operates an evidence-based software development lifecycle inside your repository.
 
 ### How it works
@@ -79,8 +86,10 @@ Jev fit reference: [`skills/skill-scout/references/jev-fit.md`](skills/skill-sco
 - **Evidence-backed gates:** Advances stages using verified test receipts and content hashes so progress is provable, not assumed.
 - **Safe scaffolding:** Easily installed via `scripts/init.py` without overwriting existing repo instructions.
 
-Full contract: [`skills/ai-native-sdlc/SKILL.md`](skills/ai-native-sdlc/SKILL.md)  
-Operator manual: [`skills/ai-native-sdlc/assets/_system/SDLC.md`](skills/ai-native-sdlc/assets/_system/SDLC.md)
+Install standalone:
+```console
+tink skill add jon-devlapaz/ai-native-sdlc
+```
 
 ---
 
@@ -115,8 +124,7 @@ Full contract: [`skills/triage-issues-with-jev/SKILL.md`](skills/triage-issues-w
 ```text
 .
 ├── skills/
-│   ├── ai-native-sdlc/
-│   ├── interrogate/
+│   ├── seed-me/
 │   ├── skill-gate/
 │   ├── skill-scout/
 │   └── triage-issues-with-jev/

@@ -1,10 +1,6 @@
 version = 1
 
 [[skills]]
-name = "ai-native-sdlc"
-source = "skills/ai-native-sdlc"
-
-[[skills]]
 name = "ce-commit-push-pr"
 source = "https://github.com/everyinc/compound-engineering-plugin.git"
 path = "skills/ce-commit-push-pr"

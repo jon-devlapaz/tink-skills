@@ -1,11 +1,6 @@
 version = 2
 
 [[skills]]
-name = "ai-native-sdlc"
-source = "skills/ai-native-sdlc"
-sha256 = "f9cd21afd4939e781db3dcc5200eac9eb5ef57d1fb3a517d30008b2701d72604"
-
-[[skills]]
 name = "ce-commit-push-pr"
 source = "https://github.com/everyinc/compound-engineering-plugin.git"
 revision = "4fbabcd32b6ca7d8ebb82f15840fe34ef7562a64"
