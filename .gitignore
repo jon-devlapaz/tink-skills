@@ -13,3 +13,4 @@ runs/
 .ci/
 .compound-engineering/
 node_modules/
+media/
