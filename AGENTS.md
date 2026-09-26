@@ -10,6 +10,14 @@ Tink installs the locked set from `.tink/skills.toml` into `.agents/skills/`. `.
   recorded in the transcript. Discretionary wording that lets a host skip
   without a trace is a defect in the instruction, not flexibility.
 
+## git-golden
+
+A repository is `git-golden` when all of the following are true:
+
+- It is checked out on `main` with a clean working tree.
+- Local `main` is even with `origin/main`.
+- GitHub has no open pull requests and no open issues.
+- The latest `Validate repository` run on `main` succeeded.
 
 <!-- AI-Native SDLC Router -->
 ## SDLC Workspace
