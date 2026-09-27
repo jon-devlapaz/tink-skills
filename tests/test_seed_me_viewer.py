@@ -285,6 +285,31 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#connection")).to_contain_text("Interview stopped")
         self.assertEqual(self.errors, [])
 
+    def test_validate_rejects_untrusted_ledger_fields(self):
+        self.confirm()
+        self.page.goto(self.url)
+        base = session.load(self.directory)
+        def envelope(nodes):
+            return {"nodes": nodes, "frontier": base["frontier"], "origin": base["origin"], "goal": base["goal"], "current_question": base["current_question"], "draft": base["draft"]}
+        unresolved = json.loads(json.dumps(base["nodes"]))
+        for entry in unresolved:
+            if entry["id"] == "backup":
+                entry.pop("owner", None)
+                entry.pop("gate", None)
+        wrong_authority = json.loads(json.dumps(base["nodes"]))
+        for entry in wrong_authority:
+            if entry["id"] == "import-behavior":
+                entry["authority"] = "user"
+        blank_evidence = json.loads(json.dumps(base["nodes"]))
+        for entry in blank_evidence:
+            if entry["id"] == "import-behavior":
+                entry["evidence"] = [""]
+        cases = [("unresolved decision missing owner/gate", envelope(unresolved)), ("settled fact with user authority", envelope(wrong_authority)), ("settled fact with blank evidence", envelope(blank_evidence))]
+        for name, ledger in cases:
+            with self.subTest(name=name):
+                with self.assertRaises(Exception):
+                    self.page.evaluate(f"validate({json.dumps(ledger)})")
+
 
 if __name__ == "__main__":
     unittest.main()
