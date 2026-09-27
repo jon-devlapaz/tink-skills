@@ -5,148 +5,243 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Seed Me Ledger</title>
 <link rel="icon" href="data:,">
-<!--
-  Live viewer for the seed-me decision ledger.
-  Served over localhost (see SKILL.md Step 4): the page fetches ledger.json
-  beside it and re-renders on change (~2s poll). Opened via file:// it falls
-  back to the embedded snapshot below.
-  Source template: skills/seed-me/assets/ledger-view.html (+ ledger.json)
-  Schema: skills/seed-me/references/ledger-transitions.md §1 (JSON serialization)
--->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"
+<script async id="graph-library" src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"
         integrity="sha384-IWROdLKRsN1UuJywMlWl7/blXQ8GEooN2n7dzTxfEPd7ybYIKCUJ2Ol/1Gpf3YV4"
         crossorigin="anonymous"></script>
 <style>
-  :root { color-scheme: light dark; }
-  body { font-family: system-ui, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-  header { padding: 10px 16px; border-bottom: 1px solid #8884; }
-  header h1 { font-size: 16px; margin: 0 0 4px; }
-  #counts { font-size: 13px; }
-  #bar { height: 6px; background: #8883; border-radius: 3px; margin-top: 6px; }
-  #bar > div { height: 100%; background: #2a7; border-radius: 3px; }
-  main { flex: 1; display: flex; min-height: 0; }
-  #cy { flex: 3; min-width: 0; }
-  aside { flex: 1; min-width: 260px; border-left: 1px solid #8884; padding: 12px 14px; overflow-y: auto; font-size: 13px; }
-  aside h2 { font-size: 14px; margin: 0 0 6px; }
-  aside dt { font-weight: 600; margin-top: 8px; }
-  aside dd { margin: 2px 0 0; }
-  #legend { padding: 8px 16px; border-top: 1px solid #8884; font-size: 12px; display: flex; gap: 16px; flex-wrap: wrap; }
-  #cdn-banner { padding: 10px 16px; background: #a60; color: #fff; font-size: 13px; }
-  #cy ul { font-size: 13px; line-height: 1.7; }
-  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: baseline; }
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { margin: 0; }
+  header, #draft, #connection, #cdn-banner { padding: 12px 18px; border-bottom: 1px solid #8885; }
+  h1 { font-size: 19px; margin: 0 0 8px; }
+  h2 { font-size: 16px; }
+  #meta, #counts { font-size: 13px; margin-top: 6px; }
+  #connection[data-health="error"], #cdn-banner { background: #885000; color: white; }
+  #connection[data-health="live"] { border-left: 5px solid #287b53; }
+  #draft { border-left: 5px solid #b98100; }
+  main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); height: 58vh; min-height: 300px; }
+  #cy { height: 100%; min-height: 0; }
+  #detail { border-left: 1px solid #8885; padding: 16px; overflow-wrap: anywhere; overflow-y: auto; min-height: 0; }
+  #ledger-list { padding: 16px; border-top: 1px solid #8885; }
+  #ledger-list > details { padding: 10px; border-bottom: 1px solid #8885; }
+  summary, button { cursor: pointer; }
+  dt { font-weight: 600; margin-top: 10px; }
+  dd { margin: 3px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #legend { padding: 12px 18px; font-size: 13px; border-top: 1px solid #8885; }
+  .current { border-left: 5px solid #a34be3; }
+  .history { padding: 8px; border: 1px solid #8885; margin-top: 10px; }
+  .history summary { font-size: 14px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 700px) { main { grid-template-columns: 1fr; height: auto; } #cy { height: 50vh; } #detail { border-left: 0; border-top: 1px solid #8885; max-height: 55vh; } }
 </style>
 </head>
 <body>
 <header>
   <h1 id="title">Seed Me Ledger</h1>
+  <div id="meta"></div>
   <div id="counts"></div>
-  <div id="bar"><div></div></div>
+  <p id="current">No question currently presented.</p>
 </header>
+<div id="connection" role="status" aria-live="polite">Waiting for session data.</div>
+<section id="draft" hidden><h2>Draft—not confirmed</h2><div id="draft-content"></div></section>
 <div id="cdn-banner" hidden></div>
 <main>
-  <div id="cy"></div>
-  <aside id="detail"><h2>Node detail</h2><p>Click a node.</p></aside>
+  <div id="cy" aria-label="Decision dependency graph"></div>
+  <aside id="detail"><h2>Node detail</h2><p>Select a node to inspect it.</p></aside>
 </main>
-<div id="legend">
-  <span><i class="sw" style="background:#c80"></i>ready (frontier)</span>
-  <span><i class="sw" style="background:#2a7"></i>settled</span>
-  <span><i class="sw" style="background:#999"></i>parked</span>
-  <span><i class="sw" style="background:#36c"></i>deferred</span>
-  <span><i class="sw" style="background:#fff;border:1px dashed #999"></i>superseded</span>
-  <span>▭ decision &nbsp; ○ fact</span>
-</div>
+<section id="ledger-list" aria-label="Complete ledger text view"></section>
+<div id="legend">Purple outline: current question · amber: ready · green: settled · gray: parked · blue: deferred · dashed: superseded. Edges are prerequisites only. Answers stay in chat.</div>
 <script id="ledger-data" type="application/json">
-{"__LEDGER_JSON__": true, "revision": 0, "goal": "fallback snapshot — live data comes from ledger.json over localhost", "origin": "goal", "frontier": [], "nodes": []}
+{"__LEDGER_JSON__":true,"revision":0,"goal":null,"origin":null,"frontier":[],"nodes":[]}
 </script>
 <script>
-let LEDGER = JSON.parse(document.getElementById('ledger-data').textContent);
-let cy = null, lastHash = '';
-const hash = s => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return String(h); };
-async function poll() {
-  try {
-    const res = await fetch('ledger.json?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return;
-    const text = await res.text();
-    if (hash(text) === lastHash) return;
-    lastHash = hash(text);
-    LEDGER = JSON.parse(text);
-    render();
-  } catch { /* file:// or server down: keep current data */ }
+let LEDGER = null, cy = null, selectedId = null, lastText = null, polling = false;
+let timer = null;
+const el = id => document.getElementById(id);
+function element(tag, text) {
+  const node = document.createElement(tag);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function fields(parent, values) {
+  const list = element('dl');
+  for (const [name, value] of Object.entries(values)) {
+    if (value === undefined || value === null || value === '') continue;
+    list.append(element('dt', name), element('dd', Array.isArray(value) ? value.join('\n') || 'None' : String(value)));
+  }
+  parent.append(list);
+}
+function stateFields(node) {
+  return {
+    ID: node.id, Kind: node.kind, Status: node.status, Question: node.question,
+    Evidence: node.evidence, Owner: node.owner, Gate: node.gate,
+    Recommendation: node.recommendation, Answer: node.answer, Authority: node.authority,
+    'Authority source': node.authority_source, Prerequisites: node.prerequisites,
+    Predicate: node.predicate === null ? 'Unknown' : node.predicate,
+    'Defer reason': node.defer_reason, 'Revisit condition': node.revisit_condition,
+    'Reopen reason': node.reopen_reason, 'Premise revision': node.revision
+  };
+}
+function details(parent, node) {
+  fields(parent, stateFields(node));
+  const history = node.history || [];
+  parent.append(element('h3', `History (${history.length})`));
+  for (const entry of [...history].reverse()) {
+    const section = element('details');
+    section.className = 'history';
+    section.append(element('summary', `Superseded state—not an active answer: ${entry.reason}`));
+    fields(section, { Reason: entry.reason, When: entry.superseded_at });
+    fields(section, stateFields(entry.state));
+    parent.append(section);
+  }
+}
+function select(id) {
+  selectedId = id;
+  const node = LEDGER.nodes.find(n => n.id === id);
+  el('detail').replaceChildren();
+  if (!node) {
+    el('detail').append(element('h2', 'Node detail'), element('p', 'Select a node to inspect it.'));
+    return;
+  }
+  el('detail').append(element('h2', node.label || node.id));
+  details(el('detail'), node);
+}
+function cls(node) {
+  if (node.status !== 'unresolved') return node.status;
+  return LEDGER.frontier.includes(node.id) ? 'ready' : 'parked';
+}
+function validate(data) {
+  if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.frontier)) throw Error('Invalid ledger shape');
+  const ids = new Set();
+  for (const node of data.nodes) {
+    if (!node || typeof node.id !== 'string' || !node.id || ids.has(node.id) ||
+        !['fact', 'decision'].includes(node.kind) ||
+        !['unresolved', 'settled', 'deferred', 'superseded'].includes(node.status) ||
+        !Array.isArray(node.prerequisites) || !Array.isArray(node.evidence) ||
+        (node.history !== undefined && (!Array.isArray(node.history) || node.history.some(h => !h || !h.state)))) {
+      throw Error('Invalid ledger node');
+    }
+    ids.add(node.id);
+  }
+  if (data.nodes.some(n => n.prerequisites.some(p => !ids.has(p))) ||
+      data.frontier.some(id => !ids.has(id)) || (data.origin && !ids.has(data.origin))) throw Error('Invalid ledger reference');
+  if (data.current_question && !data.nodes.some(n => n.id === data.current_question && n.kind === 'decision' && data.frontier.includes(n.id))) {
+    throw Error('Invalid current question');
+  }
+  if (data.draft && (typeof data.draft.goal !== 'string' || typeof data.draft.outcome !== 'string' || !Array.isArray(data.draft.options))) {
+    throw Error('Invalid draft');
+  }
+  return data;
+}
+function textView() {
+  const openIds = new Set([...el('ledger-list').querySelectorAll('details[open]')].map(n => n.dataset.nodeId));
+  el('ledger-list').replaceChildren(element('h2', 'All concerns'));
+  if (!LEDGER.nodes.length) el('ledger-list').append(element('p', 'No accepted goal or ledger nodes yet.'));
+  for (const node of LEDGER.nodes) {
+    const section = element('details');
+    section.dataset.nodeId = node.id;
+    section.open = openIds.has(node.id);
+    if (node.id === LEDGER.current_question) section.className = 'current';
+    section.append(element('summary', `${node.label || node.id} — ${cls(node)}${node.id === LEDGER.current_question ? ' — current question' : ''}`));
+    const button = element('button', 'Inspect node');
+    button.type = 'button';
+    button.addEventListener('click', () => select(node.id));
+    section.append(button);
+    details(section, node);
+    el('ledger-list').append(section);
+  }
+}
+function fallback() {
+  if (cy) { cy.destroy(); cy = null; }
+  el('cy').hidden = true;
+  el('cdn-banner').hidden = false;
+  el('cdn-banner').textContent = 'Graph unavailable. The live text view below includes every node, dependency, receipt, and prior answer.';
+}
+function graph() {
+  if (typeof cytoscape === 'undefined') { fallback(); return; }
+  el('cy').hidden = false;
+  el('cdn-banner').hidden = true;
+  const viewport = cy && cy.nodes().length ? { pan: cy.pan(), zoom: cy.zoom() } : null;
+  if (cy) cy.destroy();
+  cy = cytoscape({
+    container: el('cy'),
+    elements: [
+      ...LEDGER.nodes.map(n => ({ data: { id: n.id, label: n.label || n.id, kind: n.kind },
+        classes: cls(n) + (n.id === LEDGER.origin ? ' origin' : '') + (n.id === LEDGER.current_question ? ' current' : '') })),
+      ...LEDGER.nodes.flatMap(n => n.prerequisites.map(p => ({ data: { source: p, target: n.id } })))
+    ],
+    layout: { name: 'breadthfirst', directed: true, spacingFactor: 1.4, padding: 30 },
+    style: [
+      { selector: 'node', style: { label: 'data(label)', 'text-valign': 'center', 'text-halign': 'center',
+        width: 130, height: 55, 'font-size': 12, 'text-wrap': 'wrap', 'text-max-width': 120 } },
+      { selector: 'node[kind = "decision"]', style: { shape: 'round-rectangle' } },
+      { selector: '.settled', style: { 'background-color': '#287b53', color: '#fff' } },
+      { selector: '.ready', style: { 'background-color': '#c80', color: '#111' } },
+      { selector: '.parked', style: { 'background-color': '#999', color: '#111' } },
+      { selector: '.deferred', style: { 'background-color': '#36c', color: '#fff' } },
+      { selector: '.superseded', style: { 'background-color': '#fff', color: '#555', 'border-style': 'dashed', 'border-width': 2 } },
+      { selector: '.origin', style: { 'border-width': 3, 'border-color': '#111' } },
+      { selector: '.current', style: { 'border-width': 5, 'border-color': '#a34be3' } },
+      { selector: 'edge', style: { width: 2, 'line-color': '#888', 'target-arrow-color': '#888', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier' } }
+    ]
+  });
+  if (viewport) cy.viewport(viewport);
+  cy.on('tap', 'node', event => select(event.target.id()));
 }
 function render() {
-if (typeof cytoscape === 'undefined') { fallback(); return; }
-const byId = Object.fromEntries(LEDGER.nodes.map(n => [n.id, n]));
-const frontier = new Set(LEDGER.frontier || []);
-const cls = n =>
-  n.status === 'settled' ? 'settled' :
-  n.status === 'deferred' ? 'deferred' :
-  n.status === 'superseded' ? 'superseded' :
-  frontier.has(n.id) ? 'ready' : 'parked';
-const roots = (LEDGER.origin && byId[LEDGER.origin]) ? [LEDGER.origin] : undefined;
-const pan = cy ? cy.pan() : null, zoom = cy ? cy.zoom() : null;
-if (cy) cy.destroy();
-cy = cytoscape({
-  container: document.getElementById('cy'),
-  elements: [
-    ...LEDGER.nodes.map(n => { const L = (n.label || n.id).length;
-      const w = Math.max(64, Math.round(L * 7 + 30));
-      const h = n.kind === 'fact' ? Math.max(56, Math.min(w, 120)) : 42;
-      return { data: { ...n, w, h }, classes: cls(n) + (n.id === LEDGER.origin ? ' origin' : '') }; }),
-    ...LEDGER.nodes.flatMap(n => (n.prerequisites || []).map(p =>
-      ({ data: { source: p, target: n.id } })))
-  ],
-  layout: { name: 'breadthfirst', directed: true, spacingFactor: 1.4, circle: false, roots },
-  style: [
-    { selector: 'node', style: {
-      'label': 'data(label)', 'text-valign': 'center', 'text-halign': 'center',
-      'width': 'data(w)', 'height': 'data(h)', 'font-size': '12px' } },
-    { selector: 'node[kind = "fact"]', style: { 'shape': 'ellipse' } },
-    { selector: 'node[kind = "decision"]', style: { 'shape': 'round-rectangle' } },
-    { selector: '.settled', style: { 'background-color': '#2a7', 'color': '#fff' } },
-    { selector: '.ready', style: { 'background-color': '#c80', 'color': '#fff', 'border-width': 3, 'border-color': '#a60' } },
-    { selector: '.parked', style: { 'background-color': '#999', 'color': '#fff' } },
-    { selector: '.deferred', style: { 'background-color': '#36c', 'color': '#fff' } },
-    { selector: '.superseded', style: { 'background-color': '#fff', 'color': '#999', 'border-width': 2, 'border-style': 'dashed', 'border-color': '#999', 'opacity': 0.6 } },
-    { selector: 'node.origin', style: { 'border-width': 5, 'border-color': '#111', 'font-weight': 'bold' } },
-    { selector: 'edge', style: { 'width': 2, 'line-color': '#999', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#999', 'curve-style': 'bezier' } }
-  ]
-});
-if (pan && zoom) { cy.viewport({ zoom, pan }); } else { cy.fit(); }
-const tall = (arr) => (arr && arr.length ? arr : ['—']);
-const counts = { ready: 0, parked: 0, settled: 0, deferred: 0, superseded: 0 };
-LEDGER.nodes.forEach(n => counts[cls(n)]++);
-const decidable = LEDGER.nodes.filter(n => n.status !== 'superseded').length;
-const pct = decidable ? Math.round(100 * counts.settled / decidable) : 0;
-document.getElementById('title').textContent =
-  `Seed Me Ledger — ${LEDGER.goal || ''} (rev ${LEDGER.revision || 0})`;
-document.getElementById('counts').textContent =
-  `Decision ${Math.min(frontier.size, counts.ready + 1)} of ${counts.ready} ready (${counts.parked} parked) · ${counts.settled} settled · ${counts.deferred} deferred · ${counts.superseded} superseded`;
-document.querySelector('#bar > div').style.width = pct + '%';
-cy.on('tap', 'node', e => {
-  const n = e.target.data();
-  const row = (k, v) => v == null || v === '' ? '' : `<dt>${k}</dt><dd>${v}</dd>`;
-  document.getElementById('detail').innerHTML = `<h2>${n.label || n.id}</h2>
-    <dl>
-      ${row('id', n.id)}${row('kind', n.kind)}${row('status', n.status)}${row('question', n.question)}
-      ${row('evidence', tall(n.evidence).join('<br>'))}
-      ${row('owner', n.owner)}${row('gate', n.gate)}${row('recommendation', n.recommendation)}
-      ${row('answer', n.answer)}${row('authority', n.authority)}
-      ${row('prerequisites', tall(n.prerequisites).join(', '))}
-      ${row('defer reason', n.defer_reason)}${row('revisit when', n.revisit_condition)}${row('reopened', n.reopen_reason)}
-    </dl>`;
-});
-} // render
-function fallback() {
-  const banner = document.getElementById('cdn-banner');
-  banner.hidden = false;
-  banner.textContent = 'Graph library (CDN) unreachable — text fallback. Ledger data is intact; reconnect and reload for the graph.';
-  document.getElementById('title').textContent =
-    `Seed Me Ledger — ${LEDGER.goal || ''} (rev ${LEDGER.revision || 0})`;
-  document.getElementById('cy').innerHTML = '<ul>' + LEDGER.nodes.map(n =>
-    `<li><b>${n.label || n.id}</b> — ${n.status}${n.question ? ' — ' + n.question : ''}</li>`).join('') + '</ul>';
+  el('title').textContent = LEDGER.origin ? `Seed Me Ledger — ${LEDGER.goal}` : 'Seed Me Ledger — shaping the draft';
+  el('meta').textContent = `Session: ${LEDGER.session_id || 'legacy snapshot'} · publication ${LEDGER.version ?? '—'} · premise revision ${LEDGER.revision} · ${LEDGER.status || 'active'}`;
+  el('draft').hidden = Boolean(LEDGER.origin);
+  el('draft-content').replaceChildren();
+  if (LEDGER.draft) fields(el('draft-content'), { 'Candidate goal': LEDGER.draft.goal, 'Candidate outcome': LEDGER.draft.outcome, 'Candidate options': LEDGER.draft.options });
+  const decisions = LEDGER.nodes.filter(n => n.kind === 'decision' && n.id !== LEDGER.origin);
+  const count = status => decisions.filter(n => cls(n) === status).length;
+  const tally = (amount, noun) => `${amount} ${noun}${amount === 1 ? '' : 's'}`;
+  el('counts').textContent = `${tally(count('ready'), 'decision')} ready · ${count('parked')} parked · ${count('settled')} settled · ${count('deferred')} deferred · ${count('superseded')} superseded · ${tally(LEDGER.nodes.filter(n => n.kind === 'fact').length, 'fact')}`;
+  const current = LEDGER.nodes.find(n => n.id === LEDGER.current_question);
+  el('current').textContent = current ? `Current question: ${current.question || current.label || current.id}` : 'No question currently presented.';
+  textView();
+  if (!selectedId) selectedId = LEDGER.current_question || null;
+  select(selectedId);
+  try { graph(); } catch { fallback(); }
 }
-render();
-if (location.protocol.startsWith('http')) { poll(); setInterval(poll, 2000); }
+function health(kind, message) {
+  el('connection').dataset.health = kind;
+  el('connection').textContent = message;
+}
+async function poll() {
+  if (polling) return;
+  polling = true;
+  try {
+    const res = await fetch('ledger.json?_=' + Date.now(), { cache: 'no-store', signal: AbortSignal.timeout(4000) });
+    if (!res.ok) throw Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (text !== lastText) {
+      const candidate = validate(JSON.parse(text));
+      if (LEDGER?.session_id && candidate.session_id !== LEDGER.session_id) throw Error('Session identity changed');
+      if (LEDGER?.version !== undefined && candidate.version < LEDGER.version) throw Error('Publication moved backwards');
+      LEDGER = candidate;
+      render();
+      lastText = text;
+    }
+    if (['stopped', 'completed'].includes(LEDGER.status)) {
+      health('ended', `Interview ${LEDGER.status}. Saved state; answers remain in chat.`);
+      clearInterval(timer);
+    } else {
+      health('live', `Live · publication ${LEDGER.version ?? '—'} · checked ${new Date().toLocaleTimeString()}`);
+    }
+  } catch (error) {
+    health('error', `Viewer unavailable or stale: ${error.message}. ${LEDGER ? 'Showing the last valid snapshot.' : 'No session data loaded.'} Pause new interview questions until restored.`);
+  } finally { polling = false; }
+}
+el('graph-library').addEventListener('load', () => { if (LEDGER) { try { graph(); } catch { fallback(); } } });
+if (location.protocol.startsWith('http')) {
+  timer = setInterval(poll, 2000);
+  poll();
+} else {
+  const embedded = JSON.parse(el('ledger-data').textContent);
+  if (!embedded.__LEDGER_JSON__) { LEDGER = validate(embedded); render(); }
+  health('error', 'Offline snapshot—not live. Serve this session over loopback to continue the interview.');
+}
 </script>
 </body>
 </html>
