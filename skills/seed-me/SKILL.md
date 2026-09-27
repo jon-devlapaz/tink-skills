@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed pre-intent through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.4.0"
+  version: "1.4.1"
 ---
 
 # Seed Me
@@ -20,7 +20,9 @@ its receipt; every question names its owner.
   explicit no-interview requests keep their requested format. Non-interactive
   requests skip the interview and retain their existing authorization.
 - Before opening the interview, read [ledger-transitions.md](references/ledger-transitions.md)
-  for decision ledger setup, frontier transitions, and ranking. Maintain that decision ledger throughout; visible questions are a projection of this ledger. Read [epistemic-lenses.md](references/epistemic-lenses.md) only if the session opts into lenses (see Step 3) — otherwise leave it unread.
+  for decision ledger setup, frontier transitions, and ranking. Before presenting the
+  working draft, start the session and viewer using **Session lifecycle** below.
+  Maintain that decision ledger throughout; visible questions are a projection of this ledger. Read [epistemic-lenses.md](references/epistemic-lenses.md) only if the session opts into lenses (see Step 3) — otherwise leave it unread.
 - Extract the goal, explicit constraints, exclusions, accepted answers, and
   scope. Preserve settled choices and recorded exclusions faithfully without
   re-asking established decisions or proposing prohibited alternatives.
@@ -31,12 +33,15 @@ its receipt; every question names its owner.
 
 Distill whatever arrived into a working draft before any grill
 turn: candidate goal, candidate proposed outcome, and candidate options with
-tradeoffs. Lines the input already settles become ledger nodes (facts
-to investigate, decisions to grill); anything uncertain, assumed, or missing is labeled PROVISIONAL assumption, never an answer or a claim.
+tradeoffs. Keep the graph empty until goal confirmation; retain choices already
+explicit in the input and record them when the confirmed nodes are published.
+Anything uncertain, assumed, or missing is labeled PROVISIONAL assumption, never
+an answer or a claim.
 Provisional lines need no 📜 and spend no ungrounded budget; they are
 scaffolding for the user to correct, and a braindump simply yields more of them than a polished plan does. Present the draft in one tight block and
 ask what to keep, cut, or reshape. Confirmed lines become ledger nodes; rejected lines are dropped, not parked.
-Only then does the frontier loop start.
+A general confirmation accepts the investigation goal, not its candidate solutions;
+record only explicit choices as accepted answers. Only then does the frontier loop start.
 
 ## 2. Investigate facts before asking
 
@@ -113,20 +118,71 @@ When the user asks to stop interviewing:
 - Immediately halt questioning.
 - Preserve any unresolved blockers in the ledger and report status as `stopped — incomplete`.
 - Concisely explain remaining blockers and current handoff status without reprinting the question list.
+- End the session as `stopped` using **Session lifecycle** below, preserving its saved read-only view.
 - Treat premature approval (such as “looks fine, start coding”) as an incomplete stop; confirmation strictly requires the user to affirm the displayed revision label after the full pre-intent is shown.
 - If the user explicitly directs a replacement workflow, record the departure directly as an intentional user redirection.
 
 **Complete when:** Responses and revisions are recorded and the next single ready decision,
 completion review, or user-requested stop is selected.
 
-### Visualize the ledger
+### Session lifecycle
 
-Once the working draft is confirmed, the confirmed goal becomes the `origin` node —
-the first agreed beginning and the graph's gravity center. Then:
+Requires Python 3 on a POSIX host (`fcntl` locking). Resolve `<skill>` to this
+skill's directory. These commands maintain interview artifacts only; they do not
+authorize product edits. The host runs the commands and owns the viewer process.
 
-1. Copy `assets/ledger-view.html` and `assets/ledger.json` from this skill into the workspace; set `origin` and the confirmed nodes in `ledger.json`.
-2. Serve the workspace: `python3 -m http.server 8137 --bind 127.0.0.1` (background; next free port if busy). Announce `http://localhost:<port>/ledger-view.html` at the start — that URL is the session's live view.
-3. Each turn, rewrite workspace `ledger.json` to the current ledger (schema: ledger reference §1) — write to a temp file and rename over the original so polls never read a torn write. The page polls and updates itself (~2s); never hand-edit the served HTML.
+1. Before presenting the working draft, initialize once:
+   ```sh
+   python3 "<skill>/scripts/session.py" init
+   ```
+   Use the returned directory as `<session>`. It defaults to
+   `~/.local/share/seed-me/sessions/<id>/`, outside the repository. Record that
+   path for recovery. Start with an empty graph and a separate provisional draft;
+   `assets/ledger.json` illustrates the schema, not a session to copy or reuse.
+2. Start the viewer through the host's background-process tool:
+   ```sh
+   python3 "<skill>/scripts/viewer.py" "<session>"
+   ```
+   Record its process handle and announce the printed localhost URL. It selects
+   a free loopback port and renders `assets/ledger-view.html`. Verify that it
+   loads before asking interview questions. If startup or polling fails, preserve
+   the ledger, report the failure, and pause new questions until restored.
+3. Each turn, read the current state and publish the next state:
+   ```sh
+   python3 "<skill>/scripts/session.py" read "<session>"
+   python3 "<skill>/scripts/session.py" publish "<session>" "<session>/update.json"
+   ```
+   Build `update.json` using the publication payload in ledger reference §1.
+   Supply the observed publication version and an actual change reason. The
+   helper validates, retains history, and uses atomic rename; never hand-edit
+   `ledger.json` or the served HTML. On a stale version, reread and reconcile;
+   on any failure, keep the last valid state and report the blocker.
+4. On goal confirmation, publish a settled user decision as `origin`. Keep the
+   confirmed goal prominent. Add edges only for actual prerequisites; independent
+   concerns may remain unconnected. Publish answers and reopened nodes before
+   advancing the current question. Answers stay in chat; the viewer is read-only.
+5. On explicit stop, end as `stopped`. End as `completed` only after the confirmed
+   `pre-intent.md` is successfully saved in Step 5:
+   ```sh
+   python3 "<skill>/scripts/session.py" end "<session>" --status stopped --reason "User stopped the interview"
+   python3 "<skill>/scripts/viewer.py" "<session>" --snapshot
+   ```
+   For completion, substitute `completed` and the actual confirmation/save reason.
+   `end` preserves blockers on stop, rejects unresolved concerns on completion,
+   and makes the session read-only. Repeating the same end operation is a no-op.
+   The snapshot command atomically saves final state inside `<session>/ledger-view.html`
+   and prints its file URL. If saving fails, report it and retry; do not claim a
+   saved final view or change the session back to active.
+6. Verify the live view shows the ended status, then stop only the recorded viewer
+   process with the host's process-control tool. If the live page is unavailable,
+   verify and open the saved snapshot instead, then stop the owned process. Report
+   shutdown failures; never kill an unrelated process or leave a server silently.
+7. Later viewing uses the saved HTML without a server. Running `viewer.py` on an
+   ended session refreshes that snapshot and exits; it does not resume questions.
+   An active session's viewer may be restarted after an outage without changing
+   answers or revisions. Confirm any continuation with the user; viewing alone
+   is not resumption. Report explicit limitations if the host cannot run or stop
+   a background process; do not silently fall back to a generic file server.
 
 ## 5. Verify completion and save the pre-intent
 
@@ -170,8 +226,10 @@ Once the local review and close checklist are resolved:
    unrelated content. If an existing file belongs to other work, keep it intact and
    resolve an alternate destination with the user. Ensure the write succeeds before
    treating the pre-intent as saved.
-4. Report the saved path as discovery input for downstream planning or
-   implementation workflows, and stop. Leave commits to the user, and reserve
+4. End the session as `completed`, save its final viewer snapshot, and stop the
+   viewer process using **Session lifecycle**. Report the saved `pre-intent.md`
+   path as discovery input for downstream planning or implementation workflows,
+   and stop. Leave commits to the user, and reserve
    downstream initialization, stage advancement, or implementation approval
    for subsequent workflows.
 
@@ -211,7 +269,9 @@ The displayed and saved revision must contain:
   the loop that will read it; for each breeding ground its guardrail. Map
   quadrants to ledger status: Q1→settled(evidence), Q2→unresolved(blocker),
   Q3→parked or risk, Q4→risk with guardrail.
-- Downstream handoff: this artifact is discovery input, not an implementation plan,
+- Downstream handoff: `pre-intent.md` is the handoff; the ledger and viewer are
+  interview records, not additional required downstream artifacts. This artifact
+  is discovery input, not an implementation plan,
   approved specification, or review receipt. Preserve accepted constraints when
   deriving downstream plans or specifications; follow the selected workflow's
   active contract and surface conflicts rather than silently replacing decisions.
@@ -220,7 +280,8 @@ The displayed and saved revision must contain:
 Label technical proposals as proposals unless explicitly accepted; downstream
 workflows own subsequent specification and implementation approval.
 
-**Authorization:** Read-only investigation is a planning operation.
+**Authorization:** Read-only investigation is a planning operation. Starting the
+interview permits its local session ledger, snapshot, and loopback viewer lifecycle.
 Confirmation authorizes writing the confirmed pre-intent artifact alone;
 implementation, source edits, migrations, or deployment require subsequent,
 explicit user instruction after the artifact is saved. Treat earlier implementation
