@@ -234,13 +234,19 @@ async function poll() {
   } finally { polling = false; }
 }
 el('graph-library').addEventListener('load', () => { if (LEDGER) { try { graph(); } catch { fallback(); } } });
-if (location.protocol.startsWith('http')) {
-  timer = setInterval(poll, 2000);
-  poll();
-} else {
+try {
   const embedded = JSON.parse(el('ledger-data').textContent);
   if (!embedded.__LEDGER_JSON__) { LEDGER = validate(embedded); render(); }
-  health('error', 'Offline snapshot—not live. Serve this session over loopback to continue the interview.');
+  if (['stopped', 'completed'].includes(LEDGER?.status)) {
+    health('ended', `Interview ${LEDGER.status}. Saved read-only state; viewing does not resume the interview.`);
+  } else if (location.protocol.startsWith('http')) {
+    timer = setInterval(poll, 2000);
+    poll();
+  } else {
+    health('offline', 'Offline snapshot—read-only, not live. Viewing does not resume the interview.');
+  }
+} catch (error) {
+  health('error', `Invalid saved snapshot: ${error.message}. No interview state was changed.`);
 }
 </script>
 </body>

@@ -11,9 +11,9 @@ The interview operates as a projection of a dependency graph (acyclic
 invariant, repaired via §4 cycle handling)
 known as the **decision ledger**. The agent maintains this ledger to track
 investigated facts, consequential trade-offs, accepted constraints, and open
-blockers. During long interviews, the decision ledger may be maintained in an
-ephemeral session scratchpad or temporary working state file to avoid relying solely
-on in-context memory.
+blockers. Persist the ledger throughout the interview using `scripts/session.py` and the
+Session lifecycle in SKILL.md. Keep one `ledger.json` containing current state
+and per-node history outside the repository; it is not an ephemeral scratchpad.
 
 ### Node Fields
 
@@ -24,13 +24,19 @@ consequential decision requiring judgment. Every node must have:
 - `kind`: `decision` (consequential preference or architecture trade-off) or `fact` (empirically verifiable property).
 - `status`: One of `unresolved`, `settled`, `deferred`, or `superseded`.
 - `prerequisites`: Tuple or list of prerequisite node IDs that must be `settled` before this node can become ready.
-- `predicate`: Optional condition expression that must evaluate to true for the branch to be active.
+- `predicate`: Optional observed boolean: `true` (also the default when omitted),
+  `false`, or `null` for unknown. The host investigates conditions and records
+  their observed result; the helper does not evaluate arbitrary expressions.
 - `evidence`: Workspace facts, inspected paths, schema snippets, configuration keys, or explicit access limitations.
 - `recommendation`: Grounded host proposal based on verified evidence and settled prerequisites.
 - `answer`: Actual user choice, evidence-derived fact, or delegated choice.
 - `authority`: Authority source for the answer: `user` (explicit user instruction), `evidence` (verified workspace fact), or `delegated` (scoped user delegation).
+- `authority_source`: Actual user-answer/delegation reference or inspected fact source.
+  Required with a nonempty `answer` on settled nodes. Clear all three active
+  answer fields when reopening; their previous values remain in history.
 - `revision`: Premise revision number at which the node was created, updated, or settled.
-- `reopen_reason`: Recorded justification when an invalidated node is reopened.
+- `reopen_reason`: Nonempty justification required when a settled node becomes
+  unresolved. It is retained with that state in history on subsequent changes.
 - `defer_reason`: Documented reason why a non-blocking node was postponed (stored separately for deferred nodes).
 - `revisit_condition`: Explicit condition or trigger under which a deferred node will be revisited (stored separately for deferred nodes).
 
@@ -40,22 +46,65 @@ consequential decisions strictly require explicit user choice or scoped delegati
 
 ### JSON serialization (`ledger.json`)
 
-The ledger is also kept as machine-readable JSON — the source the viewer renders
-(see `assets/ledger-view.html`). Same fields as above, plus:
+`scripts/session.py` validates and publishes the source rendered by
+`assets/ledger-view.html`. `assets/ledger.json` is an empty schema example only;
+`init` creates a fresh identity and timestamps for each real session.
 
-- `label`: short human title for the graph (ids stay stable and kebab-case).
-- `question`: the one-line ask, for `decision` nodes on the frontier.
-- `owner`, `gate`: decider and answer shape, per SKILL.md Step 3.
-- `frontier`: ordered array of ready node IDs at the top level (presentation order).
-  Ready = `unresolved` and listed here; parked = `unresolved` and absent.
-- `revision`, `goal`: top-level ledger revision number and session goal.
-- `origin`: the ID of the confirmed working draft's goal node — the first agreed
-  beginning after investigation, and the graph's gravity center. The viewer roots
-  its layout on this node; every later node descends from it.
+Top-level fields:
 
-The agent serves the workspace over localhost and rewrites the workspace
-`ledger.json` copy each turn; counts and readiness are derived by the viewer,
-never hand-written.
+- `schema_version`: `1`.
+- `session_id`, `created_at`, `updated_at`: helper-owned identity and timestamps.
+- `version`: helper-owned publication counter for optimistic concurrency.
+- `revision`: premise revision; distinct from publication version and question order.
+- `status`: `active`, `stopped`, or `completed`. Ended sessions are read-only.
+- `draft`: candidate `goal`, `outcome`, and `options`; none is an accepted answer.
+- `goal`, `origin`: initially `null`. Confirmation creates a settled user decision
+  whose ID is `origin` and whose answer matches `goal`. Both then remain fixed;
+  record scope refinements in other nodes. A replacement goal starts a new session.
+- `current_question`: one ready decision ID, or `null`; always `null` after ending.
+- `nodes`: the current concerns, including their helper-owned `revision` and `history`.
+- `frontier`: helper-derived ready IDs in node-list order. Unresolved nodes absent
+  from it are parked. The host selects a current question using §3; it never writes
+  the derived frontier directly.
+
+Node display fields are `label` (short title), `question` (the one-line ask),
+`owner`, and `gate` (required for decisions). Independent nodes may be unconnected;
+`origin` identifies the confirmed beginning, not an artificial prerequisite.
+
+### Publication payload
+
+Write a proposed update to `<session>/update.json`, then invoke `publish` as in
+SKILL.md. Start from a fresh `read`: retain only `status`, `draft`, `goal`, `origin`,
+`current_question`, and `nodes` under `state`. Strip `history` and `revision` from
+each node. The helper owns all other stored fields. Initial draft example:
+
+```json
+{
+  "expected_version": 0,
+  "reason": "Shape the provisional working draft",
+  "state": {
+    "status": "active",
+    "draft": {"goal": "Candidate goal", "outcome": "Candidate outcome", "options": []},
+    "goal": null,
+    "origin": null,
+    "current_question": null,
+    "nodes": []
+  }
+}
+```
+
+Use the actual observed `version`, not a hardcoded `0` after initialization.
+`reason` describes the real update. Optional `revalidated` maps affected settled
+node IDs to fresh justifications; their evidence must also be populated. Evidence
+truth and user authority remain host responsibilities, not validator judgments.
+
+The helper locks each publication, rejects stale or inconsistent updates, and
+atomically replaces the ledger. It appends prior node state, `superseded_at`, and
+`reason` to `history`; revalidated nodes use their own revalidation justification.
+Read current state by default and retrieve history for changes, not as live answers.
+Exact repeated updates are no-ops. A stopped session preserves unresolved concerns;
+completion also requires the host's coverage review, confirmation, and successful
+pre-intent save. Empty frontier alone is not completion.
 
 ### Node Statuses
 
@@ -128,8 +177,9 @@ Decision 1 of 3 ready (2 parked)
 
 ## 4. Dependencies & Cycle Resolution
 
-An edge in the ledger indicates that changing a prerequisite node could alter this
-node's choice, validity, or consequence.
+An edge records a real prerequisite: this concern needs that answer or fact.
+Changing the prerequisite could alter the dependent choice, validity, or consequence.
+Shared topics and the session goal alone do not justify edges.
 
 ### Cycle Detection
 Every newly introduced or modified dependency edge must be checked for cycles.
@@ -198,7 +248,10 @@ Preserve answers whose justifications remain fully supported and freshly verifie
 
 ### 6.4 Reopen Invalidated Nodes
 
-Reopen nodes whose prerequisites or premises were altered, setting status back to `unresolved`, clearing or parking invalid answers, and recording `reopen_reason`.
+Reopen nodes whose prerequisites or premises were altered: set status to
+`unresolved`, remove `answer`, `authority`, and `authority_source`, and supply a
+nonempty `reopen_reason`. Publishing retains the superseded answer in history;
+never leave an invalid answer active.
 
 ### 6.5 Supersede Inactive Branches
 
@@ -218,10 +271,10 @@ An unchanged repeated answer is a no-op; it does not increment revision or dirty
 
 ### 6.9 Origin Is Pinned
 
-Invalidation never moves `origin`. The origin is history — the first agreed
-beginning — not current truth; reopened descendants re-derive against it via
-`reopen_reason`. If the session's goal itself is replaced (not refined),
-that is a new session with a new ledger, never a moved origin.
+Invalidation never moves `origin` or rewrites the confirmed `goal`. They identify
+the accepted beginning. Record refinements in other concerns and revisit their
+actual dependents via `reopen_reason`. Replacing the goal starts a new session,
+never a moved origin. Restarting a viewer changes neither identity nor revision.
 
 ### Post-Traversal Readiness
 After traversal, recompute readiness: reopened descendants remain parked until their

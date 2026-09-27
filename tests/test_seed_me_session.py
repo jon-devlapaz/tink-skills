@@ -1,6 +1,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -58,7 +59,7 @@ class TestSeedSession(unittest.TestCase):
         fact, backup = state["nodes"][1:3]
         fact.update(answer="Imports merge data", evidence=["import.py:10: merge(existing, incoming)"],
                     authority_source="direct read import.py:10")
-        backup.update(status="unresolved")
+        backup.update(status="unresolved", reopen_reason="Import semantics changed from replace to merge")
         for key in ("answer", "authority", "authority_source"):
             backup.pop(key)
         state["current_question"] = "backup"
@@ -175,7 +176,8 @@ class TestSeedSession(unittest.TestCase):
         state = self.revised(before)
         with self.assertRaisesRegex(ValueError, "unsettled prerequisites"):
             self.publish(state, "Changed import semantics")
-        state["nodes"][-1] = node("recovery-copy", parents=["backup"])
+        state["nodes"][-1] = {**node("recovery-copy", parents=["backup"]),
+                              "reopen_reason": "Backup requirement is unresolved"}
         saved = self.publish(state, "Changed import semantics")
         self.assertEqual(saved["frontier"], ["backup"])
         self.assertEqual(saved["nodes"][-1]["history"][0]["state"]["answer"], "Make recovery prominent")
@@ -208,6 +210,78 @@ class TestSeedSession(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "read-only"):
             self.publish(state, "Attempt implicit resumption")
         self.assertEqual(session.load(self.directory), stopped)
+
+    def test_reopen_reason_is_validated_and_retained(self):
+        before = self.scenario()
+        state = self.revised(before)
+        state["nodes"][2]["reopen_reason"] = "Import now merges rather than replaces"
+        saved = self.publish(state, "New implementation evidence")
+        self.assertEqual(saved["nodes"][2]["reopen_reason"], state["nodes"][2]["reopen_reason"])
+        self.assertEqual(session.load(self.directory), saved)
+        for value in ("", None, 42):
+            with self.subTest(value=value):
+                state["nodes"][2]["reopen_reason"] = value
+                with self.assertRaisesRegex(ValueError, "reopen reason"):
+                    self.publish(state)
+        self.assertEqual(session.load(self.directory), saved)
+
+    def test_reopened_node_requires_its_own_reason(self):
+        before = self.scenario()
+        state = self.revised(before)
+        state["nodes"][2].pop("reopen_reason")
+        with self.assertRaisesRegex(ValueError, "reopened node requires a reopen reason"):
+            self.publish(state, "Batch update")
+        self.assertEqual(session.load(self.directory), before)
+
+    def test_end_preserves_blockers_and_is_idempotent(self):
+        self.scenario()
+        state = session.editable(session.load(self.directory))
+        state["nodes"].append(node("pending"))
+        state["current_question"] = "pending"
+        before = self.publish(state)
+        with self.assertRaisesRegex(ValueError, "unresolved"):
+            session.end(self.directory, "completed", "Not actually complete")
+        self.assertEqual(session.load(self.directory), before)
+        ended = session.end(self.directory, "stopped", "User stopped")
+        self.assertEqual(ended["status"], "stopped")
+        self.assertIsNone(ended["current_question"])
+        self.assertEqual(ended["nodes"], before["nodes"])
+        self.assertEqual(ended["revision"], before["revision"])
+        self.assertEqual(session.end(self.directory, "stopped", "Retry"), ended)
+        with self.assertRaisesRegex(ValueError, "read-only"):
+            session.end(self.directory, "completed", "Change ended status")
+        with self.assertRaisesRegex(ValueError, "end status"):
+            session.end(self.directory, "active", "Resume")
+
+    def test_end_cli_completes_without_changing_answers(self):
+        before = self.confirmed()
+        result = subprocess.run([sys.executable, str(SCRIPT), "end", str(self.directory),
+                                 "--status", "completed", "--reason", "Confirmed pre-intent saved"],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        saved = json.loads(result.stdout)
+        self.assertEqual(saved["status"], "completed")
+        self.assertEqual(saved["nodes"], before["nodes"])
+        self.assertEqual(saved["revision"], before["revision"])
+        self.assertEqual(session.load(self.directory), saved)
+
+    def test_documented_publication_payload_runs(self):
+        reference = (SCRIPT.parents[1] / "references/ledger-transitions.md").read_text()
+        payload = json.loads(re.search(r"```json\n(.*?)\n```", reference, re.S).group(1))
+        saved = session.publish(self.directory, **payload)
+        self.assertEqual(saved["draft"]["goal"], "Candidate goal")
+        self.assertEqual(saved["nodes"], [])
+        self.assertIsNone(saved["origin"])
+        self.assertEqual(saved["version"], 1)
+
+    def test_published_example_is_an_empty_valid_draft(self):
+        example = SCRIPT.parents[1] / "assets/ledger.json"
+        (self.directory / "ledger.json").write_bytes(example.read_bytes())
+        ledger = session.load(self.directory)
+        self.assertEqual(ledger["status"], "active")
+        self.assertIsNone(ledger["origin"])
+        self.assertEqual(ledger["nodes"], [])
+        self.assertEqual(ledger["frontier"], [])
 
     def test_failed_atomic_replace_retains_last_good_ledger(self):
         before = self.confirmed()

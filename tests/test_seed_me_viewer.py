@@ -2,10 +2,13 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
+import subprocess
 import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -64,7 +67,8 @@ class TestViewerHTTP(ViewerFixture, unittest.TestCase):
                 urlopen(self.url + path)
             self.assertEqual(raised.exception.code, 404)
         self.assertEqual(self.server.server_address[0], "127.0.0.1")
-        self.assertEqual((self.directory / "ledger-view.html").read_bytes(), viewer.ASSET.read_bytes())
+        self.assertEqual((self.directory / "ledger-view.html").read_text(),
+                         viewer.snapshot_page(session.load(self.directory)))
 
     def test_bad_host_mutation_and_corrupt_data_fail_closed(self):
         with self.assertRaises(HTTPError) as raised:
@@ -79,6 +83,36 @@ class TestViewerHTTP(ViewerFixture, unittest.TestCase):
         with self.assertRaises(HTTPError) as raised:
             urlopen(self.url + "/ledger.json")
         self.assertEqual(raised.exception.code, 503)
+
+
+class TestViewerSnapshots(ViewerFixture, unittest.TestCase):
+    def test_snapshot_is_atomic_and_escapes_script_boundaries(self):
+        state = session.editable(session.load(self.directory))
+        attack = '</script><script>window.injected=true</script>'
+        state["draft"]["goal"] = attack
+        self.publish(state)
+        before = (self.directory / "ledger-view.html").read_bytes()
+        with patch.object(session.os, "replace", side_effect=OSError("disk failure")):
+            with self.assertRaisesRegex(OSError, "disk failure"):
+                viewer.save_snapshot(self.directory)
+        self.assertEqual((self.directory / "ledger-view.html").read_bytes(), before)
+        path = viewer.save_snapshot(self.directory)
+        html = path.read_text()
+        self.assertNotIn(attack, html)
+        embedded = re.search(r'<script id="ledger-data" type="application/json">\s*(.*?)\s*</script>', html, re.S)
+        self.assertEqual(json.loads(embedded.group(1)), session.load(self.directory))
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_ended_viewer_cli_saves_snapshot_without_a_server(self):
+        self.confirm()
+        ended = session.end(self.directory, "stopped", "User stopped")
+        for args in ([], ["--snapshot"]):
+            with self.subTest(args=args):
+                result = subprocess.run([sys.executable, str(SCRIPT), str(self.directory), *args],
+                                        capture_output=True, text=True, timeout=5)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), (self.directory / "ledger-view.html").as_uri())
+                self.assertEqual(session.load(self.directory), ended)
 
 
 class TestViewerBrowser(ViewerFixture, unittest.TestCase):
@@ -137,7 +171,8 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#counts")).to_contain_text("2 settled")
         state = session.editable(session.load(self.directory))
         state["nodes"][1].update(answer="Merge data", evidence=["fixture import.py:10: merge(existing, incoming)"])
-        state["nodes"][2] = {**node("backup", parents=["import-behavior"]), "question": "Still require a backup?"}
+        state["nodes"][2] = {**node("backup", parents=["import-behavior"]), "question": "Still require a backup?",
+                              "reopen_reason": "Import behavior changed from replace to merge"}
         state["current_question"] = "backup"
         self.publish(state, "Fixture evidence changed from replace to merge")
         self.expect(self.page.locator("#current")).to_have_text("Current question: Still require a backup?")
@@ -191,13 +226,43 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.page.wait_for_function("cy.getElementById('backup').hasClass('settled')")
         state = session.editable(session.load(self.directory))
         state["nodes"][1].update(answer="Merge data", evidence=["fixture: merges may overwrite keys"])
-        state["nodes"][2] = node("backup", parents=["import-behavior"])
+        state["nodes"][2] = {**node("backup", parents=["import-behavior"]),
+                              "reopen_reason": "Import behavior changed from replace to merge"}
         state["current_question"] = "backup"
         self.publish(state, "Fixture changed premise")
         self.page.wait_for_function("cy.getElementById('backup').hasClass('current')")
         self.expect(self.page.locator("#detail > dl")).to_contain_text("unresolved")
         self.expect(self.page.locator("#detail .history").first).to_contain_text("Require backup")
         self.assertTrue(self.page.evaluate("cy.getElementById('button-label').hasClass('settled')"))
+        self.assertEqual(self.errors, [])
+
+    def test_saved_ended_view_is_read_only_offline_and_after_restart(self):
+        self.confirm()
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#connection")).to_have_attribute("data-health", "live")
+        state = session.editable(session.load(self.directory))
+        state["nodes"][3]["answer"] = '</script><script>window.injected=true</script>'
+        self.publish(state)
+        ended = session.end(self.directory, "stopped", "User stopped")
+        self.expect(self.page.locator("#connection")).to_have_attribute("data-health", "ended")
+        snapshot = viewer.save_snapshot(self.directory)
+        self.server.shutdown()
+        self.page.goto(snapshot.as_uri())
+        self.expect(self.page.locator("#connection")).to_have_attribute("data-health", "ended")
+        self.expect(self.page.locator("#connection")).to_contain_text("Interview stopped")
+        self.expect(self.page.locator('[data-node-id="backup"]')).to_contain_text("unresolved")
+        self.assertIsNone(self.page.evaluate("window.injected"))
+        self.assertIsNone(self.page.evaluate("timer"))
+        self.assertEqual(session.load(self.directory), ended)
+        self.assertEqual(self.errors, [])
+
+    def test_active_offline_snapshot_does_not_start_polling(self):
+        self.confirm()
+        snapshot = viewer.save_snapshot(self.directory)
+        self.page.goto(snapshot.as_uri())
+        self.expect(self.page.locator("#connection")).to_contain_text("read-only")
+        self.expect(self.page.locator("#current")).to_contain_text("Require a backup?")
+        self.assertIsNone(self.page.evaluate("timer"))
         self.assertEqual(self.errors, [])
 
     def test_failed_poll_retains_state_and_same_snapshot_recovers(self):

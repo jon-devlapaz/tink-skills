@@ -13,7 +13,7 @@ import uuid
 STATE_FIELDS = {"status", "draft", "goal", "origin", "current_question", "nodes"}
 NODE_FIELDS = {"id", "kind", "status", "prerequisites", "predicate", "evidence",
                "answer", "authority", "authority_source", "label", "question",
-               "owner", "gate", "recommendation", "defer_reason", "revisit_condition"}
+               "owner", "gate", "recommendation", "defer_reason", "revisit_condition", "reopen_reason"}
 
 
 def require(condition, message):
@@ -72,6 +72,8 @@ def validate(state):
         else:
             require(node.get("answer") is None and node.get("authority") is None
                     and node.get("authority_source") is None, "unsettled node cannot carry an active answer")
+        if "reopen_reason" in node:
+            require(text(node["reopen_reason"]), "invalid reopen reason")
         if node["status"] == "deferred":
             require(text(node.get("defer_reason")) and text(node.get("revisit_condition")),
                     "deferral requires reason and revisit condition")
@@ -145,6 +147,8 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
     require(set(old) <= set(new), "preserve nodes; supersede instead of deleting")
     for node_id in old:
         require(old[node_id]["kind"] == new[node_id]["kind"], "node kind is immutable")
+        if old[node_id]["status"] == "settled" and new[node_id]["status"] == "unresolved":
+            require(text(new[node_id].get("reopen_reason")), "reopened node requires a reopen reason")
     premise_fields = ("status", "answer", "authority", "authority_source", "evidence", "prerequisites", "predicate", "question", "owner", "gate")
     changed = {key for key, node in old.items() if node["status"] == "settled"
                and any(node.get(f) != new[key].get(f) for f in premise_fields)}
@@ -175,11 +179,14 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
 
 
 def atomic_write(path, ledger):
+    atomic_write_text(path, json.dumps(ledger, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
+
+
+def atomic_write_text(path, content):
     descriptor, temporary = tempfile.mkstemp(prefix=".ledger-", suffix=".tmp", dir=path.parent)
     try:
-        with os.fdopen(descriptor, "w") as handle:
-            json.dump(ledger, handle, ensure_ascii=False, indent=2, allow_nan=False)
-            handle.write("\n")
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(content)
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, path)
@@ -251,6 +258,20 @@ def publish(directory, state, expected_version, reason, revalidated=None):
         return result
 
 
+def end(directory, status, reason):
+    require(status in ("stopped", "completed"), "invalid end status")
+    directory = Path(directory)
+    with writer(directory):
+        ledger = load(directory)
+        require(ledger["status"] in ("active", status), "ended session is read-only")
+        state = editable(ledger)
+        state.update(status=status, current_question=None)
+        result = transition(ledger, state, ledger["version"], reason)
+        if result is not ledger:
+            atomic_write(directory / "ledger.json", result)
+        return result
+
+
 def main():
     parser = argparse.ArgumentParser()
     commands = parser.add_subparsers(dest="command", required=True)
@@ -259,12 +280,18 @@ def main():
     update = commands.add_parser("publish")
     update.add_argument("session", type=Path)
     update.add_argument("input", type=Path)
+    finish = commands.add_parser("end")
+    finish.add_argument("session", type=Path)
+    finish.add_argument("--status", choices=("stopped", "completed"), required=True)
+    finish.add_argument("--reason", required=True)
     args = parser.parse_args()
     try:
         if args.command == "init":
             result = {"session": str(create(args.root))}
         elif args.command == "read":
             result = load(args.session)
+        elif args.command == "end":
+            result = end(args.session, args.status, args.reason)
         else:
             payload = json.loads(args.input.read_text())
             result = publish(args.session, **payload)

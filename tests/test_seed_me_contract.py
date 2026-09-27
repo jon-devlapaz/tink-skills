@@ -113,7 +113,11 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                 self.assertIn(required, html)
         import json
         data = json.loads(sidecar.read_text())
-        self.assertIn(data["origin"], [n["id"] for n in data["nodes"]])
+        self.assertEqual(data["schema_version"], 1)
+        self.assertIsNone(data["origin"])
+        self.assertIsNone(data["goal"])
+        self.assertEqual(data["nodes"], [])
+        self.assertEqual(data["frontier"], [])
         skill = (SKILL_DIR / "SKILL.md").read_text()
         self.assertIn("assets/ledger-view.html", skill)
         self.assertIn("localhost", skill)
@@ -122,6 +126,23 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         self.assertIn("origin", ledger)
         self.assertIn("Origin Is Pinned", ledger)
         self.assertIn("rename", skill)
+
+    def test_session_lifecycle_uses_validated_helpers(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        ledger = (SKILL_DIR / "references/ledger-transitions.md").read_text()
+        self.assertNotIn("python3 -m http.server", skill)
+        self.assertNotIn("every later node descends from it", ledger)
+        for required in ('scripts/session.py" init', 'scripts/session.py" read',
+                         'scripts/session.py" publish', 'scripts/session.py" end',
+                         'scripts/viewer.py"', "--snapshot", "process handle",
+                         "stop only the recorded viewer", "outside the repository",
+                         "`pre-intent.md` is the handoff"):
+            with self.subTest(required=required):
+                self.assertIn(required, skill)
+        for required in ("expected_version", "authority_source", "reopen_reason",
+                         "helper-owned", "history", "Publication payload"):
+            with self.subTest(required=required):
+                self.assertIn(required, ledger)
 
     # docs/ chain retired with the docs tree (prune): no design docs ship;
     # runs/ carry session evidence instead.
