@@ -265,14 +265,40 @@ class TestSeedSession(unittest.TestCase):
         self.assertEqual(saved["revision"], before["revision"])
         self.assertEqual(session.load(self.directory), saved)
 
-    def test_documented_publication_payload_runs(self):
+    def test_documented_publication_payloads_run(self):
         reference = (SCRIPT.parents[1] / "references/ledger-transitions.md").read_text()
-        payload = json.loads(re.search(r"```json\n(.*?)\n```", reference, re.S).group(1))
-        saved = session.publish(self.directory, **payload)
-        self.assertEqual(saved["draft"]["goal"], "Candidate goal")
-        self.assertEqual(saved["nodes"], [])
-        self.assertIsNone(saved["origin"])
-        self.assertEqual(saved["version"], 1)
+        section = reference.split("### Publication payload\n", 1)[1].split("### Node Statuses", 1)[0]
+        payloads = [json.loads(block) for block in re.findall(r"```json\n(.*?)\n```", section, re.S)]
+        self.assertEqual(len(payloads), 2, "Document draft and confirmed-goal publications")
+        draft = session.publish(self.directory, **payloads[0])
+        self.assertEqual(draft["draft"]["goal"], "Candidate goal")
+        self.assertEqual(draft["nodes"], [])
+        self.assertIsNone(draft["origin"])
+        self.assertEqual(draft["version"], 1)
+        saved = session.publish(self.directory, **payloads[1])
+        self.assertEqual(saved["version"], 2)
+        self.assertEqual(session.load(self.directory), saved)
+        nodes = {node["id"]: node for node in saved["nodes"]}
+        origin = nodes[saved["origin"]]
+        self.assertEqual(origin["kind"], "decision")
+        self.assertEqual(origin["status"], "settled")
+        self.assertEqual(origin["answer"], saved["goal"])
+        self.assertEqual(origin["authority"], "user")
+        self.assertTrue(origin["authority_source"])
+        self.assertTrue(origin["owner"])
+        self.assertTrue(origin["gate"])
+        self.assertEqual(origin["evidence"], [])
+        facts = [node for node in saved["nodes"] if node["kind"] == "fact"]
+        self.assertEqual(len(facts), 1)
+        fact = facts[0]
+        self.assertEqual(fact["status"], "settled")
+        self.assertEqual(fact["authority"], "evidence")
+        self.assertTrue(fact["authority_source"])
+        self.assertIsInstance(fact["evidence"], list)
+        self.assertTrue(fact["evidence"])
+        self.assertTrue(all(isinstance(item, str) and item.strip() for item in fact["evidence"]))
+        self.assertNotIn("owner", fact)
+        self.assertNotIn("gate", fact)
 
     def test_published_example_is_an_empty_valid_draft(self):
         example = SCRIPT.parents[1] / "assets/ledger.json"

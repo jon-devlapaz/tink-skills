@@ -24,7 +24,7 @@ sha256 = "bce355e60ed6c1439076b457d680e3fb609b84543327a62e26b6d88beaa01e2c"
 [[skills]]
 name = "seed-me"
 source = "skills/seed-me"
-sha256 = "9fa0c98a4b4fd30681d8b4ccb5f7b5dc71d5852db48d5453187b0a7002a1e580"
+sha256 = "5300a5cdc768a035f64b1fc5bf71e1536b0b581524f6e6fa78ec533123be106e"
 
 [[skills]]
 name = "manage-tink"

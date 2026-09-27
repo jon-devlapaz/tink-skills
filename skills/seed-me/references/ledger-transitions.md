@@ -18,27 +18,35 @@ and per-node history outside the repository; it is not an ephemeral scratchpad.
 ### Node Fields
 
 Each node in the ledger represents either an empirical fact to establish or a
-consequential decision requiring judgment. Every node must have:
+consequential decision requiring judgment. Use these JSON types when publishing;
+requiredness depends on kind and status, not every field is mandatory.
 
-- `id`: Stable, human-readable string identifier (e.g. `auth-model`, `db-engine`, `rate-limit-storage`).
-- `kind`: `decision` (consequential preference or architecture trade-off) or `fact` (empirically verifiable property).
-- `status`: One of `unresolved`, `settled`, `deferred`, or `superseded`.
-- `prerequisites`: Tuple or list of prerequisite node IDs that must be `settled` before this node can become ready.
-- `predicate`: Optional observed boolean: `true` (also the default when omitted),
-  `false`, or `null` for unknown. The host investigates conditions and records
-  their observed result; the helper does not evaluate arbitrary expressions.
-- `evidence`: Workspace facts, inspected paths, schema snippets, configuration keys, or explicit access limitations.
-- `recommendation`: Grounded host proposal based on verified evidence and settled prerequisites.
-- `answer`: Actual user choice, evidence-derived fact, or delegated choice.
-- `authority`: Authority source for the answer: `user` (explicit user instruction), `evidence` (verified workspace fact), or `delegated` (scoped user delegation).
-- `authority_source`: Actual user-answer/delegation reference or inspected fact source.
-  Required with a nonempty `answer` on settled nodes. Clear all three active
-  answer fields when reopening; their previous values remain in history.
-- `revision`: Premise revision number at which the node was created, updated, or settled.
-- `reopen_reason`: Nonempty justification required when a settled node becomes
-  unresolved. It is retained with that state in history on subsequent changes.
-- `defer_reason`: Documented reason why a non-blocking node was postponed (stored separately for deferred nodes).
-- `revisit_condition`: Explicit condition or trigger under which a deferred node will be revisited (stored separately for deferred nodes).
+| Field | Type | Requirement and meaning |
+| --- | --- | --- |
+| `id` | string | Required, nonempty, unique stable identifier (e.g. `auth-model`). |
+| `kind` | string | Required: `decision` for judgment or `fact` for an empirically verifiable property. |
+| `status` | string | Required: `unresolved`, `settled`, `deferred`, or `superseded`. |
+| `prerequisites` | array of strings | Required; distinct nonempty node IDs. Use `[]` for none. Each prerequisite must be settled before this node is ready. |
+| `predicate` | boolean or null | Optional; omitted means `true`, `null` means unknown. Record an observed condition, not an expression for the helper to evaluate. |
+| `evidence` | array of strings (`list[str]`) | Required; each entry is nonempty text recording an inspected path, fact, schema snippet, configuration key, or access limitation. `[]` is valid except when settling by `evidence` or `delegated` authority. |
+| `owner` | string | Required, nonempty for decisions: who can settle this choice. Facts need no owner. |
+| `gate` | string | Required, nonempty for decisions: the answer needed to settle this choice, e.g. “Explicitly confirm this investigation goal.” This describes the interview answer, not an SDLC approval gate or executable rule. Facts need no gate. |
+| `label` | string | Optional short display title. |
+| `question` | string | Optional one-line ask for display. |
+| `recommendation` | string | Optional grounded host proposal based on evidence and settled prerequisites. |
+| `answer` | string or null | Required, nonempty when settled: actual user choice, evidence-derived fact, or delegated choice. Otherwise omit or use `null`. |
+| `authority` | string or null | Required when settled: `evidence` for facts; `user` or `delegated` for decisions. Otherwise omit or use `null`. |
+| `authority_source` | string or null | Required, nonempty when settled: actual user-answer/delegation reference or inspected fact source. Otherwise omit or use `null`. |
+| `reopen_reason` | string | Nonempty whenever present; required when a settled node becomes unresolved. Retained in history on subsequent changes. |
+| `defer_reason` | string | Required, nonempty when deferred: why this non-blocking concern was postponed. |
+| `revisit_condition` | string | Required, nonempty when deferred: concrete trigger for revisiting it. |
+| `revision` | integer | Helper-owned premise revision; omit from publication payloads. |
+| `history` | array of objects | Helper-owned prior node states with timestamps and reasons; omit from publication payloads. |
+
+Omit `owner` and `gate` on facts; the validator permits them but does not require
+them there. Types for `label`, `question`, and `recommendation` are authoring
+conventions, not validator guarantees. Clear `answer`, `authority`, and `authority_source` when
+reopening; their previous values remain in history.
 
 Record default behaviors and engineering conventions as labeled **assumptions**,
 never as user answers. Fact nodes resolve through verified workspace evidence;
@@ -59,17 +67,17 @@ Top-level fields:
 - `status`: `active`, `stopped`, or `completed`. Ended sessions are read-only.
 - `draft`: candidate `goal`, `outcome`, and `options`; none is an accepted answer.
 - `goal`, `origin`: initially `null`. Confirmation creates a settled user decision
-  whose ID is `origin` and whose answer matches `goal`. Both then remain fixed;
-  record scope refinements in other nodes. A replacement goal starts a new session.
+  whose ID is `origin` and whose `answer` exactly equals `goal` (string equality).
+  Both then remain fixed; record scope refinements in other nodes.
+  A replacement goal starts a new session.
 - `current_question`: one ready decision ID, or `null`; always `null` after ending.
 - `nodes`: the current concerns, including their helper-owned `revision` and `history`.
 - `frontier`: helper-derived ready IDs in node-list order. Unresolved nodes absent
   from it are parked. The host selects a current question using §3; it never writes
   the derived frontier directly.
 
-Node display fields are `label` (short title), `question` (the one-line ask),
-`owner`, and `gate` (required for decisions). Independent nodes may be unconnected;
-`origin` identifies the confirmed beginning, not an artificial prerequisite.
+Independent nodes may be unconnected; `origin` identifies the confirmed beginning,
+not an artificial prerequisite.
 
 ### Publication payload
 
@@ -93,7 +101,56 @@ each node. The helper owns all other stored fields. Initial draft example:
 }
 ```
 
-Use the actual observed `version`, not a hardcoded `0` after initialization.
+After that draft publication, a confirmed-goal update can look like this.
+This is a **synthetic example**, including its user confirmation and inspected
+fixture: do not treat these strings as real authority or workspace evidence.
+In a real session, settle the goal only from explicit user confirmation and
+settle the fact only after inspecting its source. Copy the confirmed goal text exactly into
+both `state.goal` and the origin node's `answer`.
+
+```json
+{
+  "expected_version": 1,
+  "reason": "Synthetic example: user confirmed investigation scope; inspected import fixture",
+  "state": {
+    "status": "active",
+    "draft": {"goal": "Candidate goal", "outcome": "Candidate outcome", "options": []},
+    "goal": "Investigate safe data import",
+    "origin": "goal",
+    "current_question": null,
+    "nodes": [
+      {
+        "id": "goal",
+        "kind": "decision",
+        "status": "settled",
+        "prerequisites": [],
+        "evidence": [],
+        "owner": "User",
+        "gate": "Explicitly confirm this investigation goal",
+        "answer": "Investigate safe data import",
+        "authority": "user",
+        "authority_source": "Synthetic chat turn 2: user explicitly confirmed this investigation goal"
+      },
+      {
+        "id": "import-behavior",
+        "kind": "fact",
+        "status": "settled",
+        "prerequisites": [],
+        "evidence": ["Synthetic fixture import.py:10 calls replace(existing, incoming)"],
+        "answer": "The fixture replaces existing data on import",
+        "authority": "evidence",
+        "authority_source": "Synthetic inspection of fixture import.py:10"
+      }
+    ]
+  }
+}
+```
+
+The origin is a user decision, so its evidence list may be empty. The settled
+fact requires nonempty evidence and omits `owner`/`gate`. Neither the goal nor
+the fact chooses an implementation; no decorative prerequisite connects them.
+
+Use the actual observed `version`, not hardcoded example versions.
 `reason` describes the real update. Optional `revalidated` maps affected settled
 node IDs to fresh justifications; their evidence must also be populated. Evidence
 truth and user authority remain host responsibilities, not validator judgments.
