@@ -112,6 +112,7 @@ function cls(node) {
 function validate(data) {
   if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.frontier)) throw Error('Invalid ledger shape');
   const ids = new Set();
+  const nonBlank = value => typeof value === 'string' && value.trim() !== '';
   for (const node of data.nodes) {
     if (!node || typeof node.id !== 'string' || !node.id || ids.has(node.id) ||
         !['fact', 'decision'].includes(node.kind) ||
@@ -121,9 +122,20 @@ function validate(data) {
       throw Error('Invalid ledger node');
     }
     ids.add(node.id);
+    if (!node.evidence.every(entry => nonBlank(entry))) throw Error('Invalid ledger node');
+    if (node.kind === 'decision' && (!nonBlank(node.owner) || !nonBlank(node.gate))) throw Error('Invalid ledger node');
+    if (node.status === 'settled') {
+      if (!nonBlank(node.answer) || !nonBlank(node.authority_source)) throw Error('Invalid ledger node');
+      if (node.kind === 'fact' ? node.authority !== 'evidence' : (node.authority !== 'user' && node.authority !== 'delegated')) throw Error('Invalid ledger node');
+      if ((node.authority === 'evidence' || node.authority === 'delegated') && node.evidence.length === 0) throw Error('Invalid ledger node');
+    } else if ((node.answer !== undefined && node.answer !== null) || (node.authority !== undefined && node.authority !== null) || (node.authority_source !== undefined && node.authority_source !== null)) throw Error('Invalid ledger node');
   }
   if (data.nodes.some(n => n.prerequisites.some(p => !ids.has(p))) ||
       data.frontier.some(id => !ids.has(id)) || (data.origin && !ids.has(data.origin))) throw Error('Invalid ledger reference');
+  if (data.origin !== null && data.origin !== undefined) {
+    const root = data.nodes.find(n => n.id === data.origin);
+    if (!nonBlank(data.goal) || !root || root.kind !== 'decision' || root.status !== 'settled' || root.authority !== 'user' || root.answer !== data.goal) throw Error('Invalid ledger origin');
+  }
   if (data.current_question && !data.nodes.some(n => n.id === data.current_question && n.kind === 'decision' && data.frontier.includes(n.id))) {
     throw Error('Invalid current question');
   }
