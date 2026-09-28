@@ -159,7 +159,8 @@ authorize product edits. The host runs the commands and owns the viewer process.
    on any failure, keep the last valid state and report the blocker.
 4. On goal confirmation, publish a settled user decision as `origin`. Keep the
    confirmed goal prominent. Add edges only for actual prerequisites; independent
-   concerns may remain unconnected. Publish answers and reopened nodes before
+   concerns may remain unconnected. The goal is implicit: do not make `origin` a
+   prerequisite of every concern, only of one whose wording truly depends on it. Publish answers and reopened nodes before
    advancing the current question. Answers stay in chat; the viewer is read-only.
 5. On explicit stop, end as `stopped`. End as `completed` only after the confirmed
    `pre-intent.md` is successfully saved in Step 5:

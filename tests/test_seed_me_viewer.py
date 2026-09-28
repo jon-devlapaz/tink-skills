@@ -208,9 +208,10 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.context.unroute("**/cytoscape.min.js")
         self.context.route("**/cytoscape.min.js", lambda route: route.fulfill(path=library, content_type="application/javascript"))
         self.page.goto(self.url)
-        self.page.wait_for_function("cy !== null && cy.nodes().length === 0")
+        self.page.wait_for_function("LEDGER !== null && cy === null")
         self.confirm()
-        self.page.wait_for_function("cy !== null && cy.nodes().length === 4")
+        self.page.wait_for_function("cy !== null && cy.nodes().length === 3")
+        self.assertEqual(self.page.evaluate("cy.getElementById('goal').length"), 0)
         self.expect(self.page.locator("#cdn-banner")).to_be_hidden()
         self.expect(self.page.locator("#cy canvas").first).to_be_visible()
         self.assertEqual(self.page.evaluate("cy.edges().map(e => [e.source().id(), e.target().id()])"),
@@ -234,6 +235,65 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#detail > dl")).to_contain_text("unresolved")
         self.expect(self.page.locator("#detail .history").first).to_contain_text("Require backup")
         self.assertTrue(self.page.evaluate("cy.getElementById('button-label').hasClass('settled')"))
+        self.assertEqual(self.errors, [])
+
+    def test_graph_is_hidden_when_every_edge_only_points_at_the_goal(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="first")
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          {**node("first", parents=["goal"]), "question": "First?"},
+                          {**node("second", parents=["goal"]), "question": "Second?"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#call")).to_contain_text("First?")
+        self.expect(self.page.locator("main")).to_be_hidden()
+        self.assertIsNone(self.page.evaluate("cy"))
+        self.expect(self.page.locator("#cdn-banner")).to_be_hidden()
+        self.assertEqual(self.errors, [])
+
+    def test_parked_concern_says_what_it_is_waiting_on(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="first")
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          {**node("first", parents=["goal"]), "question": "First?", "label": "Pick the store"},
+                          {**node("second", parents=["first"]), "question": "Second?"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#open-list")).to_contain_text("Second?")
+        self.expect(self.page.locator("#open-list")).to_contain_text("Waiting on: Pick the store")
+        self.expect(self.page.locator("#open-list")).not_to_contain_text("goal")
+        self.assertEqual(self.errors, [])
+
+    def test_deferred_concern_shows_its_revisit_condition_and_bare_card_makes_no_false_claim(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          {**node("now", parents=["goal"]), "question": "Bare question?"},
+                          {**node("later", parents=["goal"]), "status": "deferred", "question": "Later?",
+                           "defer_reason": "not blocking", "revisit_condition": "after v1 ships"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#deferred-list")).to_contain_text("Revisit: after v1 ships")
+        self.expect(self.page.locator("#call")).not_to_contain_text("replaces the recommendation")
+        self.expect(self.page.locator("#call")).to_contain_text("Reply in chat with your answer")
+        self.assertEqual(self.errors, [])
+
+    def test_many_settled_items_fold_so_open_work_stays_visible(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        settled = [node(f"s{i}", answer=f"Answer {i}") for i in range(1, 13)]
+        for item in settled:
+            item["label"] = f"Settled {item['id'][1:]}"
+        state["nodes"] = [node("goal", answer="Ship it"), *settled,
+                          {**node("now", parents=["goal"]), "question": "Still to decide?"},
+                          {**node("later", parents=["goal"]), "question": "Open one?", "label": "Open one"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#settled-list > li")).to_have_count(5)
+        self.expect(self.page.locator("#settled-list > li").first).to_contain_text("Settled 12")
+        self.expect(self.page.locator("#settled-more-sum")).to_have_text("Show 7 earlier settled")
+        self.expect(self.page.locator("#settled-more")).not_to_have_attribute("open", "")
+        self.expect(self.page.locator("#open-list")).to_contain_text("Open one")
         self.assertEqual(self.errors, [])
 
     def test_saved_ended_view_is_read_only_offline_and_after_restart(self):

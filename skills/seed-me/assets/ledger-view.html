@@ -9,47 +9,120 @@
         integrity="sha384-IWROdLKRsN1UuJywMlWl7/blXQ8GEooN2n7dzTxfEPd7ybYIKCUJ2Ol/1Gpf3YV4"
         crossorigin="anonymous"></script>
 <style>
-  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-  body { margin: 0; }
-  header, #draft, #connection, #cdn-banner { padding: 12px 18px; border-bottom: 1px solid #8885; }
-  h1 { font-size: 19px; margin: 0 0 8px; }
-  h2 { font-size: 16px; }
-  #meta, #counts { font-size: 13px; margin-top: 6px; }
-  #connection[data-health="error"], #cdn-banner { background: #885000; color: white; }
-  #connection[data-health="live"] { border-left: 5px solid #287b53; }
-  #draft { border-left: 5px solid #b98100; }
-  main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); height: 58vh; min-height: 300px; }
-  #cy { height: 100%; min-height: 0; }
-  #detail { border-left: 1px solid #8885; padding: 16px; overflow-wrap: anywhere; overflow-y: auto; min-height: 0; }
-  #ledger-list { padding: 16px; border-top: 1px solid #8885; }
-  #ledger-list > details { padding: 10px; border-bottom: 1px solid #8885; }
-  summary, button { cursor: pointer; }
-  dt { font-weight: 600; margin-top: 10px; }
-  dd { margin: 3px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-  #legend { padding: 12px 18px; font-size: 13px; border-top: 1px solid #8885; }
-  .current { border-left: 5px solid #a34be3; }
-  .history { padding: 8px; border: 1px solid #8885; margin-top: 10px; }
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf7; --surface: #ffffff; --text: #1d1f1c; --muted: #5d625b; --line: #e3e1da;
+    --accent: #8a5a00; --accent-bg: #fff4d9; --accent-line: #e0a526;
+    --you: #6b21a8; --you-bg: #f3e8ff; --ok: #1c6b48; --ok-bg: #e2f4ea; --amber: #8a5a00; --amber-bg: #fff1cf;
+    --focus: #2563eb; --err-bg: #7a4300; --err-text: #fff;
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --col: 760px;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121311; --surface: #1b1c1a; --text: #ecece7; --muted: #a3a79f; --line: #2f312d;
+      --accent: #f0b73a; --accent-bg: #2a2210; --accent-line: #c8901a;
+      --you: #d8b4fe; --you-bg: #2b1a3f; --ok: #6fd3a0; --ok-bg: #12301f; --amber: #f0b73a; --amber-bg: #2a2210; --focus: #7aa7ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); }
+  header, #now, #connection, #draft, #cdn-banner, #ledger-list, #legend, #meta-foot { max-width: var(--col); margin-inline: auto; padding-inline: var(--s5); }
+  header { padding-top: var(--s6); padding-bottom: var(--s4); }
+  .eyebrow { display: flex; align-items: center; gap: var(--s2); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 var(--s2); }
+  #status-pill { font-size: 11px; font-weight: 700; letter-spacing: .04em; padding: 1px 8px; border-radius: 999px; background: var(--amber-bg); color: var(--amber); }
+  #status-pill[data-kind="active"] { background: var(--ok-bg); color: var(--ok); }
+  #status-pill[data-kind="ended"] { background: var(--line); color: var(--muted); }
+  h1 { font-size: 26px; line-height: 1.25; font-weight: 650; letter-spacing: -.01em; margin: 0 0 var(--s2); text-wrap: balance; }
+  h2 { font-size: 16px; margin: 0 0 var(--s2); }
+  #counts { font-size: 14px; color: var(--muted); }
+  #now { padding-bottom: var(--s4); }
+  #now h2 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: var(--s6) 0 var(--s2); }
+  #call { background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--accent-line); border-radius: 12px; padding: var(--s5); box-shadow: 0 1px 2px rgb(0 0 0 / .06); }
+  #call.quiet { border-left-color: var(--line); box-shadow: none; background: transparent; }
+  #call .label { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  #call.quiet .label { color: var(--muted); }
+  #call .question { font-size: 22px; line-height: 1.3; font-weight: 650; margin: var(--s2) 0 var(--s4); text-wrap: balance; }
+  #call.quiet .question, #call.quiet > div:last-child { font-size: 16px; font-weight: 400; margin: var(--s2) 0 0; }
+  #call .rec { background: var(--accent-bg); border-radius: 8px; padding: var(--s3) var(--s4); margin: 0 0 var(--s4); }
+  #call .rec b { display: block; font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: var(--s1); }
+  #call .meta-row { font-size: 14px; color: var(--muted); margin-bottom: var(--s4); }
+  #call .agency { margin: 0 0 var(--s3); font-size: 15px; }
+  #call details { font-size: 14px; color: var(--muted); }
+  #call details ul { margin: var(--s2) 0 0; padding-left: var(--s5); }
+  .items { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .items:empty { display: none; }
+  #now, #call, #ledger-list, #draft, .item > * { overflow-wrap: anywhere; min-width: 0; }
+  .item { display: grid; grid-template-columns: minmax(110px, 190px) 1fr; column-gap: var(--s4); align-items: baseline; padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
+  .item > strong { font-weight: 600; }
+  .item .detail { color: var(--muted); }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; margin-left: var(--s2); white-space: nowrap; }
+  .badge.user { background: var(--you-bg); color: var(--you); } .badge.evidence { background: var(--ok-bg); color: var(--ok); } .badge.delegated { background: var(--amber-bg); color: var(--amber); }
+  #connection { font-size: 13px; color: var(--muted); padding-block: var(--s2); display: flex; align-items: center; gap: var(--s2); }
+  #connection::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+  #connection[data-health="live"]::before { background: var(--ok); }
+  #connection[data-health="error"] { background: var(--err-bg); color: var(--err-text); border-radius: 8px; padding: var(--s3) var(--s4); margin-block: var(--s3); }
+  #connection[data-health="error"]::before { background: var(--err-text); }
+  #cdn-banner { background: var(--err-bg); color: var(--err-text); border-radius: 8px; padding-block: var(--s3); margin-block: var(--s3); }
+  #draft { width: calc(min(100%, var(--col)) - 2 * var(--s5)); max-width: none; background: var(--surface); border: 1px solid var(--line); border-left: 5px solid var(--accent-line); border-radius: 12px; padding: var(--s4) var(--s5); margin: var(--s4) auto; }
+  #draft h2 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+  dt { font-size: 12px; font-weight: 700; color: var(--muted); margin-top: var(--s3); letter-spacing: .03em; }
+  dd { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #ledger-list { padding-block: var(--s5); }
+  #ledger-list > h2 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  #ledger-list > details { padding: var(--s3) 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  #ledger-list > p { color: var(--muted); }
+  summary { cursor: pointer; padding: var(--s1) 0; }
+  button { cursor: pointer; font: inherit; font-size: 14px; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: var(--s1) var(--s3); margin: var(--s2) 0; }
+  button:hover { border-color: var(--muted); }
+  summary:focus-visible, button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  .current { border-left: 4px solid var(--you); padding-left: var(--s3) !important; }
+  .history { padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: 8px; margin-top: var(--s3); }
   .history summary { font-size: 14px; }
+  main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); height: 58vh; min-height: 320px; max-width: 1100px; margin: var(--s4) auto var(--s5); padding-inline: var(--s5); }
+  #cy { height: 100%; min-height: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px 0 0 12px; }
+  #detail { border: 1px solid var(--line); border-left: 0; border-radius: 0 12px 12px 0; padding: var(--s4); overflow-wrap: anywhere; overflow-y: auto; min-height: 0; background: var(--surface); }
+  #legend { font-size: 12px; color: var(--muted); padding-block: var(--s3); }
+  #settled-more { margin-top: var(--s2); font-size: 14px; color: var(--muted); }
+  #settled-more > summary { padding: var(--s2) 0; }
+  #meta-foot { font-size: 12px; color: var(--muted); padding-block: var(--s4) var(--s6); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   [hidden] { display: none !important; }
-  @media (max-width: 700px) { main { grid-template-columns: 1fr; height: auto; } #cy { height: 50vh; } #detail { border-left: 0; border-top: 1px solid #8885; max-height: 55vh; } }
+  @media (max-width: 700px) {
+    header, #now, #connection, #draft, #cdn-banner, #ledger-list, #legend, #meta-foot, main { padding-inline: var(--s4); }
+    #draft { width: calc(100% - 2 * var(--s4)); padding: var(--s4); }
+    h1 { font-size: 22px; } #call { padding: var(--s4); } #call .question { font-size: 19px; }
+    .item { grid-template-columns: 1fr; row-gap: 2px; }
+    main { grid-template-columns: 1fr; height: auto; } #cy { height: 50vh; border-radius: 12px 12px 0 0; }
+    #detail { border-left: 1px solid var(--line); border-top: 0; border-radius: 0 0 12px 12px; max-height: 45vh; }
+  }
 </style>
 </head>
 <body>
 <header>
+  <p class="eyebrow"><span>Seed Me · read-only view</span><span id="status-pill" data-kind="draft">Draft</span></p>
   <h1 id="title">Seed Me Ledger</h1>
-  <div id="meta"></div>
   <div id="counts"></div>
-  <p id="current">No question currently presented.</p>
+  <p id="current" class="sr-only">No question currently presented.</p>
 </header>
+<section id="now" aria-label="Where things stand">
+  <div id="call"></div>
+  <h2 id="settled-h" hidden>Settled</h2>
+  <ul id="settled-list" class="items"></ul>
+  <details id="settled-more" hidden><summary id="settled-more-sum"></summary><ul id="settled-more-list" class="items"></ul></details>
+  <h2 id="open-h" hidden>Still open</h2>
+  <ul id="open-list" class="items"></ul>
+  <h2 id="deferred-h" hidden>Deferred</h2>
+  <ul id="deferred-list" class="items"></ul>
+</section>
 <div id="connection" role="status" aria-live="polite">Waiting for session data.</div>
 <section id="draft" hidden><h2>Draft—not confirmed</h2><div id="draft-content"></div></section>
 <div id="cdn-banner" hidden></div>
-<main>
+<section id="ledger-list" aria-label="Complete ledger text view"></section>
+<main hidden>
   <div id="cy" aria-label="Decision dependency graph"></div>
   <aside id="detail"><h2>Node detail</h2><p>Select a node to inspect it.</p></aside>
 </main>
-<section id="ledger-list" aria-label="Complete ledger text view"></section>
 <div id="legend">Purple outline: current question · amber: ready · green: settled · gray: parked · blue: deferred · dashed: superseded. Edges are prerequisites only. Answers stay in chat.</div>
+<div id="meta-foot"><span id="meta"></span></div>
 <script id="ledger-data" type="application/json">
 {"__LEDGER_JSON__":true,"revision":0,"goal":null,"origin":null,"frontier":[],"nodes":[]}
 </script>
@@ -177,9 +250,9 @@ function graph() {
   cy = cytoscape({
     container: el('cy'),
     elements: [
-      ...LEDGER.nodes.map(n => ({ data: { id: n.id, label: n.label || n.id, kind: n.kind },
+      ...LEDGER.nodes.filter(n => n.id !== LEDGER.origin).map(n => ({ data: { id: n.id, label: n.label || n.id, kind: n.kind },
         classes: cls(n) + (n.id === LEDGER.origin ? ' origin' : '') + (n.id === LEDGER.current_question ? ' current' : '') })),
-      ...LEDGER.nodes.flatMap(n => n.prerequisites.map(p => ({ data: { source: p, target: n.id } })))
+      ...LEDGER.nodes.filter(n => n.id !== LEDGER.origin).flatMap(n => n.prerequisites.filter(p => p !== LEDGER.origin).map(p => ({ data: { source: p, target: n.id } })))
     ],
     layout: { name: 'breadthfirst', directed: true, spacingFactor: 1.4, padding: 30 },
     style: [
@@ -199,21 +272,126 @@ function graph() {
   if (viewport) cy.viewport(viewport);
   cy.on('tap', 'node', event => select(event.target.id()));
 }
+function graphWanted() {
+  return LEDGER.nodes.some(n => n.id !== LEDGER.origin && n.prerequisites.some(p => p !== LEDGER.origin));
+}
+function waitingOn(node) {
+  return node.prerequisites
+    .filter(p => p !== LEDGER.origin)
+    .map(p => LEDGER.nodes.find(n => n.id === p))
+    .filter(n => n && n.status !== 'settled')
+    .map(n => title(n));
+}
+function title(node) { return node.label || (node.question ? short(node.question, 48) : node.id); }
+function short(text, max) { text = String(text || ''); return text.length > max ? text.slice(0, max - 1) + '…' : text; }
+function who(node) {
+  const label = { user: 'you decided', delegated: 'delegated to agent', evidence: 'evidence' }[node.authority] || node.authority;
+  const badge = element('span', label);
+  badge.className = 'badge ' + node.authority;
+  return badge;
+}
+function itemRow(node, extra) {
+  const li = element('li');
+  li.className = 'item';
+  li.append(element('strong', title(node)));
+  if (extra) { const d = element('span', extra); d.className = 'detail'; li.append(d); }
+  return li;
+}
+function renderNow() {
+  const call = el('call');
+  call.replaceChildren();
+  call.className = '';
+  const current = LEDGER.nodes.find(n => n.id === LEDGER.current_question);
+  const ended = ['stopped', 'completed'].includes(LEDGER.status);
+  if (current && !ended) {
+    call.append(element('div', 'Your call'), element('div', current.question || current.label || current.id));
+    call.firstChild.className = 'label';
+    call.lastChild.className = 'question';
+    if (current.recommendation) {
+      const rec = element('div');
+      rec.className = 'rec';
+      rec.append(element('b', 'Recommended by the agent — a proposal, not a decision'), element('span', current.recommendation));
+      call.append(rec);
+    }
+    const meta = element('div');
+    meta.className = 'meta-row';
+    meta.append(element('span', [current.gate && 'To settle: ' + current.gate, current.owner && 'Owner: ' + current.owner].filter(Boolean).join(' · ')));
+    call.append(meta);
+    const agency = element('p', current.recommendation ? 'Reply in chat: agree, change it, or say what you would do instead. Your wording replaces the recommendation.' : 'Reply in chat with your answer, or tell the agent what you need to know first.');
+    agency.className = 'agency';
+    call.append(agency);
+    if (current.evidence && current.evidence.length) {
+      const why = element('details');
+      why.append(element('summary', `Why the agent thinks this (${current.evidence.length})`));
+      const list = element('ul');
+      for (const e of current.evidence) list.append(element('li', e));
+      why.append(list);
+      call.append(why);
+    }
+  } else {
+    call.className = 'quiet';
+    const label = element('div', ended ? 'Session ' + LEDGER.status : 'Waiting for you');
+    label.className = 'label';
+    const msg = ended ? 'This session has ended. Its saved state stays readable here.'
+      : (!LEDGER.origin ? 'Review the draft below. In chat, keep it, cut it, or reshape it — then confirm the goal.'
+        : 'Nothing is waiting on you right now. The agent is investigating or between questions.');
+    call.append(label, element('div', msg));
+  }
+  const others = LEDGER.nodes.filter(n => n.id !== LEDGER.origin);
+  const settled = others.filter(n => n.status === 'settled');
+  const open = others.filter(n => n.status === 'unresolved' && n.id !== LEDGER.current_question);
+  el('settled-h').hidden = !settled.length;
+  el('settled-h').textContent = `Settled (${settled.length})`;
+  const settledRow = n => {
+    const row = itemRow(n, short(n.answer, 140));
+    (row.querySelector('.detail') || row).append(who(n));
+    return row;
+  };
+  const SHOW = 5;
+  const recent = settled.slice(-SHOW).reverse();
+  const earlier = settled.slice(0, -SHOW).reverse();
+  el('settled-list').replaceChildren(...recent.map(settledRow));
+  el('settled-more').hidden = !earlier.length;
+  el('settled-more-sum').textContent = `Show ${earlier.length} earlier settled`;
+  el('settled-more-list').replaceChildren(...earlier.map(settledRow));
+  const deferred = others.filter(n => n.status === 'deferred');
+  el('deferred-h').hidden = !deferred.length;
+  el('deferred-h').textContent = `Deferred (${deferred.length})`;
+  el('deferred-list').replaceChildren(...deferred.map(n => itemRow(n, [short(n.question, 100), n.revisit_condition && 'Revisit: ' + n.revisit_condition].filter(Boolean).join(' · '))));
+  el('open-h').hidden = !open.length;
+  el('open-h').textContent = `Still open (${open.length})`;
+  el('open-list').replaceChildren(...open.map(n => {
+    const blockers = waitingOn(n);
+    return itemRow(n, short(n.question, 120) + (blockers.length ? ' · Waiting on: ' + blockers.join(', ') : ''));
+  }));
+}
 function render() {
-  el('title').textContent = LEDGER.origin ? `Seed Me Ledger — ${LEDGER.goal}` : 'Seed Me Ledger — shaping the draft';
+  el('title').textContent = LEDGER.origin ? LEDGER.goal : (LEDGER.draft && LEDGER.draft.goal ? `Draft: ${LEDGER.draft.goal}` : 'Shaping the draft');
   el('meta').textContent = `Session: ${LEDGER.session_id || 'legacy snapshot'} · publication ${LEDGER.version ?? '—'} · premise revision ${LEDGER.revision} · ${LEDGER.status || 'active'}`;
   el('draft').hidden = Boolean(LEDGER.origin);
   el('draft-content').replaceChildren();
-  if (LEDGER.draft) fields(el('draft-content'), { 'Candidate goal': LEDGER.draft.goal, 'Candidate outcome': LEDGER.draft.outcome, 'Candidate options': LEDGER.draft.options });
+  if (LEDGER.draft) fields(el('draft-content'), { 'Candidate goal': LEDGER.draft.goal, 'Candidate outcome': LEDGER.draft.outcome, 'Candidate options': LEDGER.draft.options && LEDGER.draft.options.length ? LEDGER.draft.options : null });
   const decisions = LEDGER.nodes.filter(n => n.kind === 'decision' && n.id !== LEDGER.origin);
   const count = status => decisions.filter(n => cls(n) === status).length;
   const tally = (amount, noun) => `${amount} ${noun}${amount === 1 ? '' : 's'}`;
-  el('counts').textContent = `${tally(count('ready'), 'decision')} ready · ${count('parked')} parked · ${count('settled')} settled · ${count('deferred')} deferred · ${count('superseded')} superseded · ${tally(LEDGER.nodes.filter(n => n.kind === 'fact').length, 'fact')}`;
+  const facts = LEDGER.nodes.filter(n => n.kind === 'fact').length;
+  const parts = [[count('ready'), tally(count('ready'), 'decision') + ' ready'], [count('parked'), count('parked') + ' parked'],
+    [count('settled'), count('settled') + ' settled'], [count('deferred'), count('deferred') + ' deferred'],
+    [count('superseded'), count('superseded') + ' superseded'], [facts, tally(facts, 'fact')]].filter(([n]) => n > 0).map(([, t]) => t);
+  el('counts').textContent = parts.length ? parts.join(' · ') : 'Nothing recorded yet';
   const current = LEDGER.nodes.find(n => n.id === LEDGER.current_question);
   el('current').textContent = current ? `Current question: ${current.question || current.label || current.id}` : 'No question currently presented.';
+  const pill = el('status-pill');
+  const ended = ['stopped', 'completed'].includes(LEDGER.status);
+  pill.dataset.kind = ended ? 'ended' : (LEDGER.origin ? 'active' : 'draft');
+  pill.textContent = ended ? LEDGER.status : (LEDGER.origin ? 'In progress' : 'Draft');
+  renderNow();
   textView();
   if (!selectedId) selectedId = LEDGER.current_question || null;
   select(selectedId);
+  document.querySelector('main').hidden = !graphWanted();
+  el('legend').hidden = !graphWanted();
+  if (!graphWanted()) { if (cy) { cy.destroy(); cy = null; } el('cdn-banner').hidden = true; return; }
   try { graph(); } catch { fallback(); }
 }
 function health(kind, message) {
@@ -245,7 +423,7 @@ async function poll() {
     health('error', `Viewer unavailable or stale: ${error.message}. ${LEDGER ? 'Showing the last valid snapshot.' : 'No session data loaded.'} Pause new interview questions until restored.`);
   } finally { polling = false; }
 }
-el('graph-library').addEventListener('load', () => { if (LEDGER) { try { graph(); } catch { fallback(); } } });
+el('graph-library').addEventListener('load', () => { if (LEDGER && graphWanted()) { try { graph(); } catch { fallback(); } } });
 try {
   const embedded = JSON.parse(el('ledger-data').textContent);
   if (!embedded.__LEDGER_JSON__) { LEDGER = validate(embedded); render(); }
