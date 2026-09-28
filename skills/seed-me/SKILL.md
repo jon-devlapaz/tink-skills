@@ -20,8 +20,8 @@ its receipt; every question names its owner.
   explicit no-interview requests keep their requested format. Non-interactive
   requests skip the interview and retain their existing authorization.
 - Before opening the interview, read [ledger-transitions.md](references/ledger-transitions.md)
-  for decision ledger setup, frontier transitions, and ranking. Before presenting the
-  working draft, start the session and viewer using **Session lifecycle** below.
+  for decision ledger setup, frontier transitions, and ranking. Start the session when the
+  user confirms the goal (see **Session lifecycle** below); until then the working draft lives in chat.
   Maintain that decision ledger throughout; visible questions are a projection of this ledger. Read [epistemic-lenses.md](references/epistemic-lenses.md) only if the session opts into lenses (see Step 3) — otherwise leave it unread.
 - Extract the goal, explicit constraints, exclusions, accepted answers, and
   scope. Preserve settled choices and recorded exclusions faithfully without
@@ -36,7 +36,8 @@ turn: candidate goal, candidate proposed outcome, and candidate options with
 tradeoffs. Keep the graph empty until goal confirmation; retain choices already
 explicit in the input and record them when the confirmed nodes are published.
 Anything uncertain, assumed, or missing is labeled PROVISIONAL assumption, never
-an answer or a claim.
+an answer or a claim. The draft lives in chat until the goal is confirmed: it creates
+no session and no ledger nodes, and needs no publish.
 Provisional lines need no 📜 and spend no ungrounded budget; they are
 scaffolding for the user to correct, and a braindump simply yields more of them than a polished plan does. Present the draft in one tight block and
 ask what to keep, cut, or reshape. Confirmed lines become ledger nodes; rejected lines are dropped, not parked.
@@ -73,7 +74,7 @@ explicit disposition, or a ledger node. Ready independent questions can proceed.
 
 Pace decisions by presenting exactly one ready decision per user turn to minimize
 cognitive load. Ground each recommendation in the cited lines beneath it — a recommendation carries only what its 📜 lines support, never material from an unanswered recommendation. Never re-ask what the user already answered or volunteered; record it and move on. Every frontier question carries at least
-one 📜 line (the working draft in Step 1 is scaffolding, not a frontier question, so its PROVISIONAL lines are exempt); at most two ungrounded questions per session, each marked
+one 📜 line (the working draft in Step 1 is scaffolding, not a frontier question, so its PROVISIONAL lines are exempt); at most two ungrounded questions per session (a convention the scripts do not count), each marked
 `⚠️ ungrounded — no delegation`, barred from carrying a ➡️ recommendation and
 from settling by delegation (see Step 4). Every frontier question names its decider and gate;
 `operator` alone suffices only for consequence-free clarifications. Queued and undisplayed nodes remain tracked blockers in
@@ -131,22 +132,24 @@ Requires Python 3 on a POSIX host (`fcntl` locking). Resolve `<skill>` to this
 skill's directory. These commands maintain interview artifacts only; they do not
 authorize product edits. The host runs the commands and owns the viewer process.
 
-1. Before presenting the working draft, initialize once:
+1. When the user confirms the goal, initialize once:
    ```sh
    python3 "<skill>/scripts/session.py" init
    ```
    Use the returned directory as `<session>`. It defaults to
    `~/.local/share/seed-me/sessions/<id>/`, outside the repository. Record that
-   path for recovery. Start with an empty graph and a separate provisional draft;
+   path for recovery. Publish the confirmed goal together with the draft in the first update;
+   `draft.options` is a list of plain strings such as `"Label — tradeoff"`.
    `assets/ledger.json` illustrates the schema, not a session to copy or reuse.
-2. Start the viewer through the host's background-process tool:
+2. Offer the live view once in a sentence and start the viewer only if the user says yes,
+   through the host's background-process tool:
    ```sh
    python3 "<skill>/scripts/viewer.py" "<session>"
    ```
    Record its process handle and announce the printed localhost URL. It selects
    a free loopback port and renders `assets/ledger-view.html`. Verify that it
-   loads before asking interview questions. If startup or polling fails, preserve
-   the ledger, report the failure, and pause new questions until restored.
+   loads before relying on it. If startup or polling fails, preserve the ledger and report
+   the failure; the interview continues in chat, since the view is optional.
 3. Each turn, read the current state and publish the next state:
    ```sh
    python3 "<skill>/scripts/session.py" read "<session>"
@@ -196,16 +199,14 @@ Perform a local review of goal coverage, failure modes, security boundaries,
 recovery, and verification. Route newly identified blockers into the ledger and
 return to Step 2 immediately. Then run the close checklist once:
 
-- **Unread material (unknown knowns):** name on-disk sources true but unread
-  by any loop this session — unsigned lessons, adjudicated-but-unapplied bets,
-  tools never run, dirty trees, unread reviews. Each either gets read (return
-  to Step 2, naming the owning loop) or lands in the pre-intent as a named
-  risk with that loop.
-- **Breeding grounds:** name only grounds where surprises breed that cite a
-  prior surprise from this or a prior session. A cited surprise matching a
-  settled node's premises *is* new evidence: reopen with `reopen_reason` per
-  LEDGER §6.4. Only surprises with no matching node stay Risks-only. No cited
-  surprise, no entry.
+- **What we haven't read:** name files or notes that are on disk but nobody opened
+  this session — unsigned lessons, decisions never applied, tools never run,
+  uncommitted changes, unread reviews. Each either gets read (return to Step 2)
+  or lands in the pre-intent as a named risk with who will read it.
+- **Repeat surprises:** list only places where a surprise from this or an earlier
+  session is cited. A cited surprise that contradicts a settled node's premise
+  *is* new evidence: reopen it with `reopen_reason` per LEDGER §6.4. Surprises
+  with no matching node stay risks only. No cited surprise, no entry.
   Findings feed pre-intent Risks; they never reopen settled nodes without new
   evidence.
 
@@ -253,8 +254,8 @@ The displayed and saved revision must contain:
 - Accepted decisions: actual answers, authority, rationale, and dependencies;
   distinguish user choices from evidence-derived facts and delegated choices.
 - Evidence and uncertainty: inspected paths, measurements, unverified hypotheses,
-  assumptions, unread material from the close checklist, and breeding grounds
-  with their cited surprises. Carry a `Grounded in:` list of paths actually read
+  assumptions, what we haven't read (from the close checklist), and repeat
+  surprises with their citations. Carry a `Grounded in:` list of paths actually read
   this session. Flag a stale watch: any cited source older than the session start
   or since modified is suspect until re-read. Record verified origins and state
   gaps explicitly rather than inventing missing provenance.
@@ -266,10 +267,10 @@ The displayed and saved revision must contain:
   acceptance criteria; distinguish proposed checks from completed verification.
 - Open questions and deferrals: only non-blocking items, with reasons and revisit
   conditions. Unresolved blockers still prevent confirmation and saving.
-- Migration footer: for each open Q2 the owning decider+gate; for each Q3 item
-  the loop that will read it; for each breeding ground its guardrail. Map
-  quadrants to ledger status: Q1→settled(evidence), Q2→unresolved(blocker),
-  Q3→parked or risk, Q4→risk with guardrail.
+- Owners and next steps: for each open blocker, the owning decider and gate; for each
+  item to be read later, who will read it; for each repeat surprise, its guardrail.
+  Map each to ledger status: known → settled (evidence), needs a decision →
+  unresolved (blocker), watch → parked or risk, repeat surprise → risk with guardrail.
 - Downstream handoff: `pre-intent.md` is the handoff; the ledger and viewer are
   interview records, not additional required downstream artifacts. This artifact
   is discovery input, not an implementation plan,

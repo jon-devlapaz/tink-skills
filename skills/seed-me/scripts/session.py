@@ -43,7 +43,7 @@ def validate(state):
     draft = state["draft"]
     require(isinstance(draft, dict) and set(draft) == {"goal", "outcome", "options"}, "invalid draft")
     require(isinstance(draft["goal"], str) and isinstance(draft["outcome"], str), "invalid draft text")
-    require(isinstance(draft["options"], list) and all(text(v) for v in draft["options"]), "invalid draft options")
+    require(isinstance(draft["options"], list) and all(text(v) for v in draft["options"]), "invalid draft options: each option must be a non-empty string such as 'Label — tradeoff'")
     require(isinstance(state["nodes"], list), "nodes must be a list")
     nodes = {}
     for node in state["nodes"]:

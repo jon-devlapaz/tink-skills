@@ -65,7 +65,8 @@ Top-level fields:
 - `version`: helper-owned publication counter for optimistic concurrency.
 - `revision`: premise revision; distinct from publication version and question order.
 - `status`: `active`, `stopped`, or `completed`. Ended sessions are read-only.
-- `draft`: candidate `goal`, `outcome`, and `options`; none is an accepted answer.
+- `draft`: candidate `goal`, `outcome`, and `options` (a list of plain non-empty strings,
+  e.g. `"Label — tradeoff"`); none is an accepted answer.
 - `goal`, `origin`: initially `null`. Confirmation creates a settled user decision
   whose ID is `origin` and whose `answer` exactly equals `goal` (string equality).
   Both then remain fixed; record scope refinements in other nodes.

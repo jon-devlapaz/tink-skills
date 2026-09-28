@@ -65,6 +65,12 @@ class TestSeedSession(unittest.TestCase):
         state["current_question"] = "backup"
         return state
 
+    def test_draft_options_error_says_options_are_plain_strings(self):
+        state = session.editable(session.load(self.directory))
+        state["draft"]["options"] = [{"label": "A", "tradeoff": "faster"}]
+        with self.assertRaisesRegex(ValueError, "non-empty string"):
+            self.publish(state, "Shape the provisional working draft")
+
     def test_initial_draft_is_not_an_accepted_goal(self):
         ledger = session.load(self.directory)
         self.assertEqual((ledger["status"], ledger["origin"], ledger["goal"], ledger["nodes"], ledger["frontier"]),
