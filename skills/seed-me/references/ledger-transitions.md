@@ -37,6 +37,7 @@ requiredness depends on kind and status, not every field is mandatory.
 | `answer` | string or null | Required, nonempty when settled: actual user choice, evidence-derived fact, or delegated choice. Otherwise omit or use `null`. |
 | `authority` | string or null | Required when settled: `evidence` for facts; `user` or `delegated` for decisions. Otherwise omit or use `null`. |
 | `authority_source` | string or null | Required, nonempty when settled: actual user-answer/delegation reference or inspected fact source. Otherwise omit or use `null`. |
+| `contradicts` | string | Optional, facts only: the ID of a settled decision that this fact's evidence contradicts. Completion is blocked while that decision is still settled and unchanged since the fact was recorded; reopen or revise it, or supersede the fact with a reason. |
 | `reopen_reason` | string | Nonempty whenever present; required when a settled node becomes unresolved. Retained in history on subsequent changes. |
 | `defer_reason` | string | Required, nonempty when deferred: why this non-blocking concern was postponed. |
 | `revisit_condition` | string | Required, nonempty when deferred: concrete trigger for revisiting it. |
@@ -65,7 +66,10 @@ Top-level fields:
 - `version`: helper-owned publication counter for optimistic concurrency.
 - `revision`: premise revision; distinct from publication version and question order.
 - `status`: `active`, `stopped`, or `completed`. Ended sessions are read-only.
-- `draft`: candidate `goal`, `outcome`, and `options`; none is an accepted answer.
+- `draft`: candidate `goal`, `outcome`, and `options` (a list of plain non-empty strings,
+  e.g. `"Label — tradeoff"`); none is an accepted answer.
+- `assumed`: optional list of `{text, why}` defaults the agent assumes unless the user
+  objects. Never user answers; an objection turns an entry into a decision node.
 - `goal`, `origin`: initially `null`. Confirmation creates a settled user decision
   whose ID is `origin` and whose `answer` exactly equals `goal` (string equality).
   Both then remain fixed; record scope refinements in other nodes.
@@ -161,7 +165,7 @@ atomically replaces the ledger. It appends prior node state, `superseded_at`, an
 Read current state by default and retrieve history for changes, not as live answers.
 Exact repeated updates are no-ops. A stopped session preserves unresolved concerns;
 completion also requires the host's coverage review, confirmation, and successful
-pre-intent save. Empty frontier alone is not completion.
+seed contract save. Empty frontier alone is not completion.
 
 ### Node Statuses
 
@@ -212,11 +216,11 @@ owned by SKILL.md Step 3 (single source; do not duplicate it here). Always repor
 so the user retains visibility into total scope without feeling overwhelmed:
 
 ```text
-Decision 1 of 3 ready (2 parked)
+Question 1 of 3 ready (2 waiting on earlier answers)
 (see SKILL.md Step 3 for the canonical ❓/📜/👤/➡️ template)
 ```
 
-- Report counts: `Decision X of Y ready (Z parked)` where:
+- Report counts: `Question X of Y ready (Z waiting on earlier answers)` where:
   - `X`: Current question index in the ready queue.
   - `Y`: Total count of currently ready independent decisions.
   - `Z`: Count of parked nodes awaiting prerequisites or investigations.
@@ -293,7 +297,7 @@ When an accepted answer, constraint, or underlying piece of evidence changes sem
 
 ### 6.1 Increment Premise Revision
 
-Increment the ledger's premise revision number and invalidate any prior pre-intent confirmation.
+Increment the ledger's premise revision number and invalidate any prior seed contract confirmation.
 
 ### 6.2 Transitive Traversal
 

@@ -24,7 +24,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
 
     def test_pre_intent_handoff_contract(self):
         content = (SKILL_DIR / "SKILL.md").read_text()
-        self.assertIn("repository-root `pre-intent.md`", content)
+        self.assertIn("repository-root `seed-contract.md`", content)
         self.assertNotIn("grill-plan.md", content)
         for required in (
             "confirmed for intake",
@@ -61,8 +61,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         self.assertNotIn(SKILL_DIR / "references" / "typesafe-protocol.md", links)
 
     def test_no_triage_machinery(self):
-        # Per-turn lens routing is allowed (see test_lens_call_present); the
-        # banned set is the triage/option/Noul machinery rejected by pilots.
+        # The banned set is the triage/option/Noul machinery rejected by pilots.
         # Revision note: narrowed from a blanket model-advice ban by explicit
         # operator direction; see run grill-epistemic dogfood battery report.
         for path in SKILL_DIR.rglob("*.md"):
@@ -72,20 +71,6 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                           "grill-me-with-jev"):
                 with self.subTest(path=str(path), token=token):
                     self.assertNotIn(token, content)
-
-    def test_lens_call_present(self):
-        self.assertTrue((SKILL_DIR / "references" / "epistemic-lenses.md").is_file())
-        content = (SKILL_DIR / "SKILL.md").read_text()
-        for required in ("epistemic-lenses.md", "gating rule",
-                         "never a badge"):
-            with self.subTest(required=required):
-                self.assertIn(required, content)
-        lenses = (SKILL_DIR / "references" / "epistemic-lenses.md").read_text()
-        for required in ("Opt-in", "Authorization", "Preflight",
-                         "unresolved", "transcript is the receipt",
-                         "confidence", "0.50"):
-            with self.subTest(required=required):
-                self.assertIn(required, lenses)
 
     def test_braindump_entry_and_draft_step(self):
         content = (SKILL_DIR / "SKILL.md").read_text()
@@ -97,8 +82,84 @@ class TestGrillMeWithJevContract(unittest.TestCase):
     def test_single_presentation_template(self):
         content = (SKILL_DIR / "SKILL.md").read_text()
         self.assertEqual(len(re.findall(r"```text", content)), 1)
-        self.assertIn("\U0001f4dc Grounded:", content)
+        self.assertIn("\U0001f4dc What I found:", content)
         self.assertIn("\U0001f464 Owner:", content)
+
+    def test_question_format_names_options_and_assumptions(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        ledger = (SKILL_DIR / "references/ledger-transitions.md").read_text()
+        for required in ("Question 1 of 3 ready", "Option A:", "Option B:", "Undo cost:",
+                         "My number to change", "Confidence:", "Would flip if:", "Not checked:", "contradicts: <node id>", "never by \"Q3\"", "You are confirming",
+                         "I'll assume these unless you object", "`assumed`", "seed-contract.md",
+                         "naming the three riskiest items"):
+            with self.subTest(required=required):
+                self.assertIn(required, skill)
+        self.assertIn("`assumed`", ledger)
+
+    def test_size_gate_and_instinct_first(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        lean = SKILL_DIR / "references" / "lean-path.md"
+        self.assertTrue(lean.is_file())
+        for required in ("Size gate", "**Lean**", "**Full**", "references/lean-path.md",
+                         "Instinct first for hard-to-undo questions", "What's your instinct?",
+                         "Against my suggestion:", "without `recommendation`",
+                         "Ledger: <the viewer URL", "Always show where the ledger is"):
+            with self.subTest(required=required):
+                self.assertIn(required, skill)
+        text = lean.read_text()
+        for required in ("You are confirming", "status: draft | confirmed", "[evidence]",
+                         "cmd: `<exact command>`", "skip the session, ledger, and viewer",
+                         "print its absolute path as a `file://` link"):
+            with self.subTest(lean=required):
+                self.assertIn(required, text)
+
+    def test_agent_mode_keeps_simulated_answers_apart_from_human_ones(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        mode = SKILL_DIR / "references" / "agent-mode.md"
+        self.assertTrue(mode.is_file())
+        for required in ("### Agent mode (simulated operator)", "references/agent-mode.md",
+                         "--operator simulated", "seed-contract.simulated.md",
+                         "simulated \u2014 not confirmed by a human", "never `user` or `delegated`",
+                         "scripts/engram_brief.py"):
+            with self.subTest(required=required):
+                self.assertIn(required, " ".join(skill.split()))
+        text = mode.read_text()
+        for required in ("Operator brief", "must not see", "authority: simulated",
+                         "Decision style", "never authorizes implementation",
+                         "engram_brief.py", "simulation, not the person", "leaves out the engram's `SKILL.md`",
+                         "Large briefs.", "The operator decides; it does not build."):
+            with self.subTest(mode=required):
+                self.assertIn(required, text)
+
+    def test_unknowns_are_probed_mapped_and_taught_back(self):
+        skill = " ".join((SKILL_DIR / "SKILL.md").read_text().split())
+        lean = (SKILL_DIR / "references" / "lean-path.md").read_text()
+        for required in ("### Look for what we don't know we don't know", "Pre-mortem:", "Counter-example:",
+                         "Outside view:", "Probe: <question>", "Where we did not look:", "**Knowledge map**",
+                         "What we know, with proof", "What we know we don't know", "What is true but nobody has read",
+                         "What could surprise us", "teach-back", "re-check trigger"):
+            with self.subTest(required=required):
+                self.assertIn(required, skill)
+        for required in ("## Knowledge map", "Probe:", "Where we did not look:", "We would know we were wrong if:"):
+            with self.subTest(lean=required):
+                self.assertIn(required, lean)
+
+    def test_lessons_from_the_engram_runs_are_in_the_skill(self):
+        skill = " ".join((SKILL_DIR / "SKILL.md").read_text().split())
+        mode = " ".join((SKILL_DIR / "references" / "agent-mode.md").read_text().split())
+        lean = (SKILL_DIR / "references" / "lean-path.md").read_text()
+        for required in ("NOT independent: asked after the finding", "Recoverability (for any decision that deletes",
+                         "confirm it exists and holds what its name", "A name is a claim, not evidence",
+                         "read the settled decisions against each other for contradictions",
+                         "what was **decided** from what was **done**", "comes from a command, not from a summary"):
+            with self.subTest(required=required):
+                self.assertIn(required, skill)
+        for required in ("Defer what only a person knows", "Do not hand personal file names to the operator",
+                         "Check the operator's provenance claims", "Do not take its arithmetic",
+                         "weak evidence", "Ask open probes first"):
+            with self.subTest(mode=required):
+                self.assertIn(required, mode)
+        self.assertIn("recoverability probe", lean)
 
     def test_ledger_viewer_asset(self):
         viewer = SKILL_DIR / "assets" / "ledger-view.html"
@@ -136,7 +197,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                          'scripts/session.py" publish', 'scripts/session.py" end',
                          'scripts/viewer.py"', "--snapshot", "process handle",
                          "stop only the recorded viewer", "outside the repository",
-                         "`pre-intent.md` is the handoff"):
+                         "`seed-contract.md` is the handoff"):
             with self.subTest(required=required):
                 self.assertIn(required, skill)
         for required in ("expected_version", "authority_source", "reopen_reason",
@@ -144,19 +205,16 @@ class TestGrillMeWithJevContract(unittest.TestCase):
             with self.subTest(required=required):
                 self.assertIn(required, ledger)
 
-    # docs/ chain retired with the docs tree (prune): no design docs ship;
-    # runs/ carry session evidence instead.
-
 
 class TestThroughlineSkillOrder(unittest.TestCase):
-    def test_readme_throughline_order_and_deprecation(self):
+    def test_readme_throughline_order(self):
         readme = (ROOT / "README.md").read_text()
         mermaid = re.search(r"```mermaid\n(.*?)```", readme, re.DOTALL)
         self.assertIsNotNone(mermaid)
         diagram = mermaid.group(1)
         edges = (
             'intent["intent / idea"] --> seed_me["seed-me"]',
-            'seed_me -->|settled pre-intent| scout["skill-scout"]',
+            'seed_me -->|settled seed contract| scout["skill-scout"]',
             'scout -->|qualified skill / none| implementation["ai-native-sdlc"]',
         )
         positions = []

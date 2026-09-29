@@ -65,6 +65,123 @@ class TestSeedSession(unittest.TestCase):
         state["current_question"] = "backup"
         return state
 
+    def test_assumed_defaults_round_trip_and_never_become_answers(self):
+        state = session.editable(session.load(self.directory))
+        state["assumed"] = [{"text": "Local machine only", "why": "Both answers give the same build"}]
+        result = self.publish(state, "Record a low-consequence default")
+        self.assertEqual(result["assumed"], state["assumed"])
+        self.assertEqual(session.load(self.directory)["assumed"], state["assumed"])
+        self.assertEqual(result["nodes"], [])
+
+    def test_assumed_rejects_malformed_entries(self):
+        base = session.editable(session.load(self.directory))
+        for bad in ("text", ["just a string"], [{"text": "x"}], [{"text": "x", "why": " "}],
+                    [{"text": "x", "why": "y", "extra": "z"}], [{"text": 5, "why": "y"}]):
+            with self.subTest(bad=bad):
+                state = {**base, "assumed": bad}
+                with self.assertRaisesRegex(ValueError, "invalid assumed"):
+                    self.publish(state, "Bad assumption shape")
+
+    def test_assumed_change_bumps_the_revision_and_a_repeat_is_a_noop(self):
+        state = session.editable(session.load(self.directory))
+        state["assumed"] = [{"text": "One machine", "why": "Both answers build the same tool"}]
+        first = self.publish(state, "Record a default")
+        self.assertEqual(first["revision"], 1)
+        again = self.publish(state, "Record a default")
+        self.assertEqual((again["version"], again["revision"]), (first["version"], 1))
+        state["assumed"] = [{"text": "One machine", "why": "A different reason"}]
+        self.assertEqual(self.publish(state, "Change the reason")["revision"], 2)
+        state["assumed"] = []
+        self.assertEqual(self.publish(state, "Drop the default")["revision"], 3)
+
+    def contradicted_state(self, fact_status="settled"):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal")
+        fact = {**node("f", "fact", answer="The scanner does not exist"), "contradicts": "d"}
+        if fact_status != "settled":
+            fact = {**node("f", "fact"), "status": fact_status, "contradicts": "d"}
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          node("d", parents=["goal"], answer="Reuse the existing scanner"), fact]
+        return state
+
+    def test_contradicting_fact_blocks_completion_until_the_decision_is_revisited(self):
+        self.publish(self.contradicted_state())
+        with self.assertRaisesRegex(ValueError, "contradicts a settled decision.*: d"):
+            session.end(self.directory, "completed", "Confirmed and saved")
+        state = session.editable(session.load(self.directory))
+        state["nodes"][1]["answer"] = "Build the scanner as part of this work"
+        self.publish(state, "Revise the decision after the contradicting evidence")
+        self.assertEqual(session.end(self.directory, "completed", "Confirmed and saved")["status"], "completed")
+
+    def test_superseding_the_contradicting_fact_also_unblocks_completion(self):
+        self.publish(self.contradicted_state())
+        state = session.editable(session.load(self.directory))
+        state["nodes"][2] = {**node("f", "fact"), "status": "superseded", "contradicts": "d"}
+        self.publish(state, "The fact was wrong; superseded with a reason")
+        self.assertEqual(session.end(self.directory, "completed", "Confirmed and saved")["status"], "completed")
+
+    def test_contradicts_shape_is_validated(self):
+        base = self.contradicted_state()
+        for label, mutate in (
+                ("on a decision", lambda s: s["nodes"][1].update(contradicts="goal")),
+                ("self reference", lambda s: s["nodes"][2].update(contradicts="f")),
+                ("missing target", lambda s: s["nodes"][2].update(contradicts="nope")),
+                ("not a string", lambda s: s["nodes"][2].update(contradicts=5))):
+            with self.subTest(label):
+                state = json.loads(json.dumps(base))
+                mutate(state)
+                with self.assertRaisesRegex(ValueError, "contradicts must name another node"):
+                    self.publish(state, "Bad contradicts")
+
+    def simulated_state(self, directory, authority="simulated", origin_authority="simulated"):
+        state = session.editable(session.load(directory))
+        goal_node = {**node("goal", answer="Ship it"), "authority": origin_authority}
+        decision = {**node("d", parents=["goal"], answer="Do it"), "authority": authority,
+                    "authority_source": "operator agent (persona: cautious): accepted the suggestion"}
+        state.update(goal="Ship it", origin="goal", nodes=[goal_node, decision])
+        return state
+
+    def test_simulated_operator_settles_only_as_simulated(self):
+        directory = session.create(self.root, "simulated")
+        self.assertEqual(session.load(directory)["operator"], "simulated")
+        state = self.simulated_state(directory)
+        saved = session.publish(directory, state, 0, "Operator agent confirmed the goal")
+        self.assertEqual(saved["nodes"][1]["authority"], "simulated")
+        for label, bad in (("user decision", self.simulated_state(directory, authority="user")),
+                           ("delegated decision", self.simulated_state(directory, authority="delegated")),
+                           ("user goal", self.simulated_state(directory, origin_authority="user"))):
+            with self.subTest(label), self.assertRaises(ValueError):
+                fresh = session.create(self.root, "simulated")
+                session.publish(fresh, {**bad, "operator": "simulated"}, 0, "Should be refused")
+
+    def test_a_human_session_never_accepts_simulated_answers(self):
+        state = self.simulated_state(self.directory)
+        with self.assertRaisesRegex(ValueError, "authority does not match"):
+            self.publish(state, "A human session cannot hold simulated answers")
+
+    def test_operator_cannot_be_changed(self):
+        directory = session.create(self.root, "simulated")
+        state = session.editable(session.load(directory))
+        state["operator"] = "human"
+        with self.assertRaisesRegex(ValueError, "operator cannot change"):
+            session.publish(directory, state, 0, "Attempt to launder a simulated session")
+        with self.assertRaises(ValueError):
+            session.create(self.root, "robot")
+
+    def test_cli_init_can_start_a_simulated_session(self):
+        result = subprocess.run([sys.executable, str(SCRIPT), "init", "--root", str(self.root / "cli"),
+                                 "--operator", "simulated"], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        import json
+        directory = json.loads(result.stdout)["session"]
+        self.assertEqual(session.load(directory)["operator"], "simulated")
+
+    def test_draft_options_error_says_options_are_plain_strings(self):
+        state = session.editable(session.load(self.directory))
+        state["draft"]["options"] = [{"label": "A", "tradeoff": "faster"}]
+        with self.assertRaisesRegex(ValueError, "non-empty string"):
+            self.publish(state, "Shape the provisional working draft")
+
     def test_initial_draft_is_not_an_accepted_goal(self):
         ledger = session.load(self.directory)
         self.assertEqual((ledger["status"], ledger["origin"], ledger["goal"], ledger["nodes"], ledger["frontier"]),

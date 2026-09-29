@@ -208,9 +208,10 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.context.unroute("**/cytoscape.min.js")
         self.context.route("**/cytoscape.min.js", lambda route: route.fulfill(path=library, content_type="application/javascript"))
         self.page.goto(self.url)
-        self.page.wait_for_function("cy !== null && cy.nodes().length === 0")
+        self.page.wait_for_function("LEDGER !== null && cy === null")
         self.confirm()
-        self.page.wait_for_function("cy !== null && cy.nodes().length === 4")
+        self.page.wait_for_function("cy !== null && cy.nodes().length === 3")
+        self.assertEqual(self.page.evaluate("cy.getElementById('goal').length"), 0)
         self.expect(self.page.locator("#cdn-banner")).to_be_hidden()
         self.expect(self.page.locator("#cy canvas").first).to_be_visible()
         self.assertEqual(self.page.evaluate("cy.edges().map(e => [e.source().id(), e.target().id()])"),
@@ -234,6 +235,168 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#detail > dl")).to_contain_text("unresolved")
         self.expect(self.page.locator("#detail .history").first).to_contain_text("Require backup")
         self.assertTrue(self.page.evaluate("cy.getElementById('button-label').hasClass('settled')"))
+        self.assertEqual(self.errors, [])
+
+    def test_graph_is_hidden_when_every_edge_only_points_at_the_goal(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="first")
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          {**node("first", parents=["goal"]), "question": "First?"},
+                          {**node("second", parents=["goal"]), "question": "Second?"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#call")).to_contain_text("First?")
+        self.expect(self.page.locator("main")).to_be_hidden()
+        self.assertIsNone(self.page.evaluate("cy"))
+        self.expect(self.page.locator("#cdn-banner")).to_be_hidden()
+        self.assertEqual(self.errors, [])
+
+    def test_parked_concern_says_what_it_is_waiting_on(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="first")
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          {**node("first", parents=["goal"]), "question": "First?", "label": "Pick the store"},
+                          {**node("second", parents=["first"]), "question": "Second?"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#open-list")).to_contain_text("Second?")
+        self.expect(self.page.locator("#open-list")).to_contain_text("Waiting on: Pick the store")
+        self.expect(self.page.locator("#open-list")).not_to_contain_text("goal")
+        self.assertEqual(self.errors, [])
+
+    def test_deferred_concern_shows_its_revisit_condition_and_bare_card_makes_no_false_claim(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          {**node("now", parents=["goal"]), "question": "Bare question?"},
+                          {**node("later", parents=["goal"]), "status": "deferred", "question": "Later?",
+                           "defer_reason": "not blocking", "revisit_condition": "after v1 ships"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#deferred-list")).to_contain_text("Revisit: after v1 ships")
+        self.expect(self.page.locator("#call")).not_to_contain_text("replaces the recommendation")
+        self.expect(self.page.locator("#call")).to_contain_text("Reply in chat with your answer")
+        self.assertEqual(self.errors, [])
+
+    def test_many_settled_items_fold_so_open_work_stays_visible(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        settled = [node(f"s{i}", answer=f"Answer {i}") for i in range(1, 13)]
+        for item in settled:
+            item["label"] = f"Settled {item['id'][1:]}"
+        state["nodes"] = [node("goal", answer="Ship it"), *settled,
+                          {**node("now", parents=["goal"]), "question": "Still to decide?"},
+                          {**node("later", parents=["goal"]), "question": "Open one?", "label": "Open one"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#settled-list > li")).to_have_count(5)
+        self.expect(self.page.locator("#settled-list > li").first).to_contain_text("Settled 12")
+        self.expect(self.page.locator("#settled-more-sum")).to_have_text("Show 7 earlier settled")
+        self.expect(self.page.locator("#settled-more")).not_to_have_attribute("open", "")
+        self.expect(self.page.locator("#open-list")).to_contain_text("Open one")
+        self.assertEqual(self.errors, [])
+
+    def test_finished_interview_says_it_is_the_users_turn_and_counts_acceptances(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question=None)
+        accepted = {**node("b", parents=["goal"], answer="B"), "authority": "delegated",
+                    "authority_source": "chat: your arrow", "evidence": ["x.py:1"]}
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A"), accepted]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#call")).to_contain_text("Your turn")
+        self.expect(self.page.locator("#call")).to_contain_text("Review the draft brief and confirm it")
+        self.expect(self.page.locator("#call")).not_to_contain_text("Nothing is waiting")
+        self.expect(self.page.locator("#status-pill")).to_have_text("Ready for review")
+        self.expect(self.page.locator("#accept-summary")).to_have_text("Accepted as suggested: 1 · Chosen by you: 1")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("you accepted the agent's suggestion")
+        self.assertEqual(self.errors, [])
+
+    def test_facts_are_a_separate_group_and_counts_agree(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A"),
+                          node("f1", "fact", answer="Fact one"), node("f2", "fact", answer="Fact two"),
+                          {**node("now", parents=["goal"]), "question": "Now?"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#settled-h")).to_have_text("Settled (1)")
+        self.expect(self.page.locator("#facts-h")).to_have_text("Facts checked (2)")
+        self.expect(self.page.locator("#counts")).to_contain_text("1 settled")
+        self.expect(self.page.locator("#counts")).to_contain_text("2 facts")
+        self.expect(self.page.locator("#facts-list")).to_contain_text("fact checked")
+        self.assertEqual(self.errors, [])
+
+    def test_long_answers_are_kept_whole_with_a_toggle(self):
+        tail = "TAILMARK-end-of-a-long-answer"
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          node("a", parents=["goal"], answer="Long answer. " * 30 + tail),
+                          {**node("now", parents=["goal"]), "question": "Now?"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#settled-list")).to_contain_text(tail)
+        self.expect(self.page.locator("#settled-list")).not_to_contain_text("…")
+        button = self.page.locator("#settled-list .more")
+        self.expect(button).to_have_text("Show more")
+        button.click()
+        self.expect(button).to_have_text("Show less")
+        self.assertEqual(self.errors, [])
+
+    def test_assumed_defaults_are_listed_apart_from_decisions(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          {**node("now", parents=["goal"]), "question": "Now?"}]
+        state["assumed"] = [{"text": "One user, one machine", "why": "Both answers build the same thing"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#assumed-h")).to_have_text("I'll assume these unless you object (1)")
+        self.expect(self.page.locator("#assumed-list")).to_contain_text("One user, one machine")
+        self.expect(self.page.locator("#assumed-list")).to_contain_text("Why it is safe: Both answers build the same thing")
+        self.expect(self.page.locator("#settled-list")).not_to_contain_text("One user")
+        self.assertEqual(self.errors, [])
+
+    def test_contradicted_decision_is_flagged_instead_of_ready_for_review(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question=None)
+        fact = {**node("f", "fact", answer="The scanner does not exist"), "contradicts": "d", "label": "Scanner missing"}
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          {**node("d", parents=["goal"], answer="Reuse the scanner"), "label": "Reuse scanner"}, fact]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#call")).to_contain_text("Needs a second look")
+        self.expect(self.page.locator("#call")).to_contain_text('"Reuse scanner" is contradicted by "Scanner missing"')
+        self.expect(self.page.locator("#call")).not_to_contain_text("Your turn")
+        self.expect(self.page.locator("#status-pill")).to_have_text("Needs a second look")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("contradicted — needs a second look")
+        self.assertEqual(self.errors, [])
+
+    def test_simulated_session_is_unmistakable_and_cannot_be_confirmed(self):
+        directory = session.create(self.temp.name, "simulated")
+        state = session.editable(session.load(directory))
+        goal = {**node("goal", answer="Ship it"), "authority": "simulated"}
+        decision = {**node("d", parents=["goal"], answer="Do it"), "authority": "simulated",
+                    "authority_source": "operator agent (persona: cautious): accepted"}
+        state.update(goal="Ship it", origin="goal", nodes=[goal, decision])
+        session.publish(directory, state, 0, "Operator agent confirmed the goal")
+        server = viewer.make_server(directory)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        def stop():
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+        self.addCleanup(stop)
+        self.page.goto(f"http://127.0.0.1:{server.server_port}/ledger-view.html")
+        self.expect(self.page.locator("#sim-banner")).to_be_visible()
+        self.expect(self.page.locator("#sim-banner")).to_contain_text("no human decided this")
+        self.expect(self.page.locator("#status-pill")).to_have_text("Simulated")
+        self.expect(self.page.locator("#accept-summary")).to_have_text("Simulated answers: 1 \u00b7 Human answers: 0")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("simulated answer (no human)")
+        self.expect(self.page.locator("#call")).to_contain_text("Awaiting a human")
+        self.expect(self.page.locator("#call")).not_to_contain_text("Your turn")
         self.assertEqual(self.errors, [])
 
     def test_saved_ended_view_is_read_only_offline_and_after_restart(self):
