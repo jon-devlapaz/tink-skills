@@ -11,6 +11,7 @@ import uuid
 
 
 STATE_FIELDS = {"status", "draft", "goal", "origin", "current_question", "nodes"}
+OPTIONAL_STATE_FIELDS = {"assumed"}
 NODE_FIELDS = {"id", "kind", "status", "prerequisites", "predicate", "evidence",
                "answer", "authority", "authority_source", "label", "question",
                "owner", "gate", "recommendation", "defer_reason", "revisit_condition", "reopen_reason"}
@@ -31,6 +32,7 @@ def now():
 
 def editable(ledger):
     state = {key: deepcopy(ledger[key]) for key in STATE_FIELDS}
+    state["assumed"] = deepcopy(ledger.get("assumed", []))
     for node in state["nodes"]:
         node.pop("history", None)
         node.pop("revision", None)
@@ -38,7 +40,10 @@ def editable(ledger):
 
 
 def validate(state):
-    require(isinstance(state, dict) and set(state) == STATE_FIELDS, "invalid session fields")
+    require(isinstance(state, dict) and STATE_FIELDS <= set(state) <= STATE_FIELDS | OPTIONAL_STATE_FIELDS, "invalid session fields")
+    assumed = state.get("assumed", [])
+    require(isinstance(assumed, list) and all(isinstance(a, dict) and set(a) == {"text", "why"} and text(a["text"]) and text(a["why"]) for a in assumed),
+            "invalid assumed: a list of {\"text\", \"why\"} entries with non-blank strings")
     require(state["status"] in ("active", "stopped", "completed"), "invalid session status")
     draft = state["draft"]
     require(isinstance(draft, dict) and set(draft) == {"goal", "outcome", "options"}, "invalid draft")
@@ -131,6 +136,7 @@ def descendants(nodes, starts):
 
 def transition(ledger, state, expected_version, reason, revalidated=None):
     state = deepcopy(state)
+    state.setdefault("assumed", [])
     ready = validate(state)
     old_state = editable(ledger)
     require(type(expected_version) is int and expected_version >= 0, "invalid expected version")
@@ -207,7 +213,7 @@ def create(root=None):
     ledger = {"schema_version": 1, "session_id": session_id, "version": 0, "revision": 0,
               "created_at": timestamp, "updated_at": timestamp, "status": "active",
               "draft": {"goal": "", "outcome": "", "options": []}, "goal": None,
-              "origin": None, "current_question": None, "frontier": [], "nodes": []}
+              "origin": None, "current_question": None, "frontier": [], "nodes": [], "assumed": []}
     atomic_write(directory / "ledger.json", ledger)
     return directory
 
@@ -216,7 +222,8 @@ def load(directory):
     ledger = json.loads((Path(directory) / "ledger.json").read_text())
     require(isinstance(ledger, dict) and type(ledger.get("schema_version")) is int
             and ledger["schema_version"] == 1, "unsupported ledger schema")
-    require(set(ledger) == STATE_FIELDS | {"schema_version", "session_id", "version", "revision",
+    ledger.setdefault("assumed", [])
+    require(set(ledger) == STATE_FIELDS | OPTIONAL_STATE_FIELDS | {"schema_version", "session_id", "version", "revision",
                                          "created_at", "updated_at", "frontier"}, "invalid stored ledger fields")
     require(text(ledger.get("session_id")), "missing session identity")
     for field in ("version", "revision"):

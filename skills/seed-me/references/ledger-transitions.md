@@ -67,6 +67,9 @@ Top-level fields:
 - `status`: `active`, `stopped`, or `completed`. Ended sessions are read-only.
 - `draft`: candidate `goal`, `outcome`, and `options` (a list of plain non-empty strings,
   e.g. `"Label — tradeoff"`); none is an accepted answer.
+- `assumed`: optional list of `{text, why}` defaults the agent assumes unless the user
+  objects. Never user answers; an objection turns an entry into a decision node. Absent
+  in older sessions, which load as an empty list.
 - `goal`, `origin`: initially `null`. Confirmation creates a settled user decision
   whose ID is `origin` and whose `answer` exactly equals `goal` (string equality).
   Both then remain fixed; record scope refinements in other nodes.
@@ -162,7 +165,7 @@ atomically replaces the ledger. It appends prior node state, `superseded_at`, an
 Read current state by default and retrieve history for changes, not as live answers.
 Exact repeated updates are no-ops. A stopped session preserves unresolved concerns;
 completion also requires the host's coverage review, confirmation, and successful
-pre-intent save. Empty frontier alone is not completion.
+seed contract save. Empty frontier alone is not completion.
 
 ### Node Statuses
 
@@ -213,11 +216,11 @@ owned by SKILL.md Step 3 (single source; do not duplicate it here). Always repor
 so the user retains visibility into total scope without feeling overwhelmed:
 
 ```text
-Decision 1 of 3 ready (2 parked)
+Question 1 of 3 ready (2 waiting on earlier answers)
 (see SKILL.md Step 3 for the canonical ❓/📜/👤/➡️ template)
 ```
 
-- Report counts: `Decision X of Y ready (Z parked)` where:
+- Report counts: `Question X of Y ready (Z waiting on earlier answers)` where:
   - `X`: Current question index in the ready queue.
   - `Y`: Total count of currently ready independent decisions.
   - `Z`: Count of parked nodes awaiting prerequisites or investigations.
@@ -294,7 +297,7 @@ When an accepted answer, constraint, or underlying piece of evidence changes sem
 
 ### 6.1 Increment Premise Revision
 
-Increment the ledger's premise revision number and invalidate any prior pre-intent confirmation.
+Increment the ledger's premise revision number and invalidate any prior seed contract confirmation.
 
 ### 6.2 Transitive Traversal
 

@@ -65,6 +65,39 @@ class TestSeedSession(unittest.TestCase):
         state["current_question"] = "backup"
         return state
 
+    def test_assumed_defaults_round_trip_and_never_become_answers(self):
+        state = session.editable(session.load(self.directory))
+        state["assumed"] = [{"text": "Local machine only", "why": "Both answers give the same build"}]
+        result = self.publish(state, "Record a low-consequence default")
+        self.assertEqual(result["assumed"], state["assumed"])
+        self.assertEqual(session.load(self.directory)["assumed"], state["assumed"])
+        self.assertEqual(result["nodes"], [])
+
+    def test_assumed_rejects_malformed_entries(self):
+        base = session.editable(session.load(self.directory))
+        for bad in ("text", ["just a string"], [{"text": "x"}], [{"text": "x", "why": " "}],
+                    [{"text": "x", "why": "y", "extra": "z"}], [{"text": 5, "why": "y"}]):
+            with self.subTest(bad=bad):
+                state = {**base, "assumed": bad}
+                with self.assertRaisesRegex(ValueError, "invalid assumed"):
+                    self.publish(state, "Bad assumption shape")
+
+    def test_older_sessions_without_assumed_still_load_and_publish(self):
+        import json
+        path = self.directory / "ledger.json"
+        ledger = json.loads(path.read_text())
+        del ledger["assumed"]
+        path.write_text(json.dumps(ledger))
+        loaded = session.load(self.directory)
+        self.assertEqual(loaded["assumed"], [])
+        state = session.editable(loaded)
+        state["draft"]["goal"] = "A candidate goal"
+        result = self.publish(state, "Shape the provisional working draft")
+        self.assertEqual(result["assumed"], [])
+        legacy = {key: value for key, value in state.items() if key != "assumed"}
+        legacy["draft"] = {**state["draft"], "outcome": "Outcome"}
+        self.assertEqual(self.publish(legacy, "A payload written before assumed existed")["draft"]["outcome"], "Outcome")
+
     def test_draft_options_error_says_options_are_plain_strings(self):
         state = session.editable(session.load(self.directory))
         state["draft"]["options"] = [{"label": "A", "tradeoff": "faster"}]

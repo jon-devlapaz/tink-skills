@@ -11,7 +11,7 @@ Evidence-oriented Agent Skills for AI coding workflows:
 ```mermaid
 flowchart LR
     intent["intent / idea"] --> seed_me["seed-me"]
-    seed_me -->|settled pre-intent| scout["skill-scout"]
+    seed_me -->|settled seed contract| scout["skill-scout"]
     scout -->|qualified skill / none| implementation["ai-native-sdlc"]
 ```
 
@@ -44,7 +44,7 @@ Refresh an installed skill with `tink skill refresh NAME`.
 - **Investigates facts first:** Checks repository code, configs, and schemas before asking you anything. If a fact is discoverable, it won't interrupt you for it.
 - **One decision at a time:** Paces questions one by one with a clear recommendation grounded in workspace evidence, keeping cognitive load low.
 - **Epistemic lenses:** Routes each turn through explicit lenses (opt-in, authorization, preflight) without legacy triage machinery.
-- **Durable discovery artifact:** Once all blockers are resolved and confirmed, writes the accepted plan to `pre-intent.md` as intake for downstream implementation.
+- **Durable discovery artifact:** Once all blockers are resolved and confirmed, writes the accepted plan to `seed-contract.md` as intake for downstream implementation.
 
 ### Interview format
 

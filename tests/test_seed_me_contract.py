@@ -24,7 +24,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
 
     def test_pre_intent_handoff_contract(self):
         content = (SKILL_DIR / "SKILL.md").read_text()
-        self.assertIn("repository-root `pre-intent.md`", content)
+        self.assertIn("repository-root `seed-contract.md`", content)
         self.assertNotIn("grill-plan.md", content)
         for required in (
             "confirmed for intake",
@@ -97,8 +97,23 @@ class TestGrillMeWithJevContract(unittest.TestCase):
     def test_single_presentation_template(self):
         content = (SKILL_DIR / "SKILL.md").read_text()
         self.assertEqual(len(re.findall(r"```text", content)), 1)
-        self.assertIn("\U0001f4dc Grounded:", content)
+        self.assertIn("\U0001f4dc What I found:", content)
         self.assertIn("\U0001f464 Owner:", content)
+
+    def test_question_format_names_options_and_assumptions(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        ledger = (SKILL_DIR / "references/ledger-transitions.md").read_text()
+        for required in ("Question 1 of 3 ready", "Option A:", "Option B:", "Undo cost:",
+                         "My number to change", "never by \"Q3\"", "You are confirming",
+                         "I'll assume these unless you object", "`assumed`", "seed-contract.md",
+                         "naming the three riskiest items"):
+            with self.subTest(required=required):
+                self.assertIn(required, skill)
+        for retired in ("Decision 1 of 3 ready", "\u2753 Q1 \u2014", "pre-intent\u0060 is the handoff"):
+            with self.subTest(retired=retired):
+                self.assertNotIn(retired, skill)
+        self.assertIn("`assumed`", ledger)
+        self.assertNotIn("Decision X of Y", ledger)
 
     def test_ledger_viewer_asset(self):
         viewer = SKILL_DIR / "assets" / "ledger-view.html"
@@ -136,7 +151,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                          'scripts/session.py" publish', 'scripts/session.py" end',
                          'scripts/viewer.py"', "--snapshot", "process handle",
                          "stop only the recorded viewer", "outside the repository",
-                         "`pre-intent.md` is the handoff"):
+                         "`seed-contract.md` is the handoff"):
             with self.subTest(required=required):
                 self.assertIn(required, skill)
         for required in ("expected_version", "authority_source", "reopen_reason",
@@ -156,7 +171,7 @@ class TestThroughlineSkillOrder(unittest.TestCase):
         diagram = mermaid.group(1)
         edges = (
             'intent["intent / idea"] --> seed_me["seed-me"]',
-            'seed_me -->|settled pre-intent| scout["skill-scout"]',
+            'seed_me -->|settled seed contract| scout["skill-scout"]',
             'scout -->|qualified skill / none| implementation["ai-native-sdlc"]',
         )
         positions = []

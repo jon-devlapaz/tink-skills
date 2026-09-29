@@ -1,9 +1,9 @@
 ---
 name: seed-me
-description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed pre-intent through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
+description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.4.1"
+  version: "1.5.0"
 ---
 
 # Seed Me
@@ -62,8 +62,13 @@ record only explicit choices as accepted answers. Only then does the frontier lo
     risk, cost, reversibility, or product behavior. Derive consequences already
     forced by settled choices; merge duplicate choices and resolve others via
     evidence or scoped delegation.
+  - Everything else — defaults where both reasonable answers leave implementation,
+    risk, cost, reversibility, and product behavior about the same — is not a
+    question. Record it in the `assumed` list and show it once, headed
+    "I'll assume these unless you object" (about five at a time). An assumption
+    is never a user answer; if the user objects, it becomes a decision node.
   - Continue on accepted constraints, authorized defaults, or non-blocking deferrals;
-    label assumptions and preserve necessary implementation work in the pre-intent.
+    label assumptions and preserve necessary implementation work in the seed contract.
 - Rank ready decisions by consequence, then risk, keeping dependent choices separated and blockers visible for single-decision pacing (ranking and dependency rules live in the ledger reference — follow them, don't restate them here).
 - Hold dependent questions until prerequisite investigations conclude.
 
@@ -91,11 +96,13 @@ logged skip, never a badge and never a settlement. The lens advises the
 reading of the turn only.
 
 ```text
-Decision 1 of 3 ready (2 parked)
-❓ Q1 — consequence or tradeoff requiring your judgment, one line.
-📜 Grounded: <verbatim quote ≤2 lines> (<exact path>:<line>, session observation); ...
+Question 1 of 3 ready (2 waiting on earlier answers)
+❓ <Title>: <the consequence or tradeoff needing your judgment, one line>
+📜 What I found: <verbatim quote ≤2 lines> (<exact path>:<line>, session observation); ...
+Option A: <choice> — tradeoff: <one line>. If you pick B instead: <what changes>. Undo cost: <cheap | moderate | hard>.
+Option B: <choice> — tradeoff: <one line>. If you pick A instead: <what changes>. Undo cost: <cheap | moderate | hard>.
 👤 Owner: <named decider or role> — Gate: <answer shape that settles it> — Why it matters: <what it unblocks or endangers>.
-➡️ Recommended: option grounded in the 📜 lines above.
+➡️ My suggestion: <A or B>, grounded in the lines above. My number to change: <any figure I invented, or "none">.
 ```
 
 - `❓` marks an unresolved decision. `❔` optionally marks an unresolved decision
@@ -103,6 +110,10 @@ Decision 1 of 3 ready (2 parked)
   identical transition rules.
 - `➡️` indicates the host's grounded recommendation; it requires explicit user
   choice or delegated authority to become accepted.
+- Refer to every question by its title, never by "Q3", a bare number, or a node id — in
+  chat, in the viewer, and in the seed contract. Numbers only show progress.
+- Give two real options. If only one is viable, make Option B "leave it as it is" and say
+  what that costs. Flag any figure you invented so the user can change it.
 - Wait for explicit user input before advancing or settling questions.
 
 **Complete when:** Ready questions, consequences, and grounded recommendations
@@ -120,7 +131,7 @@ When the user asks to stop interviewing:
 - Preserve any unresolved blockers in the ledger and report status as `stopped — incomplete`.
 - Concisely explain remaining blockers and current handoff status without reprinting the question list.
 - End the session as `stopped` using **Session lifecycle** below, preserving its saved read-only view.
-- Treat premature approval (such as “looks fine, start coding”) as an incomplete stop; confirmation strictly requires the user to affirm the displayed revision label after the full pre-intent is shown.
+- Treat premature approval (such as “looks fine, start coding”) as an incomplete stop; confirmation strictly requires the user to affirm the displayed revision label after the full seed contract is shown.
 - If the user explicitly directs a replacement workflow, record the departure directly as an intentional user redirection.
 
 **Complete when:** Responses and revisions are recorded and the next single ready decision,
@@ -156,7 +167,8 @@ authorize product edits. The host runs the commands and owns the viewer process.
    python3 "<skill>/scripts/session.py" publish "<session>" "<session>/update.json"
    ```
    Build `update.json` using the publication payload in ledger reference §1.
-   Supply the observed publication version and an actual change reason. The
+   Supply the observed publication version and an actual change reason. `assumed` is an
+   optional list of `{"text", "why"}` entries (see Step 2); omit it when empty. The
    helper validates, retains history, and uses atomic rename; never hand-edit
    `ledger.json` or the served HTML. On a stale version, reread and reconcile;
    on any failure, keep the last valid state and report the blocker.
@@ -166,7 +178,7 @@ authorize product edits. The host runs the commands and owns the viewer process.
    prerequisite of every concern, only of one whose wording truly depends on it. Publish answers and reopened nodes before
    advancing the current question. Answers stay in chat; the viewer is read-only.
 5. On explicit stop, end as `stopped`. End as `completed` only after the confirmed
-   `pre-intent.md` is successfully saved in Step 5:
+   `seed-contract.md` is successfully saved in Step 5:
    ```sh
    python3 "<skill>/scripts/session.py" end "<session>" --status stopped --reason "User stopped the interview"
    python3 "<skill>/scripts/viewer.py" "<session>" --snapshot
@@ -188,7 +200,7 @@ authorize product edits. The host runs the commands and owns the viewer process.
    is not resumption. Report explicit limitations if the host cannot run or stop
    a background process; do not silently fall back to a generic file server.
 
-## 5. Verify completion and save the pre-intent
+## 5. Verify completion and save the seed contract
 
 Verify completion across the full ledger rather than the display alone: ensure all
 active, parked, and undisplayed nodes are settled, cycles are resolved, and deferred
@@ -202,55 +214,64 @@ return to Step 2 immediately. Then run the close checklist once:
 - **What we haven't read:** name files or notes that are on disk but nobody opened
   this session — unsigned lessons, decisions never applied, tools never run,
   uncommitted changes, unread reviews. Each either gets read (return to Step 2)
-  or lands in the pre-intent as a named risk with who will read it.
+  or lands in the seed contract as a named risk with who will read it.
 - **Repeat surprises:** list only places where a surprise from this or an earlier
   session is cited. A cited surprise that contradicts a settled node's premise
   *is* new evidence: reopen it with `reopen_reason` per LEDGER §6.4. Surprises
   with no matching node stay risks only. No cited surprise, no entry.
-  Findings feed pre-intent Risks; they never reopen settled nodes without new
+  Findings feed seed contract Risks; they never reopen settled nodes without new
   evidence.
 
 Once the local review and close checklist are resolved:
 
-1. Present the revision-labeled pre-intent using the structure below, including
+1. Present the revision-labeled seed contract, opening with the **You are confirming** box, using the structure below, including
    actual accepted choices and their authority, with status
    `unconfirmed — awaiting affirmation`; flip to `confirmed for intake` only
    when the user affirms the displayed revision label. State completion as “local completeness
    review complete” to reflect local verification.
 2. Ask the user to confirm that displayed revision. Confirmation requires the
-   user to affirm the displayed revision label after the full pre-intent is
+   user to affirm the displayed revision label after the full seed contract is
    shown; "looks fine, start coding" before display is an incomplete stop.
    Confirmation applies strictly
    to the displayed content; any change to settled decisions, constraints, or
-   cited evidence invalidates confirmation and requires renewed review.
-3. On confirmation, save that revision to repository-root `pre-intent.md`. Inspect
+   cited evidence invalidates confirmation and requires renewed review. Ask for the
+   confirmation by naming the three riskiest items — figures you invented, earlier
+   decisions this reverses, placeholder names, or choices accepted without change —
+   and say how many decisions were accepted as suggested versus chosen by the user.
+3. On confirmation, save that revision to repository-root `seed-contract.md` (an older
+   `pre-intent.md` from an earlier run stays valid and is left untouched). Inspect
    an existing file first: update only the known session artifact, preserving
    unrelated content. If an existing file belongs to other work, keep it intact and
    resolve an alternate destination with the user. Ensure the write succeeds before
-   treating the pre-intent as saved.
+   treating the seed contract as saved.
 4. End the session as `completed`, save its final viewer snapshot, and stop the
-   viewer process using **Session lifecycle**. Report the saved `pre-intent.md`
+   viewer process using **Session lifecycle**. Report the saved `seed-contract.md`
    path as discovery input for downstream planning or implementation workflows,
    and stop. Leave commits to the user, and reserve
    downstream initialization, stage advancement, or implementation approval
    for subsequent workflows.
 
-### Pre-intent artifact contract
+### Seed contract (artifact contract)
 
 The displayed and saved revision must contain:
 
 - Title and provenance: originator when known, date, revision, and status
   `unconfirmed — awaiting affirmation` while the revision is displayed, and
-  `pre-intent — confirmed for intake; not approved for implementation` on the saved file.
+  `seed contract — confirmed for intake; not approved for implementation` on the saved file.
+- **You are confirming** box at the very top, five short lines: the goal; what gets built;
+  what does not; what the user accepted unchanged (with the accepted-versus-chosen count);
+  what is still unknown — plus any earlier decision this reverses.
 - Problem statement: current behavior, evidence, and why it matters.
 - Proposed outcome: desired user-visible results and success criteria.
-- Acceptance criteria: standalone testable checks, each independently
+- Acceptance criteria: standalone testable checks, each opening with one plain-English line,
+  then the exact command below it, each independently
   verifiable without re-reading the interview. Every check copies a settled command as its exact command,
   with that command's settled expected output and where it runs — prose without those literals is
   not a criterion, and a substitute or extra command is not a check. This section is the executable core of the intake —
   downstream stages consume it verbatim.
 - Affected users and systems: relevant repositories, modules, and execution paths.
 - Constraints and boundaries: non-negotiables, exclusions, and rejected alternatives.
+- Assumed defaults: every `assumed` entry, labelled as not confirmed by the user.
 - Accepted decisions: actual answers, authority, rationale, and dependencies;
   distinguish user choices from evidence-derived facts and delegated choices.
 - Evidence and uncertainty: inspected paths, measurements, unverified hypotheses,
@@ -271,7 +292,7 @@ The displayed and saved revision must contain:
   item to be read later, who will read it; for each repeat surprise, its guardrail.
   Map each to ledger status: known → settled (evidence), needs a decision →
   unresolved (blocker), watch → parked or risk, repeat surprise → risk with guardrail.
-- Downstream handoff: `pre-intent.md` is the handoff; the ledger and viewer are
+- Downstream handoff: `seed-contract.md` is the handoff; the ledger and viewer are
   interview records, not additional required downstream artifacts. This artifact
   is discovery input, not an implementation plan,
   approved specification, or review receipt. Preserve accepted constraints when
@@ -284,11 +305,11 @@ workflows own subsequent specification and implementation approval.
 
 **Authorization:** Read-only investigation is a planning operation. Starting the
 interview permits its local session ledger, snapshot, and loopback viewer lifecycle.
-Confirmation authorizes writing the confirmed pre-intent artifact alone;
+Confirmation authorizes writing the confirmed seed contract artifact alone;
 implementation, source edits, migrations, or deployment require subsequent,
 explicit user instruction after the artifact is saved. Treat earlier implementation
 requests as superseded by the discovery phase. Any change to settled decisions,
 constraints, or cited evidence invalidates that revision's confirmation and handoff.
 
 **Complete when:** The confirmed revision is saved and its path reported. A
-user-requested stop is a valid termination, but an incomplete pre-intent is not completion.
+user-requested stop is a valid termination, but an incomplete seed contract is not completion.

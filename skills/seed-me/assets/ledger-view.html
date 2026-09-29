@@ -118,6 +118,8 @@
   <details id="settled-more" hidden><summary id="settled-more-sum"></summary><ul id="settled-more-list" class="items"></ul></details>
   <h2 id="open-h" hidden>Still open</h2>
   <ul id="open-list" class="items"></ul>
+  <h2 id="assumed-h" hidden>I'll assume these unless you object</h2>
+  <ul id="assumed-list" class="items"></ul>
   <h2 id="deferred-h" hidden>Deferred</h2>
   <ul id="deferred-list" class="items"></ul>
 </section>
@@ -219,6 +221,9 @@ function validate(data) {
   }
   if (data.current_question && !data.nodes.some(n => n.id === data.current_question && n.kind === 'decision' && data.frontier.includes(n.id))) {
     throw Error('Invalid current question');
+  }
+  if (data.assumed !== undefined && (!Array.isArray(data.assumed) || data.assumed.some(a => !a || !nonBlank(a.text) || !nonBlank(a.why)))) {
+    throw Error('Invalid assumptions');
   }
   if (data.draft && (typeof data.draft.goal !== 'string' || typeof data.draft.outcome !== 'string' || !Array.isArray(data.draft.options))) {
     throw Error('Invalid draft');
@@ -398,6 +403,18 @@ function renderNow() {
   el('facts-h').textContent = `Facts checked (${facts.length})`;
   el('facts-list').replaceChildren(...facts.map(settledRow));
   el('deferred-list').replaceChildren(...deferred.map(n => itemRow(n, [n.question, n.revisit_condition && 'Revisit: ' + n.revisit_condition].filter(Boolean).join(' · '))));
+  const assumed = LEDGER.assumed || [];
+  el('assumed-h').hidden = !assumed.length;
+  el('assumed-h').textContent = `I'll assume these unless you object (${assumed.length})`;
+  el('assumed-list').replaceChildren(...assumed.map(a => {
+    const li = element('li');
+    li.className = 'item';
+    li.append(element('strong', a.text));
+    const why = element('span', 'Why it is safe: ' + a.why);
+    why.className = 'detail';
+    li.append(why);
+    return li;
+  }));
   el('open-h').hidden = !open.length;
   el('open-h').textContent = `Still open (${open.length})`;
   el('open-list').replaceChildren(...open.map(n => {

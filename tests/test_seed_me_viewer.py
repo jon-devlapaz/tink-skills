@@ -344,6 +344,20 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(button).to_have_text("Show less")
         self.assertEqual(self.errors, [])
 
+    def test_assumed_defaults_are_listed_apart_from_decisions(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          {**node("now", parents=["goal"]), "question": "Now?"}]
+        state["assumed"] = [{"text": "One user, one machine", "why": "Both answers build the same thing"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#assumed-h")).to_have_text("I'll assume these unless you object (1)")
+        self.expect(self.page.locator("#assumed-list")).to_contain_text("One user, one machine")
+        self.expect(self.page.locator("#assumed-list")).to_contain_text("Why it is safe: Both answers build the same thing")
+        self.expect(self.page.locator("#settled-list")).not_to_contain_text("One user")
+        self.assertEqual(self.errors, [])
+
     def test_saved_ended_view_is_read_only_offline_and_after_restart(self):
         self.confirm()
         self.page.goto(self.url)
