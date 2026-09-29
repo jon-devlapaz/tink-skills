@@ -14,14 +14,14 @@
     --bg: #fbfaf7; --surface: #ffffff; --text: #1d1f1c; --muted: #5d625b; --line: #e3e1da;
     --accent: #8a5a00; --accent-bg: #fff4d9; --accent-line: #e0a526;
     --you: #6b21a8; --you-bg: #f3e8ff; --ok: #1c6b48; --ok-bg: #e2f4ea; --amber: #8a5a00; --amber-bg: #fff1cf;
-    --warn-bg: #fde8e8; --warn: #a11212; --focus: #2563eb; --err-bg: #7a4300; --err-text: #fff;
+    --sim-bg: #e0ecff; --sim: #1b4fa8; --warn-bg: #fde8e8; --warn: #a11212; --focus: #2563eb; --err-bg: #7a4300; --err-text: #fff;
     --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --col: 760px;
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #121311; --surface: #1b1c1a; --text: #ecece7; --muted: #a3a79f; --line: #2f312d;
       --accent: #f0b73a; --accent-bg: #2a2210; --accent-line: #c8901a;
-      --you: #d8b4fe; --you-bg: #2b1a3f; --ok: #6fd3a0; --ok-bg: #12301f; --amber: #f0b73a; --amber-bg: #2a2210; --warn-bg: #3a1717; --warn: #ff9b9b; --focus: #7aa7ff; }
+      --you: #d8b4fe; --you-bg: #2b1a3f; --ok: #6fd3a0; --ok-bg: #12301f; --amber: #f0b73a; --amber-bg: #2a2210; --sim-bg: #16264a; --sim: #9cc1ff; --warn-bg: #3a1717; --warn: #ff9b9b; --focus: #7aa7ff; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); }
@@ -62,6 +62,9 @@
   .badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; margin-left: var(--s2); white-space: nowrap; }
   .badge.warn { background: var(--warn-bg); color: var(--warn); }
   #status-pill[data-kind="warn"] { background: var(--warn-bg); color: var(--warn); }
+  .badge.simulated { background: var(--sim-bg); color: var(--sim); }
+  #sim-banner { background: var(--sim-bg); color: var(--sim); border-bottom: 2px solid var(--sim); text-align: center; font-weight: 700; font-size: 14px; padding: var(--s3) var(--s4); }
+  #status-pill[data-kind="simulated"] { background: var(--sim-bg); color: var(--sim); }
   .badge.user { background: var(--you-bg); color: var(--you); } .badge.evidence { background: var(--ok-bg); color: var(--ok); } .badge.delegated { background: var(--amber-bg); color: var(--amber); }
   #connection { font-size: 13px; color: var(--muted); padding-block: var(--s2); display: flex; align-items: center; gap: var(--s2); }
   #connection::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
@@ -104,6 +107,7 @@
 </style>
 </head>
 <body>
+<div id="sim-banner" role="status" hidden>Simulated operator — no human decided this. The answers below come from an operator agent.</div>
 <header>
   <p class="eyebrow"><span>Seed Me · read-only view</span><span id="status-pill" data-kind="draft">Draft</span></p>
   <h1 id="title">Seed Me Ledger</h1>
@@ -211,7 +215,7 @@ function validate(data) {
     if (node.kind === 'decision' && (!nonBlank(node.owner) || !nonBlank(node.gate))) throw Error('Invalid ledger node');
     if (node.status === 'settled') {
       if (!nonBlank(node.answer) || !nonBlank(node.authority_source)) throw Error('Invalid ledger node');
-      if (node.kind === 'fact' ? node.authority !== 'evidence' : (node.authority !== 'user' && node.authority !== 'delegated')) throw Error('Invalid ledger node');
+      if (node.kind === 'fact' ? node.authority !== 'evidence' : (node.authority !== 'user' && node.authority !== 'delegated' && node.authority !== 'simulated')) throw Error('Invalid ledger node');
       if ((node.authority === 'evidence' || node.authority === 'delegated') && node.evidence.length === 0) throw Error('Invalid ledger node');
     } else if ((node.answer !== undefined && node.answer !== null) || (node.authority !== undefined && node.authority !== null) || (node.authority_source !== undefined && node.authority_source !== null)) throw Error('Invalid ledger node');
   }
@@ -219,7 +223,7 @@ function validate(data) {
       data.frontier.some(id => !ids.has(id)) || (data.origin && !ids.has(data.origin))) throw Error('Invalid ledger reference');
   if (data.origin !== null && data.origin !== undefined) {
     const root = data.nodes.find(n => n.id === data.origin);
-    if (!nonBlank(data.goal) || !root || root.kind !== 'decision' || root.status !== 'settled' || root.authority !== 'user' || root.answer !== data.goal) throw Error('Invalid ledger origin');
+    if (!nonBlank(data.goal) || !root || root.kind !== 'decision' || root.status !== 'settled' || (root.authority !== 'user' && root.authority !== 'simulated') || root.answer !== data.goal) throw Error('Invalid ledger origin');
   }
   if (data.current_question && !data.nodes.some(n => n.id === data.current_question && n.kind === 'decision' && data.frontier.includes(n.id))) {
     throw Error('Invalid current question');
@@ -316,7 +320,7 @@ function reviewReady() {
   return LEDGER.status === 'active' && Boolean(LEDGER.origin) && !LEDGER.nodes.some(n => n.status === 'unresolved') && !contradictions().length;
 }
 function who(node) {
-  const label = { user: 'you decided', delegated: 'you accepted the agent\'s suggestion', evidence: 'fact checked' }[node.authority] || node.authority;
+  const label = { user: 'you decided', delegated: 'you accepted the agent\'s suggestion', evidence: 'fact checked', simulated: 'simulated answer (no human)' }[node.authority] || node.authority;
   const badge = element('span', label);
   badge.className = 'badge ' + node.authority;
   return badge;
@@ -384,8 +388,11 @@ function renderNow() {
       call.append(line);
     }
   } else if (reviewReady()) {
-    call.append(element('div', 'Your turn'), element('div', 'Review the draft brief and confirm it'),
-      element('p', 'Ask the agent to show it. Reply "confirm" to save it, or name anything you want changed. Nothing is saved until you confirm.'));
+    const simulated = LEDGER.operator === 'simulated';
+    call.append(element('div', simulated ? 'Awaiting a human' : 'Your turn'),
+      element('div', simulated ? 'This seed contract is simulated and cannot be confirmed by the operator agent' : 'Review the draft brief and confirm it'),
+      element('p', simulated ? 'No human made these decisions. A person must read it and confirm it before anything is built from it.'
+        : 'Ask the agent to show it. Reply "confirm" to save it, or name anything you want changed. Nothing is saved until you confirm.'));
     call.children[0].className = 'label';
     call.children[1].className = 'question';
     call.children[2].className = 'agency';
@@ -467,13 +474,17 @@ function render() {
   const accepted = settledDecisions.filter(n => n.authority === 'delegated').length;
   const chosen = settledDecisions.filter(n => n.authority === 'user').length;
   el('accept-summary').hidden = !settledDecisions.length;
-  el('accept-summary').textContent = `Accepted as suggested: ${accepted} · Chosen by you: ${chosen}`;
+  const simulatedCount = settledDecisions.filter(n => n.authority === 'simulated').length;
+  el('accept-summary').textContent = LEDGER.operator === 'simulated'
+    ? `Simulated answers: ${simulatedCount} · Human answers: 0`
+    : `Accepted as suggested: ${accepted} · Chosen by you: ${chosen}`;
   const current = LEDGER.nodes.find(n => n.id === LEDGER.current_question);
   el('current').textContent = current ? `Current question: ${current.question || current.label || current.id}` : 'No question currently presented.';
   const pill = el('status-pill');
   const ended = ['stopped', 'completed'].includes(LEDGER.status);
-  pill.dataset.kind = ended ? 'ended' : (contradictions().length ? 'warn' : (reviewReady() ? 'review' : (LEDGER.origin ? 'active' : 'draft')));
-  pill.textContent = ended ? LEDGER.status : (contradictions().length ? 'Needs a second look' : (reviewReady() ? 'Ready for review' : (LEDGER.origin ? 'In progress' : 'Draft')));
+  el('sim-banner').hidden = !(LEDGER.operator === 'simulated');
+  pill.dataset.kind = ended ? 'ended' : (contradictions().length ? 'warn' : (LEDGER.operator === 'simulated' ? 'simulated' : (reviewReady() ? 'review' : (LEDGER.origin ? 'active' : 'draft'))));
+  pill.textContent = ended ? LEDGER.status : (contradictions().length ? 'Needs a second look' : (LEDGER.operator === 'simulated' ? 'Simulated' : (reviewReady() ? 'Ready for review' : (LEDGER.origin ? 'In progress' : 'Draft'))));
   renderNow();
   textView();
   if (!selectedId) selectedId = LEDGER.current_question || null;

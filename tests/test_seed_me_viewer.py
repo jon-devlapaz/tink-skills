@@ -373,6 +373,32 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#settled-list")).to_contain_text("contradicted — needs a second look")
         self.assertEqual(self.errors, [])
 
+    def test_simulated_session_is_unmistakable_and_cannot_be_confirmed(self):
+        directory = session.create(self.temp.name, "simulated")
+        state = session.editable(session.load(directory))
+        goal = {**node("goal", answer="Ship it"), "authority": "simulated"}
+        decision = {**node("d", parents=["goal"], answer="Do it"), "authority": "simulated",
+                    "authority_source": "operator agent (persona: cautious): accepted"}
+        state.update(goal="Ship it", origin="goal", nodes=[goal, decision])
+        session.publish(directory, state, 0, "Operator agent confirmed the goal")
+        server = viewer.make_server(directory)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        def stop():
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+        self.addCleanup(stop)
+        self.page.goto(f"http://127.0.0.1:{server.server_port}/ledger-view.html")
+        self.expect(self.page.locator("#sim-banner")).to_be_visible()
+        self.expect(self.page.locator("#sim-banner")).to_contain_text("no human decided this")
+        self.expect(self.page.locator("#status-pill")).to_have_text("Simulated")
+        self.expect(self.page.locator("#accept-summary")).to_have_text("Simulated answers: 1 \u00b7 Human answers: 0")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("simulated answer (no human)")
+        self.expect(self.page.locator("#call")).to_contain_text("Awaiting a human")
+        self.expect(self.page.locator("#call")).not_to_contain_text("Your turn")
+        self.assertEqual(self.errors, [])
+
     def test_saved_ended_view_is_read_only_offline_and_after_restart(self):
         self.confirm()
         self.page.goto(self.url)

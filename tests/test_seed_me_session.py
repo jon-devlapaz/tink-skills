@@ -149,6 +149,55 @@ class TestSeedSession(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "contradicts must name another node"):
                     self.publish(state, "Bad contradicts")
 
+    def simulated_state(self, directory, authority="simulated", origin_authority="simulated"):
+        state = session.editable(session.load(directory))
+        goal_node = {**node("goal", answer="Ship it"), "authority": origin_authority}
+        decision = {**node("d", parents=["goal"], answer="Do it"), "authority": authority,
+                    "authority_source": "operator agent (persona: cautious): accepted the suggestion"}
+        state.update(goal="Ship it", origin="goal", nodes=[goal_node, decision])
+        return state
+
+    def test_simulated_operator_settles_only_as_simulated(self):
+        directory = session.create(self.root, "simulated")
+        self.assertEqual(session.load(directory)["operator"], "simulated")
+        state = self.simulated_state(directory)
+        saved = session.publish(directory, state, 0, "Operator agent confirmed the goal")
+        self.assertEqual(saved["nodes"][1]["authority"], "simulated")
+        for label, bad in (("user decision", self.simulated_state(directory, authority="user")),
+                           ("delegated decision", self.simulated_state(directory, authority="delegated")),
+                           ("user goal", self.simulated_state(directory, origin_authority="user"))):
+            with self.subTest(label), self.assertRaises(ValueError):
+                fresh = session.create(self.root, "simulated")
+                session.publish(fresh, {**bad, "operator": "simulated"}, 0, "Should be refused")
+
+    def test_a_human_session_never_accepts_simulated_answers(self):
+        state = self.simulated_state(self.directory)
+        with self.assertRaisesRegex(ValueError, "authority does not match"):
+            self.publish(state, "A human session cannot hold simulated answers")
+
+    def test_operator_cannot_be_changed_or_defaults_to_human(self):
+        directory = session.create(self.root, "simulated")
+        state = session.editable(session.load(directory))
+        state["operator"] = "human"
+        with self.assertRaisesRegex(ValueError, "operator cannot change"):
+            session.publish(directory, state, 0, "Attempt to launder a simulated session")
+        import json
+        path = self.directory / "ledger.json"
+        ledger = json.loads(path.read_text())
+        ledger.pop("operator", None)
+        path.write_text(json.dumps(ledger))
+        self.assertEqual(session.load(self.directory)["operator"], "human")
+        with self.assertRaises(ValueError):
+            session.create(self.root, "robot")
+
+    def test_cli_init_can_start_a_simulated_session(self):
+        result = subprocess.run([sys.executable, str(SCRIPT), "init", "--root", str(self.root / "cli"),
+                                 "--operator", "simulated"], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        import json
+        directory = json.loads(result.stdout)["session"]
+        self.assertEqual(session.load(directory)["operator"], "simulated")
+
     def test_draft_options_error_says_options_are_plain_strings(self):
         state = session.editable(session.load(self.directory))
         state["draft"]["options"] = [{"label": "A", "tradeoff": "faster"}]

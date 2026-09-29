@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.6.0"
+  version: "1.8.0"
 ---
 
 # Seed Me
@@ -52,6 +52,15 @@ or **Full**. Take Lean only if the idea is small and easy to undo — the criter
 means no session, ledger, or viewer: one editable `seed-contract.md`. Full means everything
 below. The user can say "lean" or "full" at any time; switching to Full publishes the lean
 file's items as the first ledger update.
+
+### Agent mode (simulated operator)
+
+If the user asks to run seed-me with an agent standing in for the human, follow
+[agent-mode.md](references/agent-mode.md). Three rules hold regardless of harness: the session is started
+with `--operator simulated` and every operator answer is recorded as `simulated`, never `user` or
+`delegated`; the result is saved as `seed-contract.simulated.md` with the status
+`simulated — not confirmed by a human`; and a simulated run never authorizes implementation. The operator persona can be an engram (a folder of persona files): build its brief with
+`scripts/engram_brief.py` and record the persona as a simulation, never as the real person.
 
 ## 2. Investigate facts before asking
 
@@ -105,6 +114,7 @@ Option B: <choice> — tradeoff: <one line>. If you pick A instead: <what change
 Against my suggestion: <the strongest case for the other option>.
 ➡️ My suggestion: <A or B>, grounded in the lines above. Confidence: <low | medium | high>.
    Observed: <what I verified>. Inferred: <what I assumed>. Would flip if: <what would change my mind>. Not checked: <what I did not verify>. My number to change: <any figure I invented, or "none">.
+Ledger: <the viewer URL on the Full path, or the seed-contract.md file:// link on the Lean path>
 ```
 
 - `❓` marks an unresolved decision. `❔` optionally marks an unresolved decision
@@ -116,6 +126,8 @@ Against my suggestion: <the strongest case for the other option>.
   chat, in the viewer, and in the seed contract. Numbers only show progress.
 - Give two real options. If only one is viable, make Option B "leave it as it is" and say
   what that costs. Flag any figure you invented so the user can change it.
+- **Always show where the ledger is.** End every question turn with the `Ledger:` line, and print the
+  same link in the message that creates the session or file, so the user never has to ask for it.
 - **Instinct first for hard-to-undo questions.** When either option's undo cost is `hard`,
   show only the question and what you found, and ask "What's your instinct?" Publish the
   node without `recommendation` until the user answers or says "show me" or "your arrow";
@@ -266,7 +278,8 @@ The displayed and saved revision must contain:
 
 - Title and provenance: originator when known, date, revision, and status
   `unconfirmed — awaiting affirmation` while the revision is displayed, and
-  `seed contract — confirmed for intake; not approved for implementation` on the saved file.
+  `seed contract — confirmed for intake; not approved for implementation` on the saved file. In agent
+  mode the status is `simulated — not confirmed by a human` and the file is `seed-contract.simulated.md`.
 - **You are confirming** box at the very top, five short lines: the goal; what gets built;
   what does not; what the user accepted unchanged (with the accepted-versus-chosen count);
   what is still unknown — plus any earlier decision this reverses.

@@ -112,13 +112,33 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         self.assertTrue(lean.is_file())
         for required in ("Size gate", "**Lean**", "**Full**", "references/lean-path.md",
                          "Instinct first for hard-to-undo questions", "What's your instinct?",
-                         "Against my suggestion:", "without `recommendation`"):
+                         "Against my suggestion:", "without `recommendation`",
+                         "Ledger: <the viewer URL", "Always show where the ledger is"):
             with self.subTest(required=required):
                 self.assertIn(required, skill)
         text = lean.read_text()
         for required in ("You are confirming", "status: draft | confirmed", "[evidence]",
-                         "cmd: `<exact command>`", "skip the session, ledger, and viewer"):
+                         "cmd: `<exact command>`", "skip the session, ledger, and viewer",
+                         "print its absolute path as a `file://` link"):
             with self.subTest(lean=required):
+                self.assertIn(required, text)
+
+    def test_agent_mode_keeps_simulated_answers_apart_from_human_ones(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        mode = SKILL_DIR / "references" / "agent-mode.md"
+        self.assertTrue(mode.is_file())
+        for required in ("### Agent mode (simulated operator)", "references/agent-mode.md",
+                         "--operator simulated", "seed-contract.simulated.md",
+                         "simulated \u2014 not confirmed by a human", "never `user` or `delegated`",
+                         "scripts/engram_brief.py"):
+            with self.subTest(required=required):
+                self.assertIn(required, " ".join(skill.split()))
+        text = mode.read_text()
+        for required in ("Operator brief", "must not see", "authority: simulated",
+                         "Decision style", "never authorizes implementation",
+                         "engram_brief.py", "simulation, not the person", "leaves out the engram's `SKILL.md`",
+                         "Large briefs.", "The operator decides; it does not build."):
+            with self.subTest(mode=required):
                 self.assertIn(required, text)
 
     def test_ledger_viewer_asset(self):

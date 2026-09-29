@@ -18,6 +18,9 @@ any time. Switching to full publishes this file's items as the first ledger upda
 
 ## Rules
 
+0. When you create the file, print its absolute path as a `file://` link in the same message, and end
+   every question turn with `Ledger: <that link>`.
+
 1. Every item has an id (`G`, `D1`, `C1`, `A1`, `Q1`, `E1`) and an author tag: `[user]`, `[agent]`,
    `[evidence]`.
 2. A decision is `[user]` only if it quotes the user's words or cites the chat turn. Facts the agent
