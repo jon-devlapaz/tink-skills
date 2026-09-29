@@ -296,6 +296,54 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#open-list")).to_contain_text("Open one")
         self.assertEqual(self.errors, [])
 
+    def test_finished_interview_says_it_is_the_users_turn_and_counts_acceptances(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question=None)
+        accepted = {**node("b", parents=["goal"], answer="B"), "authority": "delegated",
+                    "authority_source": "chat: your arrow", "evidence": ["x.py:1"]}
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A"), accepted]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#call")).to_contain_text("Your turn")
+        self.expect(self.page.locator("#call")).to_contain_text("Review the draft brief and confirm it")
+        self.expect(self.page.locator("#call")).not_to_contain_text("Nothing is waiting")
+        self.expect(self.page.locator("#status-pill")).to_have_text("Ready for review")
+        self.expect(self.page.locator("#accept-summary")).to_have_text("Accepted as suggested: 1 · Chosen by you: 1")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("you accepted the agent's suggestion")
+        self.assertEqual(self.errors, [])
+
+    def test_facts_are_a_separate_group_and_counts_agree(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A"),
+                          node("f1", "fact", answer="Fact one"), node("f2", "fact", answer="Fact two"),
+                          {**node("now", parents=["goal"]), "question": "Now?"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#settled-h")).to_have_text("Settled (1)")
+        self.expect(self.page.locator("#facts-h")).to_have_text("Facts checked (2)")
+        self.expect(self.page.locator("#counts")).to_contain_text("1 settled")
+        self.expect(self.page.locator("#counts")).to_contain_text("2 facts")
+        self.expect(self.page.locator("#facts-list")).to_contain_text("fact checked")
+        self.assertEqual(self.errors, [])
+
+    def test_long_answers_are_kept_whole_with_a_toggle(self):
+        tail = "TAILMARK-end-of-a-long-answer"
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          node("a", parents=["goal"], answer="Long answer. " * 30 + tail),
+                          {**node("now", parents=["goal"]), "question": "Now?"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#settled-list")).to_contain_text(tail)
+        self.expect(self.page.locator("#settled-list")).not_to_contain_text("…")
+        button = self.page.locator("#settled-list .more")
+        self.expect(button).to_have_text("Show more")
+        button.click()
+        self.expect(button).to_have_text("Show less")
+        self.assertEqual(self.errors, [])
+
     def test_saved_ended_view_is_read_only_offline_and_after_restart(self):
         self.confirm()
         self.page.goto(self.url)
