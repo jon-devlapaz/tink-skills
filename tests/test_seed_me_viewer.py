@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import importlib.util
 import json
 import os
@@ -23,6 +25,45 @@ try:
     SPEC.loader.exec_module(viewer)
 finally:
     sys.path.pop(0)
+
+
+LAUNCH_TIMEOUT_MS = 20_000
+REQUIRE_BROWSER = os.environ.get("SEED_ME_REQUIRE_BROWSER") == "1"
+INSTALL_HINT = "python -m pip install -r tests/requirements-browser.txt && python -m playwright install chromium"
+VIEWER_ASSET = SCRIPT.parents[1] / "assets/ledger-view.html"
+
+
+def browser_unavailable(reason):
+    """Skip with one clear line, or fail when SEED_ME_REQUIRE_BROWSER=1 (CI)."""
+    message = f"Browser tests cannot run: {reason}. Fix: {INSTALL_HINT}"
+    if REQUIRE_BROWSER:
+        raise RuntimeError(message)
+    print(f"SKIPPED {message}", file=sys.stderr)
+    raise unittest.SkipTest(message)
+
+
+def first_line(error):
+    return (str(error).strip().splitlines() or [type(error).__name__])[0]
+
+
+def pinned_cytoscape():
+    """Path to the Cytoscape file the viewer pins, fetched once and checked against the page's SRI hash."""
+    override = os.environ.get("SEED_ME_CYTOSCAPE_PATH")
+    if override:
+        return Path(override)
+    tag = re.search(r'<script[^>]*id="graph-library"[^>]*>', VIEWER_ASSET.read_text()).group(0)
+    url = re.search(r'src="([^"]+)"', tag).group(1)
+    expected = re.search(r'integrity="sha384-([^"]+)"', tag).group(1)
+    cached = Path(tempfile.gettempdir()) / "seed-me-cytoscape" / hashlib.sha256(expected.encode()).hexdigest()[:16]
+    if not cached.is_file():
+        with urlopen(url, timeout=20) as response:
+            body = response.read()
+        actual = base64.b64encode(hashlib.sha384(body).digest()).decode()
+        if actual != expected:
+            raise AssertionError(f"{url} does not match the pinned SRI hash: got sha384-{actual}")
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        cached.write_bytes(body)
+    return cached
 
 
 class ViewerFixture:
@@ -120,18 +161,21 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
     def setUpClass(cls):
         try:
             from playwright.sync_api import sync_playwright, expect
-        except ImportError:
-            raise unittest.SkipTest("Browser checks require Python Playwright and Chromium or Google Chrome")
+        except ImportError as error:
+            browser_unavailable(f"Python Playwright is not installed ({first_line(error)})")
         cls.expect = staticmethod(expect)
         cls.playwright = sync_playwright().start()
-        try:
+        failures = []
+        cls.browser = None
+        for label, options in (("bundled Chromium", {}), ("system Google Chrome", {"channel": "chrome"})):
             try:
-                cls.browser = cls.playwright.chromium.launch(headless=True)
-            except Exception:
-                cls.browser = cls.playwright.chromium.launch(channel="chrome", headless=True)
-        except Exception as error:
+                cls.browser = cls.playwright.chromium.launch(headless=True, timeout=LAUNCH_TIMEOUT_MS, **options)
+                break
+            except Exception as error:
+                failures.append(f"{label}: {first_line(error)}")
+        if cls.browser is None:
             cls.playwright.stop()
-            raise unittest.SkipTest(f"No launchable Chromium or Google Chrome: {error}")
+            browser_unavailable("no launchable browser (" + "; ".join(failures) + ")")
 
     @classmethod
     def tearDownClass(cls):
@@ -202,9 +246,13 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.assertEqual(self.errors, [])
 
     def test_graph_tracks_real_dependencies_and_clicked_node_history(self):
-        library = os.environ.get("SEED_ME_CYTOSCAPE_PATH")
-        if not library or not Path(library).is_file():
-            self.skipTest("Set SEED_ME_CYTOSCAPE_PATH to the SRI-pinned Cytoscape file for offline graph checks")
+        try:
+            library = pinned_cytoscape()
+        except OSError as error:
+            if REQUIRE_BROWSER:
+                raise
+            self.skipTest(f"Could not fetch the pinned Cytoscape file ({first_line(error)}); set SEED_ME_CYTOSCAPE_PATH to a local copy")
+        self.assertTrue(library.is_file(), f"SEED_ME_CYTOSCAPE_PATH is not a file: {library}")
         self.context.unroute("**/cytoscape.min.js")
         self.context.route("**/cytoscape.min.js", lambda route: route.fulfill(path=library, content_type="application/javascript"))
         self.page.goto(self.url)
