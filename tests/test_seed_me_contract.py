@@ -106,6 +106,21 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         self.assertIn("`assumed`", ledger)
         self.assertNotIn("Decision X of Y", ledger)
 
+    def test_size_gate_and_instinct_first(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        lean = SKILL_DIR / "references" / "lean-path.md"
+        self.assertTrue(lean.is_file())
+        for required in ("Size gate", "**Lean**", "**Full**", "references/lean-path.md",
+                         "Instinct first for hard-to-undo questions", "What's your instinct?",
+                         "Against my suggestion:", "without `recommendation`"):
+            with self.subTest(required=required):
+                self.assertIn(required, skill)
+        text = lean.read_text()
+        for required in ("You are confirming", "status: draft | confirmed", "[evidence]",
+                         "cmd: `<exact command>`", "skip the session, ledger, and viewer"):
+            with self.subTest(lean=required):
+                self.assertIn(required, text)
+
     def test_ledger_viewer_asset(self):
         viewer = SKILL_DIR / "assets" / "ledger-view.html"
         self.assertTrue(viewer.is_file())

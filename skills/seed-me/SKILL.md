@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.5.0"
+  version: "1.6.0"
 ---
 
 # Seed Me
@@ -43,6 +43,15 @@ scaffolding for the user to correct, and a braindump simply yields more of them 
 ask what to keep, cut, or reshape. Confirmed lines become ledger nodes; rejected lines are dropped, not parked.
 A general confirmation accepts the investigation goal, not its candidate solutions;
 record only explicit choices as accepted answers. Only then does the frontier loop start.
+
+### Size gate
+
+After the user reacts to the draft, propose a path in one line with your reason: **Lean**
+or **Full**. Take Lean only if the idea is small and easy to undo — the criteria are in
+[lean-path.md](references/lean-path.md), which also holds the whole lean procedure. Lean
+means no session, ledger, or viewer: one editable `seed-contract.md`. Full means everything
+below. The user can say "lean" or "full" at any time; switching to Full publishes the lean
+file's items as the first ledger update.
 
 ## 2. Investigate facts before asking
 
@@ -93,6 +102,7 @@ Question 1 of 3 ready (2 waiting on earlier answers)
 Option A: <choice> — tradeoff: <one line>. If you pick B instead: <what changes>. Undo cost: <cheap | moderate | hard>.
 Option B: <choice> — tradeoff: <one line>. If you pick A instead: <what changes>. Undo cost: <cheap | moderate | hard>.
 👤 Owner: <named decider or role> — Gate: <answer shape that settles it> — Why it matters: <what it unblocks or endangers>.
+Against my suggestion: <the strongest case for the other option>.
 ➡️ My suggestion: <A or B>, grounded in the lines above. Confidence: <low | medium | high>.
    Observed: <what I verified>. Inferred: <what I assumed>. Would flip if: <what would change my mind>. Not checked: <what I did not verify>. My number to change: <any figure I invented, or "none">.
 ```
@@ -106,6 +116,12 @@ Option B: <choice> — tradeoff: <one line>. If you pick A instead: <what change
   chat, in the viewer, and in the seed contract. Numbers only show progress.
 - Give two real options. If only one is viable, make Option B "leave it as it is" and say
   what that costs. Flag any figure you invented so the user can change it.
+- **Instinct first for hard-to-undo questions.** When either option's undo cost is `hard`,
+  show only the question and what you found, and ask "What's your instinct?" Publish the
+  node without `recommendation` until the user answers or says "show me" or "your arrow";
+  then show the options, the case against your suggestion, and your suggestion. For `cheap`
+  and `moderate` questions, show everything at once. This exists because a suggestion shown
+  first anchors the answer.
 - Wait for explicit user input before advancing or settling questions.
 
 **Complete when:** Ready questions, consequences, and grounded recommendations
@@ -217,7 +233,7 @@ return to Step 2 immediately. Then run the close checklist once:
 
 Once the local review and close checklist are resolved:
 
-1. Present the revision-labeled seed contract, opening with the **You are confirming** box, using the structure below, including
+1. Present the revision-labeled seed contract, opening with the **You are confirming** box, using the structure below (on the lean path the file itself is the seed contract and uses the lean template), including
    actual accepted choices and their authority, with status
    `unconfirmed — awaiting affirmation`; flip to `confirmed for intake` only
    when the user affirms the displayed revision label. State completion as “local completeness
