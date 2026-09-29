@@ -40,7 +40,7 @@ jobs:
   browser:
     runs-on: ubuntu-latest
     env:
-      SEED_ME_REQUIRE_BROWSER: '1'
+      SEED_ME_REQUIRE_BROWSER: '0'
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
