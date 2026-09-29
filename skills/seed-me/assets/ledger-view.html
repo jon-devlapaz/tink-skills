@@ -458,7 +458,7 @@ function renderNow() {
 function render() {
   el('title').textContent = LEDGER.origin ? LEDGER.goal : (LEDGER.draft && LEDGER.draft.goal ? `Draft: ${LEDGER.draft.goal}` : 'Shaping the draft');
   el('meta').textContent = `Update ${LEDGER.version ?? '—'} · last changed ${fmtTime(LEDGER.updated_at)} · ${LEDGER.status || 'active'}`;
-  el('meta').title = `Session ${LEDGER.session_id || 'legacy snapshot'} · premise revision ${LEDGER.revision}`;
+  el('meta').title = `Session ${LEDGER.session_id || 'unsaved snapshot'} · premise revision ${LEDGER.revision}`;
   el('draft').hidden = Boolean(LEDGER.origin);
   el('draft-content').replaceChildren();
   if (LEDGER.draft) fields(el('draft-content'), { 'Candidate goal': LEDGER.draft.goal, 'Candidate outcome': LEDGER.draft.outcome, 'Candidate options': LEDGER.draft.options && LEDGER.draft.options.length ? LEDGER.draft.options : null });

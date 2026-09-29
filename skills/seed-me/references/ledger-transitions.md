@@ -69,8 +69,7 @@ Top-level fields:
 - `draft`: candidate `goal`, `outcome`, and `options` (a list of plain non-empty strings,
   e.g. `"Label — tradeoff"`); none is an accepted answer.
 - `assumed`: optional list of `{text, why}` defaults the agent assumes unless the user
-  objects. Never user answers; an objection turns an entry into a decision node. Absent
-  in older sessions, which load as an empty list.
+  objects. Never user answers; an objection turns an entry into a decision node.
 - `goal`, `origin`: initially `null`. Confirmation creates a settled user decision
   whose ID is `origin` and whose `answer` exactly equals `goal` (string equality).
   Both then remain fixed; record scope refinements in other nodes.

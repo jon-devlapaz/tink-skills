@@ -72,12 +72,6 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                 with self.subTest(path=str(path), token=token):
                     self.assertNotIn(token, content)
 
-    def test_lens_machinery_is_retired(self):
-        self.assertFalse((SKILL_DIR / "references" / "epistemic-lenses.md").exists())
-        content = (SKILL_DIR / "SKILL.md").read_text()
-        self.assertNotIn("lens", content.lower())
-        self.assertNotIn("epistemic-lenses", (ROOT / "README.md").read_text())
-
     def test_braindump_entry_and_draft_step(self):
         content = (SKILL_DIR / "SKILL.md").read_text()
         for required in ("braindump", "Shape the working draft",
@@ -100,11 +94,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                          "naming the three riskiest items"):
             with self.subTest(required=required):
                 self.assertIn(required, skill)
-        for retired in ("Decision 1 of 3 ready", "\u2753 Q1 \u2014", "pre-intent\u0060 is the handoff"):
-            with self.subTest(retired=retired):
-                self.assertNotIn(retired, skill)
         self.assertIn("`assumed`", ledger)
-        self.assertNotIn("Decision X of Y", ledger)
 
     def test_size_gate_and_instinct_first(self):
         skill = (SKILL_DIR / "SKILL.md").read_text()
@@ -215,12 +205,9 @@ class TestGrillMeWithJevContract(unittest.TestCase):
             with self.subTest(required=required):
                 self.assertIn(required, ledger)
 
-    # docs/ chain retired with the docs tree (prune): no design docs ship;
-    # runs/ carry session evidence instead.
-
 
 class TestThroughlineSkillOrder(unittest.TestCase):
-    def test_readme_throughline_order_and_deprecation(self):
+    def test_readme_throughline_order(self):
         readme = (ROOT / "README.md").read_text()
         mermaid = re.search(r"```mermaid\n(.*?)```", readme, re.DOTALL)
         self.assertIsNotNone(mermaid)

@@ -290,8 +290,7 @@ Once the local review and close checklist are resolved:
    confirmation by naming the three riskiest items — figures you invented, earlier
    decisions this reverses, placeholder names, or choices accepted without change —
    and say how many decisions were accepted as suggested versus chosen by the user.
-3. On confirmation, save that revision to repository-root `seed-contract.md` (an older
-   `pre-intent.md` from an earlier run stays valid and is left untouched). Inspect
+3. On confirmation, save that revision to repository-root `seed-contract.md`. Inspect
    an existing file first: update only the known session artifact, preserving
    unrelated content. If an existing file belongs to other work, keep it intact and
    resolve an alternate destination with the user. Ensure the write succeeds before

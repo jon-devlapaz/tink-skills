@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 SCRIPT = Path(__file__).resolve().parents[1] / "skills/seed-me/scripts/engram_brief.py"
 SPEC = importlib.util.spec_from_file_location("engram_brief", SCRIPT)
@@ -94,7 +95,6 @@ class TestEngramBrief(unittest.TestCase):
         self.assertNotIn("Agentic Protocol", brief)
 
 
-import unittest.mock  # noqa: E402  (used by test_name_resolves_under_the_library)
 
 if __name__ == "__main__":
     unittest.main()

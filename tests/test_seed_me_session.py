@@ -82,22 +82,6 @@ class TestSeedSession(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "invalid assumed"):
                     self.publish(state, "Bad assumption shape")
 
-    def test_older_sessions_without_assumed_still_load_and_publish(self):
-        import json
-        path = self.directory / "ledger.json"
-        ledger = json.loads(path.read_text())
-        del ledger["assumed"]
-        path.write_text(json.dumps(ledger))
-        loaded = session.load(self.directory)
-        self.assertEqual(loaded["assumed"], [])
-        state = session.editable(loaded)
-        state["draft"]["goal"] = "A candidate goal"
-        result = self.publish(state, "Shape the provisional working draft")
-        self.assertEqual(result["assumed"], [])
-        legacy = {key: value for key, value in state.items() if key != "assumed"}
-        legacy["draft"] = {**state["draft"], "outcome": "Outcome"}
-        self.assertEqual(self.publish(legacy, "A payload written before assumed existed")["draft"]["outcome"], "Outcome")
-
     def test_assumed_change_bumps_the_revision_and_a_repeat_is_a_noop(self):
         state = session.editable(session.load(self.directory))
         state["assumed"] = [{"text": "One machine", "why": "Both answers build the same tool"}]
@@ -175,18 +159,12 @@ class TestSeedSession(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "authority does not match"):
             self.publish(state, "A human session cannot hold simulated answers")
 
-    def test_operator_cannot_be_changed_or_defaults_to_human(self):
+    def test_operator_cannot_be_changed(self):
         directory = session.create(self.root, "simulated")
         state = session.editable(session.load(directory))
         state["operator"] = "human"
         with self.assertRaisesRegex(ValueError, "operator cannot change"):
             session.publish(directory, state, 0, "Attempt to launder a simulated session")
-        import json
-        path = self.directory / "ledger.json"
-        ledger = json.loads(path.read_text())
-        ledger.pop("operator", None)
-        path.write_text(json.dumps(ledger))
-        self.assertEqual(session.load(self.directory)["operator"], "human")
         with self.assertRaises(ValueError):
             session.create(self.root, "robot")
 

@@ -250,8 +250,6 @@ def load(directory):
     ledger = json.loads((Path(directory) / "ledger.json").read_text())
     require(isinstance(ledger, dict) and type(ledger.get("schema_version")) is int
             and ledger["schema_version"] == 1, "unsupported ledger schema")
-    ledger.setdefault("assumed", [])
-    ledger.setdefault("operator", "human")
     require(set(ledger) == STATE_FIELDS | OPTIONAL_STATE_FIELDS | {"schema_version", "session_id", "version", "revision",
                                          "created_at", "updated_at", "frontier"}, "invalid stored ledger fields")
     require(text(ledger.get("session_id")), "missing session identity")
