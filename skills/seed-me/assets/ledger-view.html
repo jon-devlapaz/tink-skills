@@ -14,14 +14,14 @@
     --bg: #fbfaf7; --surface: #ffffff; --text: #1d1f1c; --muted: #5d625b; --line: #e3e1da;
     --accent: #8a5a00; --accent-bg: #fff4d9; --accent-line: #e0a526;
     --you: #6b21a8; --you-bg: #f3e8ff; --ok: #1c6b48; --ok-bg: #e2f4ea; --amber: #8a5a00; --amber-bg: #fff1cf;
-    --focus: #2563eb; --err-bg: #7a4300; --err-text: #fff;
+    --warn-bg: #fde8e8; --warn: #a11212; --focus: #2563eb; --err-bg: #7a4300; --err-text: #fff;
     --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --col: 760px;
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #121311; --surface: #1b1c1a; --text: #ecece7; --muted: #a3a79f; --line: #2f312d;
       --accent: #f0b73a; --accent-bg: #2a2210; --accent-line: #c8901a;
-      --you: #d8b4fe; --you-bg: #2b1a3f; --ok: #6fd3a0; --ok-bg: #12301f; --amber: #f0b73a; --amber-bg: #2a2210; --focus: #7aa7ff; }
+      --you: #d8b4fe; --you-bg: #2b1a3f; --ok: #6fd3a0; --ok-bg: #12301f; --amber: #f0b73a; --amber-bg: #2a2210; --warn-bg: #3a1717; --warn: #ff9b9b; --focus: #7aa7ff; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); }
@@ -60,6 +60,8 @@
   .item > strong { font-weight: 600; }
   .item .detail { color: var(--muted); }
   .badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; margin-left: var(--s2); white-space: nowrap; }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  #status-pill[data-kind="warn"] { background: var(--warn-bg); color: var(--warn); }
   .badge.user { background: var(--you-bg); color: var(--you); } .badge.evidence { background: var(--ok-bg); color: var(--ok); } .badge.delegated { background: var(--amber-bg); color: var(--amber); }
   #connection { font-size: 13px; color: var(--muted); padding-block: var(--s2); display: flex; align-items: center; gap: var(--s2); }
   #connection::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
@@ -301,8 +303,17 @@ function fmtTime(value) {
   const d = value ? new Date(value) : null;
   return d && !isNaN(d) ? d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
 }
+function contradictions() {
+  const byId = new Map(LEDGER.nodes.map(n => [n.id, n]));
+  const found = [];
+  for (const fact of LEDGER.nodes) {
+    const target = byId.get(fact.contradicts);
+    if (fact.status === 'settled' && target && target.status === 'settled' && target.revision <= fact.revision) found.push({ fact, target });
+  }
+  return found;
+}
 function reviewReady() {
-  return LEDGER.status === 'active' && Boolean(LEDGER.origin) && !LEDGER.nodes.some(n => n.status === 'unresolved');
+  return LEDGER.status === 'active' && Boolean(LEDGER.origin) && !LEDGER.nodes.some(n => n.status === 'unresolved') && !contradictions().length;
 }
 function who(node) {
   const label = { user: 'you decided', delegated: 'you accepted the agent\'s suggestion', evidence: 'fact checked' }[node.authority] || node.authority;
@@ -363,6 +374,15 @@ function renderNow() {
       why.append(list);
       call.append(why);
     }
+  } else if (!ended && contradictions().length) {
+    call.append(element('div', 'Needs a second look'), element('div', 'A settled decision is contradicted by evidence'));
+    call.children[0].className = 'label';
+    call.children[1].className = 'question';
+    for (const { fact, target } of contradictions()) {
+      const line = element('p', `"${title(target)}" is contradicted by "${title(fact)}". Ask the agent to reopen or revise it before you confirm.`);
+      line.className = 'agency';
+      call.append(line);
+    }
   } else if (reviewReady()) {
     call.append(element('div', 'Your turn'), element('div', 'Review the draft brief and confirm it'),
       element('p', 'Ask the agent to show it. Reply "confirm" to save it, or name anything you want changed. Nothing is saved until you confirm.'));
@@ -387,6 +407,12 @@ function renderNow() {
   const settledRow = n => {
     const row = itemRow(n, n.answer);
     (row.querySelector('.detail') || row).append(who(n));
+    const clash = contradictions().find(c => c.target.id === n.id);
+    if (clash) {
+      const warn = element('span', 'contradicted — needs a second look');
+      warn.className = 'badge warn';
+      (row.querySelector('.detail') || row).append(warn);
+    }
     return row;
   };
   const SHOW = 5;
@@ -446,8 +472,8 @@ function render() {
   el('current').textContent = current ? `Current question: ${current.question || current.label || current.id}` : 'No question currently presented.';
   const pill = el('status-pill');
   const ended = ['stopped', 'completed'].includes(LEDGER.status);
-  pill.dataset.kind = ended ? 'ended' : (reviewReady() ? 'review' : (LEDGER.origin ? 'active' : 'draft'));
-  pill.textContent = ended ? LEDGER.status : (reviewReady() ? 'Ready for review' : (LEDGER.origin ? 'In progress' : 'Draft'));
+  pill.dataset.kind = ended ? 'ended' : (contradictions().length ? 'warn' : (reviewReady() ? 'review' : (LEDGER.origin ? 'active' : 'draft')));
+  pill.textContent = ended ? LEDGER.status : (contradictions().length ? 'Needs a second look' : (reviewReady() ? 'Ready for review' : (LEDGER.origin ? 'In progress' : 'Draft')));
   renderNow();
   textView();
   if (!selectedId) selectedId = LEDGER.current_question || null;

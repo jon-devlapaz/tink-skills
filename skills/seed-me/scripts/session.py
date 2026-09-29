@@ -14,7 +14,7 @@ STATE_FIELDS = {"status", "draft", "goal", "origin", "current_question", "nodes"
 OPTIONAL_STATE_FIELDS = {"assumed"}
 NODE_FIELDS = {"id", "kind", "status", "prerequisites", "predicate", "evidence",
                "answer", "authority", "authority_source", "label", "question",
-               "owner", "gate", "recommendation", "defer_reason", "revisit_condition", "reopen_reason"}
+               "owner", "gate", "recommendation", "defer_reason", "revisit_condition", "reopen_reason", "contradicts"}
 
 
 def require(condition, message):
@@ -82,6 +82,11 @@ def validate(state):
         if node["status"] == "deferred":
             require(text(node.get("defer_reason")) and text(node.get("revisit_condition")),
                     "deferral requires reason and revisit condition")
+    for node in nodes.values():
+        if "contradicts" in node:
+            target = node["contradicts"]
+            require(node["kind"] == "fact" and text(target) and target != node["id"] and target in nodes,
+                    "contradicts must name another node and is only allowed on a fact")
     visiting, visited = set(), set()
 
     def visit(node_id):
@@ -134,6 +139,18 @@ def descendants(nodes, starts):
         reached.update(added)
 
 
+def contradiction_blockers(nodes):
+    """Settled decisions that a settled fact contradicts and that were not revisited since."""
+    by_id = {n["id"]: n for n in nodes}
+    blocked = []
+    for fact in nodes:
+        target = by_id.get(fact.get("contradicts"))
+        if fact["status"] == "settled" and target and target["status"] == "settled" \
+                and target["revision"] <= fact["revision"] and target["id"] not in blocked:
+            blocked.append(target["id"])
+    return blocked
+
+
 def transition(ledger, state, expected_version, reason, revalidated=None):
     state = deepcopy(state)
     state.setdefault("assumed", [])
@@ -167,7 +184,8 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
         if new[node_id]["status"] == "settled":
             require(text(revalidated.get(node_id)) and bool(new[node_id]["evidence"]),
                     "affected settlement requires explicit revalidation with evidence: " + node_id)
-    revision = ledger["revision"] + bool(changed)
+    assumed_changed = state["assumed"] != old_state["assumed"]
+    revision = ledger["revision"] + bool(changed or assumed_changed)
     updated = now()
     result = {**deepcopy(ledger), **state, "version": ledger["version"] + 1,
               "revision": revision, "updated_at": updated, "frontier": ready}
@@ -181,6 +199,9 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
                             "superseded_at": updated, "reason": revalidated.get(node["id"], reason)})
         node["history"] = history
         node["revision"] = revision if previous is None or material_change else previous["revision"]
+    if state["status"] == "completed":
+        blocked = contradiction_blockers(result["nodes"])
+        require(not blocked, "cannot complete: evidence contradicts a settled decision that was not revisited: " + ", ".join(blocked))
     return result
 
 

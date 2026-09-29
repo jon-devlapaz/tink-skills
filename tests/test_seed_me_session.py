@@ -98,6 +98,57 @@ class TestSeedSession(unittest.TestCase):
         legacy["draft"] = {**state["draft"], "outcome": "Outcome"}
         self.assertEqual(self.publish(legacy, "A payload written before assumed existed")["draft"]["outcome"], "Outcome")
 
+    def test_assumed_change_bumps_the_revision_and_a_repeat_is_a_noop(self):
+        state = session.editable(session.load(self.directory))
+        state["assumed"] = [{"text": "One machine", "why": "Both answers build the same tool"}]
+        first = self.publish(state, "Record a default")
+        self.assertEqual(first["revision"], 1)
+        again = self.publish(state, "Record a default")
+        self.assertEqual((again["version"], again["revision"]), (first["version"], 1))
+        state["assumed"] = [{"text": "One machine", "why": "A different reason"}]
+        self.assertEqual(self.publish(state, "Change the reason")["revision"], 2)
+        state["assumed"] = []
+        self.assertEqual(self.publish(state, "Drop the default")["revision"], 3)
+
+    def contradicted_state(self, fact_status="settled"):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal")
+        fact = {**node("f", "fact", answer="The scanner does not exist"), "contradicts": "d"}
+        if fact_status != "settled":
+            fact = {**node("f", "fact"), "status": fact_status, "contradicts": "d"}
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          node("d", parents=["goal"], answer="Reuse the existing scanner"), fact]
+        return state
+
+    def test_contradicting_fact_blocks_completion_until_the_decision_is_revisited(self):
+        self.publish(self.contradicted_state())
+        with self.assertRaisesRegex(ValueError, "contradicts a settled decision.*: d"):
+            session.end(self.directory, "completed", "Confirmed and saved")
+        state = session.editable(session.load(self.directory))
+        state["nodes"][1]["answer"] = "Build the scanner as part of this work"
+        self.publish(state, "Revise the decision after the contradicting evidence")
+        self.assertEqual(session.end(self.directory, "completed", "Confirmed and saved")["status"], "completed")
+
+    def test_superseding_the_contradicting_fact_also_unblocks_completion(self):
+        self.publish(self.contradicted_state())
+        state = session.editable(session.load(self.directory))
+        state["nodes"][2] = {**node("f", "fact"), "status": "superseded", "contradicts": "d"}
+        self.publish(state, "The fact was wrong; superseded with a reason")
+        self.assertEqual(session.end(self.directory, "completed", "Confirmed and saved")["status"], "completed")
+
+    def test_contradicts_shape_is_validated(self):
+        base = self.contradicted_state()
+        for label, mutate in (
+                ("on a decision", lambda s: s["nodes"][1].update(contradicts="goal")),
+                ("self reference", lambda s: s["nodes"][2].update(contradicts="f")),
+                ("missing target", lambda s: s["nodes"][2].update(contradicts="nope")),
+                ("not a string", lambda s: s["nodes"][2].update(contradicts=5))):
+            with self.subTest(label):
+                state = json.loads(json.dumps(base))
+                mutate(state)
+                with self.assertRaisesRegex(ValueError, "contradicts must name another node"):
+                    self.publish(state, "Bad contradicts")
+
     def test_draft_options_error_says_options_are_plain_strings(self):
         state = session.editable(session.load(self.directory))
         state["draft"]["options"] = [{"label": "A", "tradeoff": "faster"}]

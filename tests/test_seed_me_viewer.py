@@ -358,6 +358,21 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#settled-list")).not_to_contain_text("One user")
         self.assertEqual(self.errors, [])
 
+    def test_contradicted_decision_is_flagged_instead_of_ready_for_review(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question=None)
+        fact = {**node("f", "fact", answer="The scanner does not exist"), "contradicts": "d", "label": "Scanner missing"}
+        state["nodes"] = [node("goal", answer="Ship it"),
+                          {**node("d", parents=["goal"], answer="Reuse the scanner"), "label": "Reuse scanner"}, fact]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#call")).to_contain_text("Needs a second look")
+        self.expect(self.page.locator("#call")).to_contain_text('"Reuse scanner" is contradicted by "Scanner missing"')
+        self.expect(self.page.locator("#call")).not_to_contain_text("Your turn")
+        self.expect(self.page.locator("#status-pill")).to_have_text("Needs a second look")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("contradicted — needs a second look")
+        self.assertEqual(self.errors, [])
+
     def test_saved_ended_view_is_read_only_offline_and_after_restart(self):
         self.confirm()
         self.page.goto(self.url)

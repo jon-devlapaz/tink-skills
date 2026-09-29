@@ -22,7 +22,7 @@ its receipt; every question names its owner.
 - Before opening the interview, read [ledger-transitions.md](references/ledger-transitions.md)
   for decision ledger setup, frontier transitions, and ranking. Start the session when the
   user confirms the goal (see **Session lifecycle** below); until then the working draft lives in chat.
-  Maintain that decision ledger throughout; visible questions are a projection of this ledger. Read [epistemic-lenses.md](references/epistemic-lenses.md) only if the session opts into lenses (see Step 3) — otherwise leave it unread.
+  Maintain that decision ledger throughout; visible questions are a projection of this ledger.
 - Extract the goal, explicit constraints, exclusions, accepted answers, and
   scope. Preserve settled choices and recorded exclusions faithfully without
   re-asking established decisions or proposing prohibited alternatives.
@@ -86,15 +86,6 @@ from settling by delegation (see Step 4). Every frontier question names its deci
 the ledger that prevent completion until settled. Surface material findings
 promptly as they arise.
 
-Per turn, and only for sessions opted into lenses (see session setup in
-[epistemic-lenses.md](references/epistemic-lenses.md)), the host may issue one
-lens-selection call: state the goal, the ready node's evidence summaries, and the
-owner named so far against
-[epistemic-lenses.md](references/epistemic-lenses.md) as a single Choice,
-applied per its gating rule. A skipped or failed call is a
-logged skip, never a badge and never a settlement. The lens advises the
-reading of the turn only.
-
 ```text
 Question 1 of 3 ready (2 waiting on earlier answers)
 ❓ <Title>: <the consequence or tradeoff needing your judgment, one line>
@@ -102,7 +93,8 @@ Question 1 of 3 ready (2 waiting on earlier answers)
 Option A: <choice> — tradeoff: <one line>. If you pick B instead: <what changes>. Undo cost: <cheap | moderate | hard>.
 Option B: <choice> — tradeoff: <one line>. If you pick A instead: <what changes>. Undo cost: <cheap | moderate | hard>.
 👤 Owner: <named decider or role> — Gate: <answer shape that settles it> — Why it matters: <what it unblocks or endangers>.
-➡️ My suggestion: <A or B>, grounded in the lines above. My number to change: <any figure I invented, or "none">.
+➡️ My suggestion: <A or B>, grounded in the lines above. Confidence: <low | medium | high>.
+   Observed: <what I verified>. Inferred: <what I assumed>. Would flip if: <what would change my mind>. Not checked: <what I did not verify>. My number to change: <any figure I invented, or "none">.
 ```
 
 - `❓` marks an unresolved decision. `❔` optionally marks an unresolved decision
@@ -121,7 +113,8 @@ are presented and the session is waiting for answers.
 
 ## 4. Settle answers and update the Frontier
 
-Apply the ledger reference's transitions for explicit answers, conditional choices, scoped delegation, skips, and changed
+When later evidence contradicts a settled decision, add a fact that names it with `contradicts: <node id>` and
+reopen or revise that decision; completion is blocked until you do. Apply the ledger reference's transitions for explicit answers, conditional choices, scoped delegation, skips, and changed
 prerequisites. Record actual user choices and exclusions faithfully, reassess affected
 descendants, and recompute readiness. Select the next single ready decision to present,
 or proceed to completion review when the frontier is clear.

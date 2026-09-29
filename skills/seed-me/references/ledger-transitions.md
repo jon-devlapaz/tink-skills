@@ -37,6 +37,7 @@ requiredness depends on kind and status, not every field is mandatory.
 | `answer` | string or null | Required, nonempty when settled: actual user choice, evidence-derived fact, or delegated choice. Otherwise omit or use `null`. |
 | `authority` | string or null | Required when settled: `evidence` for facts; `user` or `delegated` for decisions. Otherwise omit or use `null`. |
 | `authority_source` | string or null | Required, nonempty when settled: actual user-answer/delegation reference or inspected fact source. Otherwise omit or use `null`. |
+| `contradicts` | string | Optional, facts only: the ID of a settled decision that this fact's evidence contradicts. Completion is blocked while that decision is still settled and unchanged since the fact was recorded; reopen or revise it, or supersede the fact with a reason. |
 | `reopen_reason` | string | Nonempty whenever present; required when a settled node becomes unresolved. Retained in history on subsequent changes. |
 | `defer_reason` | string | Required, nonempty when deferred: why this non-blocking concern was postponed. |
 | `revisit_condition` | string | Required, nonempty when deferred: concrete trigger for revisiting it. |

@@ -61,8 +61,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         self.assertNotIn(SKILL_DIR / "references" / "typesafe-protocol.md", links)
 
     def test_no_triage_machinery(self):
-        # Per-turn lens routing is allowed (see test_lens_call_present); the
-        # banned set is the triage/option/Noul machinery rejected by pilots.
+        # The banned set is the triage/option/Noul machinery rejected by pilots.
         # Revision note: narrowed from a blanket model-advice ban by explicit
         # operator direction; see run grill-epistemic dogfood battery report.
         for path in SKILL_DIR.rglob("*.md"):
@@ -73,19 +72,11 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                 with self.subTest(path=str(path), token=token):
                     self.assertNotIn(token, content)
 
-    def test_lens_call_present(self):
-        self.assertTrue((SKILL_DIR / "references" / "epistemic-lenses.md").is_file())
+    def test_lens_machinery_is_retired(self):
+        self.assertFalse((SKILL_DIR / "references" / "epistemic-lenses.md").exists())
         content = (SKILL_DIR / "SKILL.md").read_text()
-        for required in ("epistemic-lenses.md", "gating rule",
-                         "never a badge"):
-            with self.subTest(required=required):
-                self.assertIn(required, content)
-        lenses = (SKILL_DIR / "references" / "epistemic-lenses.md").read_text()
-        for required in ("Opt-in", "Authorization", "Preflight",
-                         "unresolved", "transcript is the receipt",
-                         "confidence", "0.50"):
-            with self.subTest(required=required):
-                self.assertIn(required, lenses)
+        self.assertNotIn("lens", content.lower())
+        self.assertNotIn("epistemic-lenses", (ROOT / "README.md").read_text())
 
     def test_braindump_entry_and_draft_step(self):
         content = (SKILL_DIR / "SKILL.md").read_text()
@@ -104,7 +95,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         skill = (SKILL_DIR / "SKILL.md").read_text()
         ledger = (SKILL_DIR / "references/ledger-transitions.md").read_text()
         for required in ("Question 1 of 3 ready", "Option A:", "Option B:", "Undo cost:",
-                         "My number to change", "never by \"Q3\"", "You are confirming",
+                         "My number to change", "Confidence:", "Would flip if:", "Not checked:", "contradicts: <node id>", "never by \"Q3\"", "You are confirming",
                          "I'll assume these unless you object", "`assumed`", "seed-contract.md",
                          "naming the three riskiest items"):
             with self.subTest(required=required):
