@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.10.0"
+  version: "1.11.0"
 ---
 
 # Seed Me
@@ -237,7 +237,9 @@ recovery, and verification. Also read the settled decisions against each other f
 rule that says "nothing first" beside an action marked "right away"), and check that the wording separates
 what was **decided** from what was **done**: never write "exported" or "deleted" for something nobody did.
 Every number in the seed contract comes from a command, not from a summary written by a model, including the
-operator's. Route newly identified blockers into the ledger and
+operator's. A factual claim about the machine or the repo may not settle a decision until you ran the check;
+otherwise record it as an assumption. For each word a check depends on (safe, done, duplicate), name one case
+that must fail it, and fix the definition if it would pass. Route newly identified blockers into the ledger and
 return to Step 2 immediately. Then run the close checklist once:
 
 - **What we haven't read:** name files or notes that are on disk but nobody opened
@@ -316,7 +318,7 @@ The displayed and saved revision must contain:
 - Problem statement: current behavior, evidence, and why it matters.
 - Proposed outcome: desired user-visible results and success criteria.
 - Acceptance criteria: standalone testable checks, each opening with one plain-English line,
-  then the exact command below it, each independently
+  then the exact command below it on a line starting `cmd:`, then `expect:` with the expected output, each independently
   verifiable without re-reading the interview. Every check copies a settled command as its exact command,
   with that command's settled expected output and where it runs — prose without those literals is
   not a criterion, and a substitute or extra command is not a check. This section is the executable core of the intake —

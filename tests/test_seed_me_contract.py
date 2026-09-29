@@ -79,6 +79,13 @@ class TestGrillMeWithJevContract(unittest.TestCase):
             with self.subTest(required=required):
                 self.assertIn(required, content)
 
+    def test_check_labels_guesses_and_definitions_rules(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        for required in ("line starting `cmd:`", "`expect:`", "may not settle a decision until you ran the check",
+                         "name one case\nthat must fail it"):
+            with self.subTest(required=required):
+                self.assertIn(required, skill)
+
     def test_single_presentation_template(self):
         content = (SKILL_DIR / "SKILL.md").read_text()
         self.assertEqual(len(re.findall(r"```text", content)), 1)
