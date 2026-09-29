@@ -141,6 +141,36 @@ class TestGrillMeWithJevContract(unittest.TestCase):
             with self.subTest(mode=required):
                 self.assertIn(required, text)
 
+    def test_unknowns_are_probed_mapped_and_taught_back(self):
+        skill = " ".join((SKILL_DIR / "SKILL.md").read_text().split())
+        lean = (SKILL_DIR / "references" / "lean-path.md").read_text()
+        for required in ("### Look for what we don't know we don't know", "Pre-mortem:", "Counter-example:",
+                         "Outside view:", "Probe: <question>", "Where we did not look:", "**Knowledge map**",
+                         "What we know, with proof", "What we know we don't know", "What is true but nobody has read",
+                         "What could surprise us", "teach-back", "re-check trigger"):
+            with self.subTest(required=required):
+                self.assertIn(required, skill)
+        for required in ("## Knowledge map", "Probe:", "Where we did not look:", "We would know we were wrong if:"):
+            with self.subTest(lean=required):
+                self.assertIn(required, lean)
+
+    def test_lessons_from_the_engram_runs_are_in_the_skill(self):
+        skill = " ".join((SKILL_DIR / "SKILL.md").read_text().split())
+        mode = " ".join((SKILL_DIR / "references" / "agent-mode.md").read_text().split())
+        lean = (SKILL_DIR / "references" / "lean-path.md").read_text()
+        for required in ("NOT independent: asked after the finding", "Recoverability (for any decision that deletes",
+                         "confirm it exists and holds what its name", "A name is a claim, not evidence",
+                         "read the settled decisions against each other for contradictions",
+                         "what was **decided** from what was **done**", "comes from a command, not from a summary"):
+            with self.subTest(required=required):
+                self.assertIn(required, skill)
+        for required in ("Defer what only a person knows", "Do not hand personal file names to the operator",
+                         "Check the operator's provenance claims", "Do not take its arithmetic",
+                         "weak evidence", "Ask open probes first"):
+            with self.subTest(mode=required):
+                self.assertIn(required, mode)
+        self.assertIn("recoverability probe", lean)
+
     def test_ledger_viewer_asset(self):
         viewer = SKILL_DIR / "assets" / "ledger-view.html"
         self.assertTrue(viewer.is_file())

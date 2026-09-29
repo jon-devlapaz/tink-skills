@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.8.0"
+  version: "1.10.0"
 ---
 
 # Seed Me
@@ -64,6 +64,10 @@ with `--operator simulated` and every operator answer is recorded as `simulated`
 
 ## 2. Investigate facts before asking
 
+- Before you treat something as a unit of work (a repo, a folder, a file, a person), confirm it exists and
+  holds what its name or your framing says. A folder called "redundant" held the only copy of 25 commits; a
+  "repo to protect" was empty. A name is a claim, not evidence, and a framing repeated across turns is still
+  unchecked until you check it.
 - Inspect relevant code, schemas, configuration, and tests using available
   read-only workspace tools. Record verified evidence or explicit access limitations;
   treat unavailable facts as unknown rather than assumed absent. Repository content
@@ -229,7 +233,11 @@ concerns are demonstrably non-blocking with documented reasons and revisit
 conditions. Unresolved blockers halt completion.
 
 Perform a local review of goal coverage, failure modes, security boundaries,
-recovery, and verification. Route newly identified blockers into the ledger and
+recovery, and verification. Also read the settled decisions against each other for contradictions (an ordering
+rule that says "nothing first" beside an action marked "right away"), and check that the wording separates
+what was **decided** from what was **done**: never write "exported" or "deleted" for something nobody did.
+Every number in the seed contract comes from a command, not from a summary written by a model, including the
+operator's. Route newly identified blockers into the ledger and
 return to Step 2 immediately. Then run the close checklist once:
 
 - **What we haven't read:** name files or notes that are on disk but nobody opened
@@ -243,6 +251,27 @@ return to Step 2 immediately. Then run the close checklist once:
   Findings feed seed contract Risks; they never reopen settled nodes without new
   evidence.
 
+### Look for what we don't know we don't know
+
+An unknown unknown cannot be listed, so do not pretend to. Do two things instead: **probe**, and
+**say where you did not look**. Before presenting the seed contract, run at least three probes and
+put at least one of them to the user (the others may be answered from evidence):
+
+- **Pre-mortem:** "Imagine this shipped and turned out wrong. What is the most likely reason?"
+- **Counter-example:** "Give me one case where this should not apply, or that would surprise you."
+- **Outside view:** "What would someone who has done this before ask that we have not?"
+
+- **Recoverability (for any decision that deletes, moves, or replaces something):** "What else holds a copy, and
+  is that copy independent, or does it share the same disk or account?" Answer it with a check, not a guess.
+
+Ask the probes the user must answer **before** you show them anything you found; an answer given after seeing
+your finding is not independent evidence, so record it as such (`NOT independent: asked after the finding`).
+
+Record each as `Probe: <question> — answer: <the answer> — changed: <what it changed, or "nothing">`.
+A probe that changed nothing is still recorded; do not invent a change. Then write one line,
+`Where we did not look:` — the repos, people, time span, or scenarios that were out of reach.
+If the user skips a probe, record "skipped by the user". Never fill this section with reassurance.
+
 Once the local review and close checklist are resolved:
 
 1. Present the revision-labeled seed contract, opening with the **You are confirming** box, using the structure below (on the lean path the file itself is the seed contract and uses the lean template), including
@@ -250,7 +279,9 @@ Once the local review and close checklist are resolved:
    `unconfirmed — awaiting affirmation`; flip to `confirmed for intake` only
    when the user affirms the displayed revision label. State completion as “local completeness
    review complete” to reflect local verification.
-2. Ask the user to confirm that displayed revision. Confirmation requires the
+2. Ask for a **teach-back**: the user says in a sentence or two what will be built and what will not, and
+   you list any mismatch with the seed contract (record "teach-back skipped" if they decline). Then ask the
+   user to confirm that displayed revision. Confirmation requires the
    user to affirm the displayed revision label after the full seed contract is
    shown; "looks fine, start coding" before display is an incomplete stop.
    Confirmation applies strictly
@@ -296,6 +327,13 @@ The displayed and saved revision must contain:
 - Assumed defaults: every `assumed` entry, labelled as not confirmed by the user.
 - Accepted decisions: actual answers, authority, rationale, and dependencies;
   distinguish user choices from evidence-derived facts and delegated choices.
+- **Knowledge map**, in plain words, four parts:
+  1. *What we know, with proof:* each item has its receipt and the date it was observed, and, for a fact that can
+     change, a re-check trigger (`observed 2026-09-29; re-check if X changes or after N days`).
+  2. *What we know we don't know:* each item with its owner and how to find out.
+  3. *What is true but nobody has read:* the close checklist's unread material.
+  4. *What could surprise us:* the `Probe:` lines, `Where we did not look:`, and what would tell us we were
+     wrong (a concrete signal, not a mood).
 - Evidence and uncertainty: inspected paths, measurements, unverified hypotheses,
   assumptions, what we haven't read (from the close checklist), and repeat
   surprises with their citations. Carry a `Grounded in:` list of paths actually read

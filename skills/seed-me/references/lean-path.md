@@ -33,7 +33,9 @@ any time. Switching to full publishes this file's items as the first ledger upda
    the case against the suggestion, and instinct first when an option is hard to undo).
 6. When later evidence contradicts a decision, edit the decision and note why in the item; do not
    leave both standing.
-7. Accepting wording is not approval to implement. Confirmation is the user setting `status: confirmed`.
+7. Before confirming, ask the open probes before showing any finding, and for any deletion ask the recoverability probe. Run three probes (a pre-mortem, a counter-example, an outside view), put at least one to the
+   user, and fill the Knowledge map honestly; ask for a one-sentence teach-back.
+8. Accepting wording is not approval to implement. Confirmation is the user setting `status: confirmed`.
 
 ## Template
 
@@ -70,8 +72,19 @@ A1 [user|agent] <plain-English line>
 ## Open questions
 Q1 NEXT [agent] <title> — owner: <who decides> — why it matters: ...
 
+## Knowledge map
+- **What we know, with proof:** E1, E2 ... each with the date observed and, if it can change, `re-check if ...`.
+- **What we know we don't know:** each item with an owner and how to find out.
+- **True but nobody has read:** ...
+- **What could surprise us:**
+  Probe: <question> — answer: <answer> — changed: <what it changed, or "nothing">
+  Probe: ...
+  Probe: ...
+  Where we did not look: <repos, people, time span, scenarios>
+  We would know we were wrong if: <a concrete signal>
+
 ## Evidence
-E1 [evidence] "<quoted line>" (<path>:<line>)
+E1 [evidence] "<quoted line>" (<path>:<line>) — observed YYYY-MM-DD; re-check if <trigger>
 ```
 
 The file must still open with **You are confirming** and carry executable acceptance checks: the

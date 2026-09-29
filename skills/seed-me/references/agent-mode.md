@@ -79,6 +79,20 @@ Rules for an engram operator, on top of the ones above:
   are not that person's endorsement and not the idea owner's decisions.
 - Report which engram was used at the top of the simulated seed contract.
 
+## Lessons from the first engram runs (rules)
+- **Defer what only a person knows.** If the deciding fact is something only the human owner has (what their notes
+  contain, whether they need an old file), the operator must hand it back instead of guessing. Record it as a
+  `deferred` item owned by "the human owner", with a `revisit_condition` that names the moment it must be answered.
+  A simulated session can end with such an item open; it never fabricates the answer.
+- **Do not hand personal file names to the operator.** Give types, sizes, counts, and dates. It can decide from those.
+- **Check the operator's provenance claims.** If it calls something "documented", look for it in its persona
+  material; record an unsupported label as an inference, not as a documented position.
+- **Do not take its arithmetic or its "done" claims.** Operator summaries have miscounted and have described a
+  decision as an action already taken. Recompute every figure in code and keep "decided" apart from "done".
+- **A teach-back from an agent that can see the contract is weak evidence.** Record it as such, and note any real
+  mismatch it finds; a human's own-words teach-back is still owed before adoption.
+- **Ask open probes first.** Put the pre-mortem and counter-example to the operator before revealing any finding.
+
 ## The interviewer
 
 - Record each operator reply as `authority: simulated`, with `authority_source` quoting the reply
