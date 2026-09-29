@@ -73,7 +73,6 @@ jobs:
       - name: Run browser tests (a skip is a failure)
         run: |
           set -o pipefail
-          python -m pip uninstall -y playwright  # TEMPORARY: prove a broken browser setup goes red
           python -m unittest discover -s tests -p 'test_seed_me_viewer.py' -v 2>&1 | tee browser-tests.log
           if grep -Eq '\.\.\. skipped|skipped=' browser-tests.log; then
             echo "::error::Browser tests were skipped; SEED_ME_REQUIRE_BROWSER=1 forbids that"
