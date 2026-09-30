@@ -117,13 +117,13 @@
 </header>
 <section id="now" aria-label="Where things stand">
   <div id="call"></div>
+  <h2 id="open-h" hidden>Still open</h2>
+  <ul id="open-list" class="items"></ul>
   <h2 id="settled-h" hidden>Settled</h2>
   <ul id="settled-list" class="items"></ul>
   <h2 id="facts-h" hidden>Facts checked</h2>
   <ul id="facts-list" class="items"></ul>
   <details id="settled-more" hidden><summary id="settled-more-sum"></summary><ul id="settled-more-list" class="items"></ul></details>
-  <h2 id="open-h" hidden>Still open</h2>
-  <ul id="open-list" class="items"></ul>
   <h2 id="assumed-h" hidden>I'll assume these unless you object</h2>
   <ul id="assumed-list" class="items"></ul>
   <h2 id="deferred-h" hidden>Deferred</h2>
@@ -319,8 +319,10 @@ function contradictions() {
 function reviewReady() {
   return LEDGER.status === 'active' && Boolean(LEDGER.origin) && !LEDGER.nodes.some(n => n.status === 'unresolved') && !contradictions().length;
 }
+function standing(node) { return node.authority === 'delegated' && String(node.authority_source || '').toLowerCase().startsWith('standing delegation'); }
 function who(node) {
-  const label = { user: 'you decided', delegated: 'you accepted the agent\'s suggestion', evidence: 'fact checked', simulated: 'simulated answer (no human)' }[node.authority] || node.authority;
+  const label = standing(node) ? 'decided under your standing delegation'
+    : { user: 'you decided', delegated: 'you accepted the agent\'s suggestion', evidence: 'fact checked', simulated: 'simulated answer (no human)' }[node.authority] || node.authority;
   const badge = element('span', label);
   badge.className = 'badge ' + node.authority;
   return badge;
@@ -471,13 +473,14 @@ function render() {
     [count('superseded'), count('superseded') + ' superseded'], [facts, tally(facts, 'fact')]].filter(([n]) => n > 0).map(([, t]) => t);
   el('counts').textContent = parts.length ? parts.join(' · ') : 'Nothing recorded yet';
   const settledDecisions = decisions.filter(n => n.status === 'settled');
-  const accepted = settledDecisions.filter(n => n.authority === 'delegated').length;
+  const underStanding = settledDecisions.filter(standing).length;
+  const accepted = settledDecisions.filter(n => n.authority === 'delegated' && !standing(n)).length;
   const chosen = settledDecisions.filter(n => n.authority === 'user').length;
   el('accept-summary').hidden = !settledDecisions.length;
   const simulatedCount = settledDecisions.filter(n => n.authority === 'simulated').length;
   el('accept-summary').textContent = LEDGER.operator === 'simulated'
     ? `Simulated answers: ${simulatedCount} · Human answers: 0`
-    : `Accepted as suggested: ${accepted} · Chosen by you: ${chosen}`;
+    : `Accepted as suggested: ${accepted} · Chosen by you: ${chosen}` + (underStanding ? ` · Under standing delegation: ${underStanding}` : '');
   const current = LEDGER.nodes.find(n => n.id === LEDGER.current_question);
   el('current').textContent = current ? `Current question: ${current.question || current.label || current.id}` : 'No question currently presented.';
   const pill = el('status-pill');

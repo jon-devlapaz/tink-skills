@@ -360,6 +360,65 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#settled-list")).to_contain_text("you accepted the agent's suggestion")
         self.assertEqual(self.errors, [])
 
+    def test_standing_delegation_is_not_shown_as_the_user_accepting_a_suggestion(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question=None)
+        ordinary = {**node("b", parents=["goal"], answer="B"), "authority": "delegated",
+                    "authority_source": "chat: your arrow", "evidence": ["x.py:1"]}
+        standing = {**node("c", parents=["goal"], answer="C"), "authority": "delegated",
+                    "authority_source": "standing delegation (human opt-in); engram lenses: pg, ka", "evidence": ["lens said C"]}
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A"), ordinary, standing]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#settled-list")).to_contain_text("you accepted the agent's suggestion")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("decided under your standing delegation")
+        self.expect(self.page.locator("#accept-summary")).to_have_text(
+            "Accepted as suggested: 1 · Chosen by you: 1 · Under standing delegation: 1")
+        self.assertEqual(self.page.locator("#settled-list .badge.delegated").count(), 2)
+        self.assertEqual(self.errors, [])
+
+    def test_summary_is_unchanged_without_a_standing_delegation(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question=None)
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A")]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#accept-summary")).to_have_text("Accepted as suggested: 0 · Chosen by you: 1")
+        self.assertEqual(self.errors, [])
+
+    def test_questions_waiting_for_the_user_come_before_settled_work(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A"),
+                          node("f1", "fact", answer="Fact one"),
+                          {**node("now", parents=["goal"]), "question": "Now?"},
+                          {**node("later", parents=["goal"]), "question": "Later?"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        order = self.page.evaluate("""() => {
+            const pos = id => document.getElementById(id).compareDocumentPosition.bind(document.getElementById(id));
+            const before = (a, b) => Boolean(document.getElementById(a).compareDocumentPosition(document.getElementById(b)) & Node.DOCUMENT_POSITION_FOLLOWING);
+            return {call: before('call', 'open-list'), open: before('open-list', 'settled-list'), facts: before('open-list', 'facts-list')};
+        }""")
+        self.assertEqual(order, {"call": True, "open": True, "facts": True})
+        self.assertEqual(self.errors, [])
+
+    def test_phone_widths_never_scroll_sideways(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Take every active repo under ~/dev/active to the git-golden state, researching each branch and recommending what can go", origin="goal", current_question="now")
+        long_rec = "Both from one scan: the HTML page carries the design, the terminal is the baseline, with a-very-long-unbroken-token-" + "x" * 60
+        state["nodes"] = [node("goal", answer=state["goal"]), node("a", parents=["goal"], answer="A " + "word " * 40),
+                          {**node("now", parents=["goal"]), "question": "Terminal, HTML or both?", "recommendation": long_rec}]
+        self.publish(state)
+        for width in (390, 360, 320):
+            with self.subTest(width=width):
+                self.page.set_viewport_size({"width": width, "height": 844})
+                self.page.goto(self.url)
+                self.expect(self.page.locator("#call")).to_contain_text("Terminal, HTML or both?")
+                scroll = self.page.evaluate("document.documentElement.scrollWidth")
+                self.assertLessEqual(scroll, width)
+        self.assertEqual(self.errors, [])
+
     def test_facts_are_a_separate_group_and_counts_agree(self):
         state = session.editable(session.load(self.directory))
         state.update(goal="Ship it", origin="goal", current_question="now")
