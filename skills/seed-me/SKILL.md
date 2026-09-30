@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.11.0"
+  version: "1.12.0"
 ---
 
 # Seed Me
@@ -61,6 +61,14 @@ with `--operator simulated` and every operator answer is recorded as `simulated`
 `delegated`; the result is saved as `seed-contract.simulated.md` with the status
 `simulated — not confirmed by a human`; and a simulated run never authorizes implementation. The operator persona can be an engram (a folder of persona files): build its brief with
 `scripts/engram_brief.py` and record the persona as a simulation, never as the real person.
+
+### Opt-in: engram council
+
+The council is off by default. Only when the human asks for it, naming the engrams and stating a scope of delegation, engram lenses
+advise on each ready decision and the ones that do not change the hunch's meaning settle under the human's standing
+delegation; the rest surface as usual. Hard-to-undo and ungrounded decisions always surface. The lenses are simulations and
+never the authority, and the human still confirms the seed contract. Follow
+[references/engram-council.md](references/engram-council.md) and `scripts/engram_council.py`.
 
 ## 2. Investigate facts before asking
 
