@@ -285,6 +285,62 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.assertTrue(self.page.evaluate("cy.getElementById('button-label').hasClass('settled')"))
         self.assertEqual(self.errors, [])
 
+    def test_graph_legend_shows_every_visual_encoding_and_matches_the_real_nodes(self):
+        try:
+            library = pinned_cytoscape()
+        except OSError as error:
+            if REQUIRE_BROWSER:
+                raise
+            self.skipTest(f"Could not fetch the pinned Cytoscape file ({first_line(error)})")
+        self.context.unroute("**/cytoscape.min.js")
+        self.context.route("**/cytoscape.min.js", lambda route: route.fulfill(path=library, content_type="application/javascript"))
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="d2")
+        deferred = {**node("d4", parents=["d1"]), "status": "deferred", "defer_reason": "later", "revisit_condition": "after launch"}
+        superseded = {**node("d5", parents=["d1"]), "status": "superseded"}
+        state["nodes"] = [node("goal", answer="Ship it"), node("f", "fact", answer="A fact"),
+                          node("d1", parents=["f"], answer="Settled answer"),
+                          {**node("d2", parents=["d1"]), "question": "Ready?"},
+                          node("d3", parents=["d2"]), deferred, superseded]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.page.wait_for_function("cy !== null && cy.nodes().length === 6")
+        self.expect(self.page.locator("#legend")).to_be_visible()
+        keys = self.page.evaluate("[...document.querySelectorAll('#legend [data-legend]')].map(e => e.dataset.legend)")
+        self.assertEqual(sorted(keys), sorted(["settled", "ready", "parked", "deferred", "superseded", "current", "decision", "fact", "edge"]))
+        for key in keys:
+            self.assertTrue(self.page.evaluate("key => document.querySelector(`#legend [data-legend=${key}]`).closest('li').textContent.trim().length > 6", key), key)
+        colors = self.page.evaluate("""() => {
+            const digits = v => (String(v).match(/\\d+/g) || []).slice(0, 3).join(',');
+            const swatch = k => getComputedStyle(document.querySelector(`#legend [data-legend=${k}]`)).backgroundColor;
+            const node = id => cy.getElementById(id).style('background-color');
+            return {settled: [digits(swatch('settled')), digits(node('d1'))], ready: [digits(swatch('ready')), digits(node('d2'))],
+                    parked: [digits(swatch('parked')), digits(node('d3'))], deferred: [digits(swatch('deferred')), digits(node('d4'))]};
+        }""")
+        for key, (legend, real) in colors.items():
+            self.assertEqual(legend, real, key)
+        shapes = self.page.evaluate("""() => ({
+            decision: cy.getElementById('d1').style('shape'), fact: cy.getElementById('f').style('shape'),
+            decisionRadius: getComputedStyle(document.querySelector('#legend [data-legend=decision]')).borderRadius,
+            factRadius: getComputedStyle(document.querySelector('#legend [data-legend=fact]')).borderRadius,
+            supersededStyle: getComputedStyle(document.querySelector('#legend [data-legend=superseded]')).borderTopStyle,
+            currentBorder: getComputedStyle(document.querySelector('#legend [data-legend=current]')).borderTopColor})""")
+        self.assertEqual(shapes["decision"], "round-rectangle")
+        self.assertEqual(shapes["fact"], "ellipse")
+        self.assertNotIn("50%", shapes["decisionRadius"])
+        self.assertIn("50%", shapes["factRadius"])
+        self.assertEqual(shapes["supersededStyle"], "dashed")
+        border = self.page.evaluate("""() => {
+            const digits = v => (String(v).match(/\\d+/g) || []).slice(0, 3).join(',');
+            return [digits(getComputedStyle(document.querySelector('#legend [data-legend=superseded]')).borderTopColor),
+                    digits(cy.getElementById('d5').style('border-color')), cy.getElementById('d5').style('border-style')];
+        }""")
+        self.assertEqual(border[0], border[1], "the legend's superseded border must be the graph node's border")
+        self.assertEqual(border[2], "dashed")
+        self.assertEqual(shapes["currentBorder"], "rgb(163, 75, 227)")
+        self.expect(self.page.locator("#legend [data-legend=edge]").locator("xpath=ancestor::li")).to_contain_text("waits")
+        self.assertEqual(self.errors, [])
+
     def test_graph_is_hidden_when_every_edge_only_points_at_the_goal(self):
         state = session.editable(session.load(self.directory))
         state.update(goal="Ship it", origin="goal", current_question="first")

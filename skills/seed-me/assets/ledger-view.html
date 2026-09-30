@@ -91,6 +91,15 @@
   #cy { height: 100%; min-height: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px 0 0 12px; }
   #detail { border: 1px solid var(--line); border-left: 0; border-radius: 0 12px 12px 0; padding: var(--s4); overflow-wrap: anywhere; overflow-y: auto; min-height: 0; background: var(--surface); }
   #legend { font-size: 12px; color: var(--muted); padding-block: var(--s3); }
+  #legend .legend-h { margin: 0 0 var(--s2); font-weight: 600; color: var(--fg, inherit); }
+  #legend .legend-note { margin: var(--s2) 0 0; }
+  #legend ul { list-style: none; margin: 0 0 var(--s2); padding: 0; display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); }
+  #legend li { display: inline-flex; align-items: center; gap: 6px; }
+  #legend .sw { display: inline-block; width: 22px; height: 12px; border-radius: 4px; flex: none; border: 2px solid transparent; box-sizing: border-box; }
+  #legend .sw-decision { background: transparent; border: 2px solid var(--muted); border-radius: 4px; }
+  #legend .sw-fact { background: transparent; border: 2px solid var(--muted); border-radius: 50%; }
+  #legend .sw-current { background: transparent; border-width: 3px; border-style: solid; }
+  #legend .edge-sample { width: 22px; text-align: center; flex: none; }
   #settled-more { margin-top: var(--s2); font-size: 14px; color: var(--muted); }
   #settled-more > summary { padding: var(--s2) 0; }
   #meta-foot { font-size: 12px; color: var(--muted); padding-block: var(--s4) var(--s6); }
@@ -137,7 +146,23 @@
   <div id="cy" aria-label="Decision dependency graph"></div>
   <aside id="detail"><h2>Node detail</h2><p>Select a node to inspect it.</p></aside>
 </main>
-<div id="legend">Purple outline: current question · amber: ready · green: settled · gray: parked · blue: deferred · dashed: superseded. Edges are prerequisites only. Answers stay in chat.</div>
+<div id="legend" role="group" aria-label="How to read the graph">
+  <p class="legend-h">How to read the graph</p>
+  <ul class="legend-row" aria-label="Fill colour is the status">
+    <li><span class="sw" data-legend="settled"></span>Settled: decided</li>
+    <li><span class="sw" data-legend="ready"></span>Ready: can be answered now</li>
+    <li><span class="sw" data-legend="parked"></span>Parked: waiting on something earlier</li>
+    <li><span class="sw" data-legend="deferred"></span>Deferred: set aside on purpose</li>
+    <li><span class="sw" data-legend="superseded"></span>Superseded: replaced (dashed)</li>
+  </ul>
+  <ul class="legend-row" aria-label="Shape, outline and arrows">
+    <li><span class="sw sw-decision" data-legend="decision"></span>Rounded box: a decision</li>
+    <li><span class="sw sw-fact" data-legend="fact"></span>Oval: a fact that was checked</li>
+    <li><span class="sw sw-current" data-legend="current"></span>Purple outline: the question being asked now</li>
+    <li><span class="edge-sample" data-legend="edge" aria-hidden="true">→</span>Arrow A → B: B waits for A</li>
+  </ul>
+  <p class="legend-note">The goal is not drawn; every item serves it. Click a node for its answer, source and history.</p>
+</div>
 <div id="meta-foot"><span id="meta"></span></div>
 <script id="ledger-data" type="application/json">
 {"__LEDGER_JSON__":true,"revision":0,"goal":null,"origin":null,"frontier":[],"nodes":[]}
@@ -260,6 +285,18 @@ function fallback() {
   el('cdn-banner').hidden = false;
   el('cdn-banner').textContent = 'Graph unavailable. The live text view below includes every node, dependency, receipt, and prior answer.';
 }
+const PALETTE = { settled: '#287b53', ready: '#c80', parked: '#999', deferred: '#36c', superseded: '#fff', supersededBorder: '#777', current: '#a34be3', origin: '#111' };
+function paintLegend() {
+  for (const key of ['settled', 'ready', 'parked', 'deferred', 'superseded']) {
+    const swatch = document.querySelector(`#legend [data-legend="${key}"]`);
+    if (swatch) swatch.style.background = PALETTE[key];
+  }
+  const superseded = document.querySelector('#legend [data-legend="superseded"]');
+  if (superseded) { superseded.style.borderStyle = 'dashed'; superseded.style.borderColor = PALETTE.supersededBorder; }
+  const current = document.querySelector('#legend [data-legend="current"]');
+  if (current) current.style.borderColor = PALETTE.current;
+}
+paintLegend();
 function graph() {
   if (typeof cytoscape === 'undefined') { fallback(); return; }
   el('cy').hidden = false;
@@ -278,13 +315,13 @@ function graph() {
       { selector: 'node', style: { label: 'data(label)', 'text-valign': 'center', 'text-halign': 'center',
         width: 130, height: 55, 'font-size': 12, 'text-wrap': 'wrap', 'text-max-width': 120 } },
       { selector: 'node[kind = "decision"]', style: { shape: 'round-rectangle' } },
-      { selector: '.settled', style: { 'background-color': '#287b53', color: '#fff' } },
-      { selector: '.ready', style: { 'background-color': '#c80', color: '#111' } },
-      { selector: '.parked', style: { 'background-color': '#999', color: '#111' } },
-      { selector: '.deferred', style: { 'background-color': '#36c', color: '#fff' } },
-      { selector: '.superseded', style: { 'background-color': '#fff', color: '#555', 'border-style': 'dashed', 'border-width': 2 } },
+      { selector: '.settled', style: { 'background-color': PALETTE.settled, color: '#fff' } },
+      { selector: '.ready', style: { 'background-color': PALETTE.ready, color: '#111' } },
+      { selector: '.parked', style: { 'background-color': PALETTE.parked, color: '#111' } },
+      { selector: '.deferred', style: { 'background-color': PALETTE.deferred, color: '#fff' } },
+      { selector: '.superseded', style: { 'background-color': PALETTE.superseded, color: '#555', 'border-style': 'dashed', 'border-width': 2, 'border-color': PALETTE.supersededBorder } },
       { selector: '.origin', style: { 'border-width': 3, 'border-color': '#111' } },
-      { selector: '.current', style: { 'border-width': 5, 'border-color': '#a34be3' } },
+      { selector: '.current', style: { 'border-width': 5, 'border-color': PALETTE.current } },
       { selector: 'edge', style: { width: 2, 'line-color': '#888', 'target-arrow-color': '#888', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier' } }
     ]
   });
