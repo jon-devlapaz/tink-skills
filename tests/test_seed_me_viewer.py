@@ -285,6 +285,62 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.assertTrue(self.page.evaluate("cy.getElementById('button-label').hasClass('settled')"))
         self.assertEqual(self.errors, [])
 
+    def test_graph_legend_shows_every_visual_encoding_and_matches_the_real_nodes(self):
+        try:
+            library = pinned_cytoscape()
+        except OSError as error:
+            if REQUIRE_BROWSER:
+                raise
+            self.skipTest(f"Could not fetch the pinned Cytoscape file ({first_line(error)})")
+        self.context.unroute("**/cytoscape.min.js")
+        self.context.route("**/cytoscape.min.js", lambda route: route.fulfill(path=library, content_type="application/javascript"))
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="d2")
+        deferred = {**node("d4", parents=["d1"]), "status": "deferred", "defer_reason": "later", "revisit_condition": "after launch"}
+        superseded = {**node("d5", parents=["d1"]), "status": "superseded"}
+        state["nodes"] = [node("goal", answer="Ship it"), node("f", "fact", answer="A fact"),
+                          node("d1", parents=["f"], answer="Settled answer"),
+                          {**node("d2", parents=["d1"]), "question": "Ready?"},
+                          node("d3", parents=["d2"]), deferred, superseded]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.page.wait_for_function("cy !== null && cy.nodes().length === 6")
+        self.expect(self.page.locator("#legend")).to_be_visible()
+        keys = self.page.evaluate("[...document.querySelectorAll('#legend [data-legend]')].map(e => e.dataset.legend)")
+        self.assertEqual(sorted(keys), sorted(["settled", "ready", "parked", "deferred", "superseded", "current", "decision", "fact", "edge"]))
+        for key in keys:
+            self.assertTrue(self.page.evaluate("key => document.querySelector(`#legend [data-legend=${key}]`).closest('li').textContent.trim().length > 6", key), key)
+        colors = self.page.evaluate("""() => {
+            const digits = v => (String(v).match(/\\d+/g) || []).slice(0, 3).join(',');
+            const swatch = k => getComputedStyle(document.querySelector(`#legend [data-legend=${k}]`)).backgroundColor;
+            const node = id => cy.getElementById(id).style('background-color');
+            return {settled: [digits(swatch('settled')), digits(node('d1'))], ready: [digits(swatch('ready')), digits(node('d2'))],
+                    parked: [digits(swatch('parked')), digits(node('d3'))], deferred: [digits(swatch('deferred')), digits(node('d4'))]};
+        }""")
+        for key, (legend, real) in colors.items():
+            self.assertEqual(legend, real, key)
+        shapes = self.page.evaluate("""() => ({
+            decision: cy.getElementById('d1').style('shape'), fact: cy.getElementById('f').style('shape'),
+            decisionRadius: getComputedStyle(document.querySelector('#legend [data-legend=decision]')).borderRadius,
+            factRadius: getComputedStyle(document.querySelector('#legend [data-legend=fact]')).borderRadius,
+            supersededStyle: getComputedStyle(document.querySelector('#legend [data-legend=superseded]')).borderTopStyle,
+            currentBorder: getComputedStyle(document.querySelector('#legend [data-legend=current]')).borderTopColor})""")
+        self.assertEqual(shapes["decision"], "round-rectangle")
+        self.assertEqual(shapes["fact"], "ellipse")
+        self.assertNotIn("50%", shapes["decisionRadius"])
+        self.assertIn("50%", shapes["factRadius"])
+        self.assertEqual(shapes["supersededStyle"], "dashed")
+        border = self.page.evaluate("""() => {
+            const digits = v => (String(v).match(/\\d+/g) || []).slice(0, 3).join(',');
+            return [digits(getComputedStyle(document.querySelector('#legend [data-legend=superseded]')).borderTopColor),
+                    digits(cy.getElementById('d5').style('border-color')), cy.getElementById('d5').style('border-style')];
+        }""")
+        self.assertEqual(border[0], border[1], "the legend's superseded border must be the graph node's border")
+        self.assertEqual(border[2], "dashed")
+        self.assertEqual(shapes["currentBorder"], "rgb(163, 75, 227)")
+        self.expect(self.page.locator("#legend [data-legend=edge]").locator("xpath=ancestor::li")).to_contain_text("waits")
+        self.assertEqual(self.errors, [])
+
     def test_graph_is_hidden_when_every_edge_only_points_at_the_goal(self):
         state = session.editable(session.load(self.directory))
         state.update(goal="Ship it", origin="goal", current_question="first")
@@ -358,6 +414,65 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#status-pill")).to_have_text("Ready for review")
         self.expect(self.page.locator("#accept-summary")).to_have_text("Accepted as suggested: 1 · Chosen by you: 1")
         self.expect(self.page.locator("#settled-list")).to_contain_text("you accepted the agent's suggestion")
+        self.assertEqual(self.errors, [])
+
+    def test_standing_delegation_is_not_shown_as_the_user_accepting_a_suggestion(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question=None)
+        ordinary = {**node("b", parents=["goal"], answer="B"), "authority": "delegated",
+                    "authority_source": "chat: your arrow", "evidence": ["x.py:1"]}
+        standing = {**node("c", parents=["goal"], answer="C"), "authority": "delegated",
+                    "authority_source": "standing delegation (human opt-in); engram lenses: pg, ka", "evidence": ["lens said C"]}
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A"), ordinary, standing]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#settled-list")).to_contain_text("you accepted the agent's suggestion")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("decided under your standing delegation")
+        self.expect(self.page.locator("#accept-summary")).to_have_text(
+            "Accepted as suggested: 1 · Chosen by you: 1 · Under standing delegation: 1")
+        self.assertEqual(self.page.locator("#settled-list .badge.delegated").count(), 2)
+        self.assertEqual(self.errors, [])
+
+    def test_summary_is_unchanged_without_a_standing_delegation(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question=None)
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A")]
+        self.publish(state)
+        self.page.goto(self.url)
+        self.expect(self.page.locator("#accept-summary")).to_have_text("Accepted as suggested: 0 · Chosen by you: 1")
+        self.assertEqual(self.errors, [])
+
+    def test_questions_waiting_for_the_user_come_before_settled_work(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="now")
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A"),
+                          node("f1", "fact", answer="Fact one"),
+                          {**node("now", parents=["goal"]), "question": "Now?"},
+                          {**node("later", parents=["goal"]), "question": "Later?"}]
+        self.publish(state)
+        self.page.goto(self.url)
+        order = self.page.evaluate("""() => {
+            const pos = id => document.getElementById(id).compareDocumentPosition.bind(document.getElementById(id));
+            const before = (a, b) => Boolean(document.getElementById(a).compareDocumentPosition(document.getElementById(b)) & Node.DOCUMENT_POSITION_FOLLOWING);
+            return {call: before('call', 'open-list'), open: before('open-list', 'settled-list'), facts: before('open-list', 'facts-list')};
+        }""")
+        self.assertEqual(order, {"call": True, "open": True, "facts": True})
+        self.assertEqual(self.errors, [])
+
+    def test_phone_widths_never_scroll_sideways(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Take every active repo under ~/dev/active to the git-golden state, researching each branch and recommending what can go", origin="goal", current_question="now")
+        long_rec = "Both from one scan: the HTML page carries the design, the terminal is the baseline, with a-very-long-unbroken-token-" + "x" * 60
+        state["nodes"] = [node("goal", answer=state["goal"]), node("a", parents=["goal"], answer="A " + "word " * 40),
+                          {**node("now", parents=["goal"]), "question": "Terminal, HTML or both?", "recommendation": long_rec}]
+        self.publish(state)
+        for width in (390, 360, 320):
+            with self.subTest(width=width):
+                self.page.set_viewport_size({"width": width, "height": 844})
+                self.page.goto(self.url)
+                self.expect(self.page.locator("#call")).to_contain_text("Terminal, HTML or both?")
+                scroll = self.page.evaluate("document.documentElement.scrollWidth")
+                self.assertLessEqual(scroll, width)
         self.assertEqual(self.errors, [])
 
     def test_facts_are_a_separate_group_and_counts_agree(self):
