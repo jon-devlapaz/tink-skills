@@ -5,6 +5,7 @@ ledger-view.html; completing a session requires a viewer record (viewer.py was s
 --no-viewer reason; `status` tells an agent in one call whether the viewer is live."""
 import json
 from pathlib import Path
+import socket
 import subprocess
 import sys
 import tempfile
@@ -116,6 +117,19 @@ class TestViewerEnforced(unittest.TestCase):
         time.sleep(0.2)
         self.assertEqual(json.loads(run(SESSION, "status", self.directory).stdout)["viewer"], "started earlier, not running now")
 
+    def test_a_viewer_that_cannot_open_a_port_says_what_to_do_instead(self):
+        self.publish_goal()
+        taken = socket.socket()
+        taken.bind(("127.0.0.1", 0))
+        taken.listen()
+        self.addCleanup(taken.close)
+        failed = run(VIEWER, self.directory, "--port", taken.getsockname()[1])
+        self.assertEqual(failed.returncode, 1)
+        for needed in ("could not open a local port", "--no-viewer", "ledger-view.html"):
+            self.assertIn(needed, failed.stderr)
+        self.assertNotEqual(failed.stderr.strip(), "[Errno 48] Address already in use")
+        self.assertFalse((self.directory / "viewer.json").exists(), "a viewer that never started leaves no record")
+
     def test_status_is_one_compact_answer_for_the_agent(self):
         self.publish_goal()
         out = run(SESSION, "status", self.directory)
@@ -143,6 +157,13 @@ class TestSkillTextMatchesTheEnforcement(unittest.TestCase):
         full = self.skill.split("### Size gate", 1)[1]
         self.assertIn("ledger-transitions.md", full)
         self.assertLess(self.skill.index("### Size gate"), self.skill.index("ledger-transitions.md", self.skill.index("### Size gate")))
+
+    def test_a_check_for_something_not_built_yet_may_be_provisional_and_does_not_block(self):
+        rule = self.skill.split("- Acceptance criteria:", 1)[1].split("- Affected users and systems", 1)[0]
+        for needed in ("does not exist yet", "provisional:", "do not block confirmation", "never reported as verification"):
+            self.assertIn(needed, rule)
+        self.assertIn("downstream stages consume it verbatim", rule, "the executable-core rule for existing interfaces stays")
+        self.assertIn("provisional:", self.lean.split("## Acceptance checks", 1)[1])
 
     def test_lean_questions_may_be_plain_when_no_real_choice_exists(self):
         self.assertIn("factual", self.lean.split("5. One question at a time", 1)[1].split("6.", 1)[0])

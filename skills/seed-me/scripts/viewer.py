@@ -55,7 +55,13 @@ def make_server(directory, port=0):
         def log_message(self, format, *args):
             pass
 
-    return ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    try:
+        return ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    except OSError as error:
+        raise ValueError(
+            f"could not open a local port ({error}). The ledger is safe and a current view is saved at "
+            f"{directory / 'ledger-view.html'}. If this host forbids local servers, finish the session with "
+            "`session.py end <session> --status completed --reason <why> --no-viewer \"<why the viewer could not run>\"`.") from error
 
 
 def main():

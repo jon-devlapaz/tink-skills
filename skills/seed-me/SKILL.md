@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.16.0"
+  version: "1.16.1"
 ---
 
 # Seed Me
@@ -338,10 +338,14 @@ The displayed and saved revision must contain:
 - Proposed outcome: desired user-visible results and success criteria.
 - Acceptance criteria: standalone testable checks, each opening with one plain-English line,
   then the exact command below it on a line starting `cmd:`, then `expect:` with the expected output, each independently
-  verifiable without re-reading the interview. Every check copies a settled command as its exact command,
+  verifiable without re-reading the interview. Every check that can run today copies a settled command as its exact command,
   with that command's settled expected output and where it runs — prose without those literals is
   not a criterion, and a substitute or extra command is not a check. This section is the executable core of the intake —
   downstream stages consume it verbatim.
+  When the thing being specified does not exist yet, no settled command exists to copy. Write the check as a proposal:
+  put `provisional:` before `cmd:` and name what must exist for it to run. Provisional checks record the intended
+  behavior, do not block confirmation, and are never reported as verification; the implementation stage replaces
+  each one with the real command once it can run.
 - Affected users and systems: relevant repositories, modules, and execution paths.
 - Constraints and boundaries: non-negotiables, exclusions, and rejected alternatives.
 - Assumed defaults: every `assumed` entry, labelled as not confirmed by the user.
