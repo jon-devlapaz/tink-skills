@@ -6,6 +6,7 @@ import fcntl
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
 import uuid
 from urllib.request import urlopen
@@ -230,6 +231,8 @@ def atomic_write_text(path, content):
 
 
 ASSET = Path(__file__).resolve().parents[1] / "assets/ledger-view.html"
+VENDOR = Path(__file__).resolve().parents[1] / "assets/vendor/cytoscape.min.js"
+LIBRARY_TAG = re.compile(r'<script async id="graph-library"[^>]*></script>')
 SNAPSHOT_MARKER = '{"__LEDGER_JSON__":true,"revision":0,"goal":null,"origin":null,"frontier":[],"nodes":[]}'
 
 
@@ -241,7 +244,14 @@ def snapshot_page(ledger):
     template = ASSET.read_text(encoding="utf-8")
     if template.count(SNAPSHOT_MARKER) != 1:
         raise ValueError("viewer template requires one snapshot marker")
-    return template.replace(SNAPSHOT_MARKER, snapshot_data(ledger))
+    page = template.replace(SNAPSHOT_MARKER, snapshot_data(ledger))
+    if VENDOR.is_file():
+        # Self-contained: the graph library travels inside the page, so it works with no network.
+        library = VENDOR.read_text(encoding="utf-8")
+        require("</script" not in library.lower() and "<!--" not in library, "vendored library cannot be inlined")
+        page, count = LIBRARY_TAG.subn(lambda _: '<script id="graph-library">' + library + "</script>", page, count=1)
+        require(count == 1, "viewer template requires one graph-library tag")
+    return page
 
 
 def write_snapshot(directory):

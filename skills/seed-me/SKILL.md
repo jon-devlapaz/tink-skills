@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.14.0"
+  version: "1.15.0"
 ---
 
 # Seed Me
@@ -234,7 +234,8 @@ authorize product edits. The host runs the commands and owns the viewer process.
    process with the host's process-control tool. If the live page is unavailable,
    verify and open the saved snapshot instead, then stop the owned process. Report
    shutdown failures; never kill an unrelated process or leave a server silently.
-7. Later viewing uses the saved HTML without a server. Running `viewer.py` on an
+7. Later viewing uses the saved HTML without a server; the page carries its graph library, so the
+   graph also draws offline. Running `viewer.py` on an
    ended session refreshes that snapshot and exits; it does not resume questions.
    An active session's viewer may be restarted after an outage without changing
    answers or revisions. Confirm any continuation with the user; viewing alone
