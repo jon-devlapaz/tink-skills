@@ -341,6 +341,190 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#legend [data-legend=edge]").locator("xpath=ancestor::li")).to_contain_text("waits")
         self.assertEqual(self.errors, [])
 
+    def graph_page(self, context=None, current="b"):
+        """A small known graph on the real pinned Cytoscape: a -> b -> c, a -> d, and e on its own."""
+        try:
+            library = pinned_cytoscape()
+        except OSError as error:
+            if REQUIRE_BROWSER:
+                raise
+            self.skipTest(f"Could not fetch the pinned Cytoscape file ({first_line(error)})")
+        context = context or self.context
+        context.unroute("**/cytoscape.min.js")
+        context.route("**/cytoscape.min.js", lambda route: route.fulfill(path=library, content_type="application/javascript"))
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question=current)
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", answer="A"), node("b", parents=["a"]),
+                          node("c", parents=["b"]), node("d", parents=["a"]), node("e", parents=["goal"])]
+        self.publish(state)
+        page = context.new_page()
+        page.on("pageerror", lambda error: self.errors.append(str(error)))
+        page.goto(self.url)
+        page.wait_for_function("cy !== null && cy.nodes().length === 5")
+        return page
+
+    def test_graph_reads_left_to_right_in_layers_without_overlap(self):
+        page = self.graph_page()
+        x = page.evaluate("Object.fromEntries(cy.nodes().map(n => [n.id(), Math.round(n.position('x'))]))")
+        self.assertLess(x["a"], x["b"])
+        self.assertLess(x["b"], x["c"])
+        self.assertEqual(x["b"], x["d"], "nodes the same number of steps from the start share a column")
+        self.assertEqual(x["a"], x["e"])
+        boxes = page.evaluate("cy.nodes().map(n => { const b = n.boundingBox(); return [b.x1, b.y1, b.x2, b.y2]; })")
+        for i, p in enumerate(boxes):
+            for q in boxes[i + 1:]:
+                self.assertTrue(p[2] <= q[0] or q[2] <= p[0] or p[3] <= q[1] or q[3] <= p[1], f"overlap {p} {q}")
+        self.assertEqual(self.errors, [])
+
+    def test_selecting_a_node_fades_the_unrelated_and_lights_its_chain(self):
+        page = self.graph_page()
+        page.evaluate("cy.getElementById('b').emit('tap')")
+        faded = page.evaluate("cy.nodes('.faded').map(n => n.id()).sort()")
+        self.assertEqual(faded, ["d", "e"], "b's chain is its ancestors and descendants; a sibling and a separate concern fade")
+        hot = page.evaluate("cy.edges('.hot').map(e => e.source().id() + '>' + e.target().id()).sort()")
+        self.assertEqual(hot, ["a>b", "b>c"])
+        self.assertEqual(page.evaluate("cy.edges('.faded').map(e => e.source().id() + '>' + e.target().id())"), ["a>d"])
+        self.expect(page.locator("#detail h2")).to_have_text("b")
+        page.evaluate("cy.emit('tap')")
+        self.assertEqual(page.evaluate("cy.elements('.faded, .hot').length"), 0, "tapping the empty canvas clears the focus")
+        page.evaluate("cy.getElementById('c').emit('mouseover')")
+        self.assertEqual(page.evaluate("cy.nodes('.faded').map(n => n.id()).sort()"), ["d", "e"], "hover previews the chain")
+        page.evaluate("cy.getElementById('c').emit('mouseout')")
+        self.assertEqual(page.evaluate("cy.elements('.faded').length"), 0)
+        self.assertEqual(self.errors, [])
+
+    def test_graph_follows_the_color_scheme_and_the_legend_still_matches(self):
+        light = self.graph_page()
+        light_fill = light.evaluate("cy.getElementById('a').style('background-color')")
+        dark_context = self.browser.new_context(color_scheme="dark")
+        self.addCleanup(dark_context.close)
+        dark = self.graph_page(dark_context)
+        dark_fill = dark.evaluate("cy.getElementById('a').style('background-color')")
+        self.assertNotEqual(light_fill, dark_fill, "a dark page must not reuse the light node colors")
+        self.assertEqual(dark_fill, "rgb(23,58,45)", "dark settled is a clean green on charcoal, not olive")
+        self.assertEqual(dark.evaluate("getComputedStyle(document.body).backgroundColor"), "rgb(19, 20, 23)")
+        for page in (light, dark):
+            same = page.evaluate("""() => {
+                const digits = v => (String(v).match(/\\d+/g) || []).slice(0, 3).join(',');
+                return digits(getComputedStyle(document.querySelector('#legend [data-legend=settled]')).backgroundColor)
+                    === digits(cy.getElementById('a').style('background-color'));
+            }""")
+            self.assertTrue(same, "the legend swatch must be the node color")
+        self.assertEqual(self.errors, [])
+
+    def wide_graph_page(self, context=None):
+        """A chain wide enough that fitting it into the panel would shrink the labels."""
+        try:
+            library = pinned_cytoscape()
+        except OSError as error:
+            if REQUIRE_BROWSER:
+                raise
+            self.skipTest(f"Could not fetch the pinned Cytoscape file ({first_line(error)})")
+        context = context or self.context
+        context.unroute("**/cytoscape.min.js")
+        context.route("**/cytoscape.min.js", lambda route: route.fulfill(path=library, content_type="application/javascript"))
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="n7")
+        chain = [node("goal", answer="Ship it"), node("n1", answer="One")]
+        for i in range(2, 7):
+            chain.append(node(f"n{i}", parents=[f"n{i - 1}"], answer=str(i)))
+        chain.append(node("n7", parents=["n6"]))
+        state["nodes"] = chain
+        self.publish(state)
+        page = context.new_page()
+        page.on("pageerror", lambda error: self.errors.append(str(error)))
+        page.goto(self.url)
+        page.wait_for_function("cy !== null && cy.nodes().length === 7")
+        return page
+
+    def test_a_wide_graph_pans_at_readable_size_with_the_current_question_in_view(self):
+        page = self.wide_graph_page()
+        self.assertGreaterEqual(page.evaluate("cy.zoom()"), 0.85, "labels must not shrink to fit the panel")
+        self.assertGreaterEqual(page.evaluate("parseFloat(cy.getElementById('n1').style('font-size'))"), 13)
+        inside = page.evaluate("""() => { const p = cy.getElementById('n7').renderedPosition(), r = cy.container().getBoundingClientRect();
+            return p.x > 0 && p.x < r.width && p.y > 0 && p.y < r.height; }""")
+        self.assertTrue(inside, "the question being asked must start in view")
+        self.assertEqual(self.errors, [])
+
+    def test_the_selected_node_has_a_marker_apart_from_the_current_question(self):
+        page = self.graph_page(current="d")
+        page.evaluate("cy.getElementById('b').emit('tap')")
+        self.assertEqual(page.evaluate("cy.nodes('.picked').map(n => n.id())"), ["b"])
+        self.assertGreater(page.evaluate("parseFloat(cy.getElementById('b').style('outline-width'))"), 0)
+        self.assertEqual(page.evaluate("parseFloat(cy.getElementById('d').style('outline-width'))"), 0)
+        self.assertTrue(page.evaluate("cy.getElementById('d').hasClass('current')"))
+        self.assertEqual(page.evaluate("cy.getElementById('d').style('border-color')"), "rgb(163,75,227)")
+        page.evaluate("cy.emit('tap')")
+        self.assertEqual(page.evaluate("cy.nodes('.picked').length"), 0)
+        self.assertEqual(self.errors, [])
+
+    def test_focus_can_be_cleared_with_a_visible_control_and_stays_cleared(self):
+        page = self.graph_page()
+        self.expect(page.locator("#clear-focus")).to_be_visible()  # the current question is selected on load
+        self.assertEqual(page.evaluate("cy.nodes('.picked').map(n => n.id())"), ["b"])
+        page.locator("#clear-focus").click()
+        self.assertEqual(page.evaluate("cy.elements('.faded, .hot, .picked').length"), 0)
+        self.expect(page.locator("#clear-focus")).to_be_hidden()
+        self.expect(page.locator("#detail")).to_contain_text("Select a node")
+        state = session.editable(session.load(self.directory))
+        state["nodes"][4]["answer"] = "D"
+        state["nodes"][4].update(status="settled", authority="user", authority_source="fixture chat: yes")
+        self.publish(state, "Fixture settled d")
+        page.wait_for_function("cy.getElementById('d').hasClass('settled')")
+        self.expect(page.locator("#clear-focus")).to_be_hidden()
+        self.assertEqual(page.evaluate("cy.nodes('.picked').length"), 0, "a refresh must not undo the user's clear")
+        page.evaluate("cy.getElementById('c').emit('tap')")
+        self.expect(page.locator("#clear-focus")).to_be_visible()
+        self.assertEqual(self.errors, [])
+
+    def test_the_inspector_leads_with_what_matters_and_tucks_the_plumbing_away(self):
+        page = self.graph_page()
+        page.evaluate("cy.getElementById('b').emit('tap')")
+        names = page.evaluate("[...document.querySelectorAll('#detail > dl > dt')].map(e => e.textContent)")
+        self.assertEqual(names[0], "Status")
+        self.assertLess(names.index("Gate"), names.index("Owner"))
+        self.assertLess(names.index("Owner"), names.index("Prerequisites"))
+        for plumbing in ("ID", "Kind", "Premise revision", "Evidence"):
+            self.assertNotIn(plumbing, names, "plumbing and empty fields do not lead the inspector")
+        meta = page.locator("#detail .meta")
+        self.expect(meta).to_contain_text("decision")
+        self.expect(meta).to_contain_text("b")
+        self.assertEqual(page.locator("#detail h3").count(), 0, "an empty history is a quiet line, not a heading")
+        self.expect(page.locator("#detail .quiet")).to_contain_text("No earlier versions")
+        self.assertEqual(self.errors, [])
+
+    def test_the_first_view_shows_whole_cards_around_the_question_and_hints_at_panning(self):
+        page = self.wide_graph_page()
+        whole = page.evaluate("""ids => { const r = cy.container().getBoundingClientRect();
+            return ids.every(id => { const b = cy.getElementById(id).renderedBoundingBox();
+                return b.x1 >= 0 && b.y1 >= 0 && b.x2 <= r.width && b.y2 <= r.height; }); }""", ["n6", "n7"])
+        self.assertTrue(whole, "the question and its prerequisite must both be whole cards in the first view")
+        self.expect(page.locator("#pan-hint")).to_be_visible()
+        self.assertEqual(self.errors, [])
+
+    def test_no_pan_hint_when_the_whole_graph_is_already_in_view(self):
+        page = self.graph_page()
+        self.expect(page.locator("#pan-hint")).to_be_hidden()
+        self.assertEqual(self.errors, [])
+
+    def test_selecting_an_offscreen_node_brings_its_neighborhood_into_view(self):
+        page = self.wide_graph_page()
+        page.evaluate("cy.getElementById('n2').emit('tap')")
+        page.wait_for_function("""() => { const r = cy.container().getBoundingClientRect();
+            return ['n1', 'n2', 'n3'].every(id => { const b = cy.getElementById(id).renderedBoundingBox();
+                return b.x1 >= 0 && b.x2 <= r.width; }); }""")
+        self.assertGreaterEqual(page.evaluate("cy.zoom()"), 0.85)
+        self.assertEqual(self.errors, [])
+
+    def test_the_phone_graph_panel_is_short_and_still_readable(self):
+        phone = self.browser.new_context(viewport={"width": 390, "height": 844})
+        self.addCleanup(phone.close)
+        page = self.wide_graph_page(phone)
+        self.assertLessEqual(page.evaluate("document.getElementById('cy').getBoundingClientRect().height"), 340)
+        self.assertGreaterEqual(page.evaluate("cy.zoom()"), 0.85)
+        self.assertEqual(page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), True)
+        self.assertEqual(self.errors, [])
+
     def test_graph_is_hidden_when_every_edge_only_points_at_the_goal(self):
         state = session.editable(session.load(self.directory))
         state.update(goal="Ship it", origin="goal", current_question="first")
