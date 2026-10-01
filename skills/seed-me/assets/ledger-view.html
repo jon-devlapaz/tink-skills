@@ -599,7 +599,7 @@ function graph() {
   focusOn(selectedId);
 }
 function graphWanted() {
-  return LEDGER.nodes.some(n => n.id !== LEDGER.origin && n.prerequisites.some(p => p !== LEDGER.origin));
+  return LEDGER.nodes.some(n => n.id !== LEDGER.origin);
 }
 function waitingOn(node) {
   return node.prerequisites
@@ -624,7 +624,7 @@ function contradictions() {
   return found;
 }
 function reviewReady() {
-  return LEDGER.status === 'active' && Boolean(LEDGER.origin) && !LEDGER.nodes.some(n => n.status === 'unresolved') && !contradictions().length;
+  return LEDGER.status === 'active' && Boolean(LEDGER.origin) && LEDGER.nodes.some(n => n.id !== LEDGER.origin) && !LEDGER.nodes.some(n => n.status === 'unresolved') && !contradictions().length;
 }
 function standing(node) { return node.authority === 'delegated' && String(node.authority_source || '').toLowerCase().startsWith('standing delegation'); }
 function who(node) {
@@ -696,6 +696,10 @@ function renderNow() {
       line.className = 'agency';
       call.append(line);
     }
+  } else if (!ended && LEDGER.origin && LEDGER.nodes.length === 1) {
+    call.append(element('div', 'Goal confirmed'),
+      element('div', 'No concerns recorded yet. The agent is investigating; decisions will appear here.'));
+    call.firstChild.className = 'label';
   } else if (reviewReady()) {
     const simulated = LEDGER.operator === 'simulated';
     call.append(element('div', simulated ? 'Awaiting a human' : 'Your turn'),

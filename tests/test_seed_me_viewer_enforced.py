@@ -123,12 +123,16 @@ class TestViewerEnforced(unittest.TestCase):
         taken.bind(("127.0.0.1", 0))
         taken.listen()
         self.addCleanup(taken.close)
+        before = (self.directory / "ledger.json").read_bytes()
         failed = run(VIEWER, self.directory, "--port", taken.getsockname()[1])
         self.assertEqual(failed.returncode, 1)
         for needed in ("could not open a local port", "--no-viewer", "ledger-view.html"):
             self.assertIn(needed, failed.stderr)
         self.assertNotEqual(failed.stderr.strip(), "[Errno 48] Address already in use")
         self.assertFalse((self.directory / "viewer.json").exists(), "a viewer that never started leaves no record")
+        self.assertEqual((self.directory / "ledger.json").read_bytes(), before)
+        self.assertTrue(self.snapshot_is_current())
+        self.assertEqual(json.loads(run(SESSION, "status", self.directory).stdout)["viewer"], "not started")
 
     def test_status_is_one_compact_answer_for_the_agent(self):
         self.publish_goal()
@@ -151,6 +155,23 @@ class TestSkillTextMatchesTheEnforcement(unittest.TestCase):
         self.assertNotIn("only if the user says yes", self.skill)
         self.assertIn("--no-viewer", self.skill)
         self.assertIn('session.py" status', self.skill)
+
+    def test_both_paths_share_startup_without_changing_authority_or_handoff(self):
+        for text in (self.skill, self.lean):
+            self.assertNotIn("no session, ledger, or viewer", text)
+            self.assertNotIn("skip the session, ledger, and viewer", text)
+        self.assertIn("On both Lean and Full", self.skill)
+        self.assertIn("start the session and viewer", self.lean)
+        self.assertIn("Session lifecycle", self.lean)
+        self.assertIn("Human edits are never overwritten", self.lean)
+        self.assertIn("not approval to implement", self.lean)
+        self.assertIn("no automatic Markdown import", self.lean)
+        self.assertIn("seed-contract.md` is the sole downstream handoff", self.lean)
+        self.assertIn("contract revision", self.lean)
+        self.assertIn("do not bypass", self.skill)
+        mode = (SKILL / "references/agent-mode.md").read_text()
+        self.assertIn('Both paths: `python3 "<skill>/scripts/session.py" init --operator simulated`', mode)
+        self.assertNotIn("Full path:", mode)
 
     def test_the_ledger_reference_is_read_only_after_choosing_full(self):
         self.assertNotIn("Before opening the interview, read [ledger-transitions.md]", self.skill)

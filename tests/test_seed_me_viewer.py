@@ -614,18 +614,45 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(page.locator("#legend")).to_be_hidden()
         self.assertEqual(self.errors, [])
 
-    def test_graph_is_hidden_when_every_edge_only_points_at_the_goal(self):
+    def test_independent_cards_have_a_graph_without_invented_edges(self):
+        for parents in ([], ["goal"]):
+            with self.subTest(parents=parents):
+                state = session.editable(session.load(self.directory))
+                state.update(goal="Ship it", origin="goal", current_question="first")
+                state["nodes"] = [node("goal", answer="Ship it"),
+                                  {**node("first", parents=parents), "question": "First?"},
+                                  {**node("second", parents=parents), "question": "Second?"}]
+                self.publish(state)
+                before = (self.directory / "ledger.json").read_bytes()
+                self.page.goto(self.url)
+                self.expect(self.page.locator("main")).to_be_visible()
+                self.assertEqual(self.page.evaluate("document.body.dataset.view"), "graph")
+                self.assertEqual(self.page.evaluate("cy.nodes().map(n => n.id()).sort()"), ["first", "second"])
+                self.assertEqual(self.page.evaluate("cy.edges().length"), 0)
+                self.expect(self.page.locator('#cards [data-id="first"]')).to_contain_text("First?")
+                self.expect(self.page.locator('#cards [data-id="second"]')).to_contain_text("Second?")
+                self.page.get_by_role("button", name="Ledger", exact=True).click()
+                self.expect(self.page.locator("main")).to_be_hidden()
+                self.page.get_by_role("button", name="Graph", exact=True).click()
+                self.expect(self.page.locator("main")).to_be_visible()
+                self.assertEqual((self.directory / "ledger.json").read_bytes(), before)
+                self.assertEqual(self.errors, [])
+
+    def test_goal_only_session_explains_the_start_without_false_completion(self):
         state = session.editable(session.load(self.directory))
-        state.update(goal="Ship it", origin="goal", current_question="first")
-        state["nodes"] = [node("goal", answer="Ship it"),
-                          {**node("first", parents=["goal"]), "question": "First?"},
-                          {**node("second", parents=["goal"]), "question": "Second?"}]
+        state.update(goal="Ship it", origin="goal", current_question=None)
+        state["nodes"] = [node("goal", answer="Ship it")]
         self.publish(state)
+        before = (self.directory / "ledger.json").read_bytes()
         self.page.goto(self.url)
-        self.expect(self.page.locator("#call")).to_contain_text("First?")
+        self.expect(self.page.locator("#call")).to_contain_text("Goal confirmed")
+        self.expect(self.page.locator("#status-pill")).to_have_text("In progress")
+        self.expect(self.page.locator("#call")).to_contain_text("No concerns recorded yet")
+        self.expect(self.page.locator("#call")).not_to_contain_text("confirm it")
         self.expect(self.page.locator("main")).to_be_hidden()
+        self.expect(self.page.locator("#views")).to_be_hidden()
         self.assertIsNone(self.page.evaluate("cy"))
-        self.expect(self.page.locator("#cdn-banner")).to_be_hidden()
+        self.assertEqual((self.directory / "ledger.json").read_bytes(), before)
         self.assertEqual(self.errors, [])
 
     def test_parked_concern_says_what_it_is_waiting_on(self):
@@ -772,6 +799,7 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
                           {**node("now", parents=["goal"]), "question": "Now?"}]
         self.publish(state)
         self.page.goto(self.url)
+        self.page.get_by_role("button", name="Ledger", exact=True).click()
         self.expect(self.page.locator("#settled-list")).to_contain_text(tail)
         self.expect(self.page.locator("#settled-list")).not_to_contain_text("…")
         button = self.page.locator("#settled-list .more")
