@@ -401,6 +401,8 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         dark = self.graph_page(dark_context)
         dark_fill = dark.evaluate("cy.getElementById('a').style('background-color')")
         self.assertNotEqual(light_fill, dark_fill, "a dark page must not reuse the light node colors")
+        self.assertEqual(dark_fill, "rgb(23,58,45)", "dark settled is a clean green on charcoal, not olive")
+        self.assertEqual(dark.evaluate("getComputedStyle(document.body).backgroundColor"), "rgb(19, 20, 23)")
         for page in (light, dark):
             same = page.evaluate("""() => {
                 const digits = v => (String(v).match(/\\d+/g) || []).slice(0, 3).join(',');
@@ -473,6 +475,45 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.assertEqual(page.evaluate("cy.nodes('.picked').length"), 0, "a refresh must not undo the user's clear")
         page.evaluate("cy.getElementById('c').emit('tap')")
         self.expect(page.locator("#clear-focus")).to_be_visible()
+        self.assertEqual(self.errors, [])
+
+    def test_the_inspector_leads_with_what_matters_and_tucks_the_plumbing_away(self):
+        page = self.graph_page()
+        page.evaluate("cy.getElementById('b').emit('tap')")
+        names = page.evaluate("[...document.querySelectorAll('#detail > dl > dt')].map(e => e.textContent)")
+        self.assertEqual(names[0], "Status")
+        self.assertLess(names.index("Gate"), names.index("Owner"))
+        self.assertLess(names.index("Owner"), names.index("Prerequisites"))
+        for plumbing in ("ID", "Kind", "Premise revision", "Evidence"):
+            self.assertNotIn(plumbing, names, "plumbing and empty fields do not lead the inspector")
+        meta = page.locator("#detail .meta")
+        self.expect(meta).to_contain_text("decision")
+        self.expect(meta).to_contain_text("b")
+        self.assertEqual(page.locator("#detail h3").count(), 0, "an empty history is a quiet line, not a heading")
+        self.expect(page.locator("#detail .quiet")).to_contain_text("No earlier versions")
+        self.assertEqual(self.errors, [])
+
+    def test_the_first_view_shows_whole_cards_around_the_question_and_hints_at_panning(self):
+        page = self.wide_graph_page()
+        whole = page.evaluate("""ids => { const r = cy.container().getBoundingClientRect();
+            return ids.every(id => { const b = cy.getElementById(id).renderedBoundingBox();
+                return b.x1 >= 0 && b.y1 >= 0 && b.x2 <= r.width && b.y2 <= r.height; }); }""", ["n6", "n7"])
+        self.assertTrue(whole, "the question and its prerequisite must both be whole cards in the first view")
+        self.expect(page.locator("#pan-hint")).to_be_visible()
+        self.assertEqual(self.errors, [])
+
+    def test_no_pan_hint_when_the_whole_graph_is_already_in_view(self):
+        page = self.graph_page()
+        self.expect(page.locator("#pan-hint")).to_be_hidden()
+        self.assertEqual(self.errors, [])
+
+    def test_selecting_an_offscreen_node_brings_its_neighborhood_into_view(self):
+        page = self.wide_graph_page()
+        page.evaluate("cy.getElementById('n2').emit('tap')")
+        page.wait_for_function("""() => { const r = cy.container().getBoundingClientRect();
+            return ['n1', 'n2', 'n3'].every(id => { const b = cy.getElementById(id).renderedBoundingBox();
+                return b.x1 >= 0 && b.x2 <= r.width; }); }""")
+        self.assertGreaterEqual(page.evaluate("cy.zoom()"), 0.85)
         self.assertEqual(self.errors, [])
 
     def test_the_phone_graph_panel_is_short_and_still_readable(self):

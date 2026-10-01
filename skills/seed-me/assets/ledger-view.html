@@ -19,7 +19,7 @@
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #121311; --surface: #1b1c1a; --text: #ecece7; --muted: #a3a79f; --line: #2f312d;
+    :root { --bg: #131417; --surface: #1b1d21; --text: #e8eaed; --muted: #a0a5af; --line: #2e3138;
       --accent: #f0b73a; --accent-bg: #2a2210; --accent-line: #c8901a;
       --you: #d8b4fe; --you-bg: #2b1a3f; --ok: #6fd3a0; --ok-bg: #12301f; --amber: #f0b73a; --amber-bg: #2a2210; --sim-bg: #16264a; --sim: #9cc1ff; --warn-bg: #3a1717; --warn: #ff9b9b; --focus: #7aa7ff; }
   }
@@ -88,9 +88,17 @@
   .history { padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: 8px; margin-top: var(--s3); }
   .history summary { font-size: 14px; }
   main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); height: 58vh; min-height: 320px; max-width: 1100px; margin: var(--s4) auto var(--s5); padding-inline: var(--s5); }
-  main { position: relative; }
-  #clear-focus { position: absolute; top: var(--s3); left: calc(var(--s5) + var(--s3)); z-index: 2; font-size: 12px; font-weight: 500; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); cursor: pointer; }
+  #graph-wrap { position: relative; min-height: 0; height: 100%; }
+  #pan-hint { position: absolute; bottom: var(--s3); left: var(--s3); font-size: 12px; color: var(--muted); pointer-events: none; }
+  #clear-focus { position: absolute; top: var(--s3); left: var(--s3); z-index: 2; font-size: 12px; font-weight: 500; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); cursor: pointer; }
   #clear-focus:hover { color: var(--text); border-color: var(--muted); }
+  #detail h2 { font-size: 18px; font-weight: 650; margin: 0 0 var(--s1); }
+  #detail .meta, #detail .quiet { font-size: 12px; color: var(--muted); margin: 0 0 var(--s3); }
+  #detail .quiet { margin-top: var(--s4); }
+  #detail dl { margin: 0; }
+  #detail dt { font-size: 12px; font-weight: 500; }
+  #detail dd { font-size: 14px; line-height: 1.45; }
+  #detail h3 { font-size: 13px; margin: var(--s4) 0 var(--s2); }
   #cy { height: 100%; min-height: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px 0 0 12px; }
   #detail { border: 1px solid var(--line); border-left: 0; border-radius: 0 12px 12px 0; padding: var(--s4); overflow-wrap: anywhere; overflow-y: auto; min-height: 0; background: var(--surface); }
   #legend { font-size: 12px; color: var(--muted); padding-block: var(--s3); }
@@ -146,8 +154,11 @@
 <div id="cdn-banner" hidden></div>
 <section id="ledger-list" aria-label="Complete ledger text view"></section>
 <main hidden>
-  <div id="cy" aria-label="Decision dependency graph"></div>
-  <button id="clear-focus" type="button" hidden>Clear focus</button>
+  <div id="graph-wrap">
+    <div id="cy" aria-label="Decision dependency graph"></div>
+    <button id="clear-focus" type="button" hidden>Clear focus</button>
+    <span id="pan-hint" hidden>Drag to pan</span>
+  </div>
   <aside id="detail"><h2>Node detail</h2><p>Select a node to inspect it.</p></aside>
 </main>
 <div id="legend" role="group" aria-label="How to read the graph">
@@ -183,26 +194,25 @@ function element(tag, text) {
 function fields(parent, values) {
   const list = element('dl');
   for (const [name, value] of Object.entries(values)) {
-    if (value === undefined || value === null || value === '') continue;
+    if (value === undefined || value === null || value === '' || (Array.isArray(value) && !value.length)) continue;
     list.append(element('dt', name), element('dd', Array.isArray(value) ? value.join('\n') || 'None' : String(value)));
   }
   parent.append(list);
 }
 function stateFields(node) {
   return {
-    ID: node.id, Kind: node.kind, Status: node.status, Question: node.question,
-    Evidence: node.evidence, Owner: node.owner, Gate: node.gate,
-    Recommendation: node.recommendation, Answer: node.answer, Authority: node.authority,
-    'Authority source': node.authority_source, Prerequisites: node.prerequisites,
+    Status: node.status, Question: node.question, Gate: node.gate, Recommendation: node.recommendation,
+    Answer: node.answer, Owner: node.owner, Authority: node.authority, 'Authority source': node.authority_source,
+    Prerequisites: node.prerequisites, Evidence: node.evidence,
     Predicate: node.predicate === null ? 'Unknown' : node.predicate,
-    'Defer reason': node.defer_reason, 'Revisit condition': node.revisit_condition,
-    'Reopen reason': node.reopen_reason, 'Premise revision': node.revision
+    'Defer reason': node.defer_reason, 'Revisit condition': node.revisit_condition, 'Reopen reason': node.reopen_reason
   };
 }
 function details(parent, node) {
   fields(parent, stateFields(node));
   const history = node.history || [];
-  parent.append(element('h3', `History (${history.length})`));
+  if (history.length) parent.append(element('h3', `History (${history.length})`));
+  else parent.append(Object.assign(element('p', 'No earlier versions.'), { className: 'quiet' }));
   for (const entry of [...history].reverse()) {
     const section = element('details');
     section.className = 'history';
@@ -214,18 +224,21 @@ function details(parent, node) {
 }
 // A clear sticks until the question being asked changes.
 function clearFocus() { clearedFor = LEDGER ? LEDGER.current_question || null : null; select(null); }
-function select(id) {
+function select(id, bring) {
   selectedId = id;
   focusOn(id);
   markPicked(id);
   el('clear-focus').hidden = !(id && LEDGER.nodes.some(n => n.id === id));
+  if (bring && cy && id) bringIntoView(cy.getElementById(id));
   const node = LEDGER.nodes.find(n => n.id === id);
   el('detail').replaceChildren();
   if (!node) {
     el('detail').append(element('h2', 'Node detail'), element('p', 'Select a node to inspect it.'));
     return;
   }
-  el('detail').append(element('h2', node.label || node.id));
+  const meta = element('p', `${node.kind} · id ${node.id} · premise revision ${node.revision}`);
+  meta.className = 'meta';
+  el('detail').append(element('h2', node.label || node.id), meta);
   details(el('detail'), node);
 }
 function cls(node) {
@@ -282,7 +295,7 @@ function textView() {
     section.append(element('summary', `${node.label || node.id} — ${cls(node)}${node.id === LEDGER.current_question ? ' — current question' : ''}`));
     const button = element('button', 'Inspect node');
     button.type = 'button';
-    button.addEventListener('click', () => select(node.id));
+    button.addEventListener('click', () => select(node.id, true));
     section.append(button);
     details(section, node);
     el('ledger-list').append(section);
@@ -298,9 +311,9 @@ const PALETTES = {
   light: { settled: { fill: '#dcf1e5', line: '#287b53' }, ready: { fill: '#fdeccb', line: '#c88200' },
     parked: { fill: '#ececea', line: '#9a9d96' }, deferred: { fill: '#dfe8fb', line: '#3a62c9' },
     superseded: { fill: '#ffffff', line: '#777777' }, current: '#a34be3', origin: '#111111', ink: '#1d1f1c', edge: '#b9bdb5', hot: '#4f6df5' },
-  dark: { settled: { fill: '#173a29', line: '#6fd3a0' }, ready: { fill: '#3a2d10', line: '#f0b73a' },
-    parked: { fill: '#2a2c29', line: '#7b7f77' }, deferred: { fill: '#1a2a52', line: '#8fb0ff' },
-    superseded: { fill: '#1b1c1a', line: '#8a8e86' }, current: '#c58cf5', origin: '#ecece7', ink: '#ecece7', edge: '#4a4e48', hot: '#8da0ff' }
+  dark: { settled: { fill: '#173a2d', line: '#4ea77c' }, ready: { fill: '#3d3017', line: '#c99538' },
+    parked: { fill: '#292c33', line: '#747b87' }, deferred: { fill: '#1d3048', line: '#6895d3' },
+    superseded: { fill: '#1b1d21', line: '#a0a5af' }, current: '#c49aff', origin: '#e8eaed', ink: '#e8eaed', edge: '#434852', hot: '#7f9aff' }
 };
 const scheme = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 let PALETTE = (scheme && scheme.matches) ? PALETTES.dark : PALETTES.light;
@@ -361,13 +374,27 @@ function sCurve(from, to) {
   const along = (px, py) => (px * dx + py * dy) / (length * length);
   return { dd: [across(m, 0), across(dx - m, dy)], ww: [along(m, 0), along(dx - m, dy)] };
 }
-// Never shrink labels to fit a wide graph: keep them readable and start on what matters, the viewer can pan.
-function readableStart() {
-  if (cy.zoom() < 0.9) cy.zoom(0.9);
-  const start = cy.getElementById(selectedId || LEDGER.current_question || '');
-  const mid = start.length ? start : cy.nodes().first();
-  if (mid.length) cy.center(mid);
+// Never shrink labels to fit a wide graph: keep them readable, frame whole cards around what matters, and let the viewer pan.
+function frame(node, animate) {
+  const group = node.closedNeighborhood().nodes(), box = group.boundingBox(), size = cy.container().getBoundingClientRect(), pad = 32;
+  const fits = Math.min((size.width - 2 * pad) / box.w, (size.height - 2 * pad) / box.h);
+  const zoom = fits >= 0.9 ? Math.min(fits, 1.1) : 0.9;
+  const at = fits >= 0.9 ? { x: (box.x1 + box.x2) / 2, y: (box.y1 + box.y2) / 2 } : node.position();
+  const view = { zoom, pan: { x: size.width / 2 - at.x * zoom, y: size.height / 2 - at.y * zoom } };
+  if (animate) cy.animate(view, { duration: 250 }); else cy.viewport(view);
 }
+function wholeInView(nodes) {
+  const size = cy.container().getBoundingClientRect();
+  return nodes.every(n => { const b = n.renderedBoundingBox(); return b.x1 >= 0 && b.y1 >= 0 && b.x2 <= size.width && b.y2 <= size.height; });
+}
+function bringIntoView(node) {
+  if (node.length && !wholeInView(node.closedNeighborhood().nodes())) frame(node, true);
+}
+function readableStart() {
+  const start = cy.getElementById(selectedId || LEDGER.current_question || '');
+  frame(start.length ? start : cy.nodes().first(), false);
+}
+function updatePanHint() { el('pan-hint').hidden = !cy || wholeInView(cy.nodes()); }
 function markPicked(id) {
   if (!cy) return;
   cy.nodes().removeClass('picked');
@@ -411,8 +438,7 @@ function graph() {
       { selector: '.superseded', style: { 'background-color': PALETTE.superseded.fill, color: PALETTE.superseded.line,
         'border-style': 'dashed', 'border-width': 2, 'border-color': PALETTE.superseded.line } },
       { selector: '.origin', style: { 'border-width': 3, 'border-color': PALETTE.origin } },
-      { selector: '.current', style: { 'border-width': 4, 'border-color': PALETTE.current, 'underlay-color': PALETTE.current,
-        'underlay-opacity': 0.16, 'underlay-padding': 7 } },
+      { selector: '.current', style: { 'border-width': 4, 'border-color': PALETTE.current } },
       { selector: 'edge', style: { width: 1.4, 'line-color': PALETTE.edge, 'target-arrow-color': PALETTE.edge,
         'target-arrow-shape': 'triangle', 'arrow-scale': 0.8, 'curve-style': 'unbundled-bezier',
         'control-point-distances': 'data(dd)', 'control-point-weights': 'data(ww)', 'edge-distances': 'node-position', 'transition-property': 'opacity, line-color, width', 'transition-duration': '0.25s' } },
@@ -424,7 +450,9 @@ function graph() {
   if (viewport) cy.viewport(viewport);
   else readableStart();
   markPicked(selectedId);
-  cy.on('tap', 'node', event => select(event.target.id()));
+  cy.on('tap', 'node', event => select(event.target.id(), true));
+  cy.on('viewport', updatePanHint);
+  updatePanHint();
   cy.on('tap', event => { if (event.target === cy) clearFocus(); });
   cy.on('mouseover', 'node', event => focusOn(event.target.id()));
   cy.on('mouseout', 'node', () => focusOn(selectedId));
