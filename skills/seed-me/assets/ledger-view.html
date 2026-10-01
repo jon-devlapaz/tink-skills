@@ -210,6 +210,7 @@ function details(parent, node) {
 }
 function select(id) {
   selectedId = id;
+  focusOn(id);
   const node = LEDGER.nodes.find(n => n.id === id);
   el('detail').replaceChildren();
   if (!node) {
@@ -285,48 +286,124 @@ function fallback() {
   el('cdn-banner').hidden = false;
   el('cdn-banner').textContent = 'Graph unavailable. The live text view below includes every node, dependency, receipt, and prior answer.';
 }
-const PALETTE = { settled: '#287b53', ready: '#c80', parked: '#999', deferred: '#36c', superseded: '#fff', supersededBorder: '#777', current: '#a34be3', origin: '#111' };
+const PALETTES = {
+  light: { settled: { fill: '#dcf1e5', line: '#287b53' }, ready: { fill: '#fdeccb', line: '#c88200' },
+    parked: { fill: '#ececea', line: '#9a9d96' }, deferred: { fill: '#dfe8fb', line: '#3a62c9' },
+    superseded: { fill: '#ffffff', line: '#777777' }, current: '#a34be3', origin: '#111111', ink: '#1d1f1c', edge: '#b9bdb5', hot: '#4f6df5' },
+  dark: { settled: { fill: '#173a29', line: '#6fd3a0' }, ready: { fill: '#3a2d10', line: '#f0b73a' },
+    parked: { fill: '#2a2c29', line: '#7b7f77' }, deferred: { fill: '#1a2a52', line: '#8fb0ff' },
+    superseded: { fill: '#1b1c1a', line: '#8a8e86' }, current: '#c58cf5', origin: '#ecece7', ink: '#ecece7', edge: '#4a4e48', hot: '#8da0ff' }
+};
+const scheme = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+let PALETTE = (scheme && scheme.matches) ? PALETTES.dark : PALETTES.light;
 function paintLegend() {
   for (const key of ['settled', 'ready', 'parked', 'deferred', 'superseded']) {
     const swatch = document.querySelector(`#legend [data-legend="${key}"]`);
-    if (swatch) swatch.style.background = PALETTE[key];
+    if (swatch) { swatch.style.background = PALETTE[key].fill; swatch.style.borderColor = PALETTE[key].line; }
   }
   const superseded = document.querySelector('#legend [data-legend="superseded"]');
-  if (superseded) { superseded.style.borderStyle = 'dashed'; superseded.style.borderColor = PALETTE.supersededBorder; }
+  if (superseded) superseded.style.borderStyle = 'dashed';
   const current = document.querySelector('#legend [data-legend="current"]');
   if (current) current.style.borderColor = PALETTE.current;
 }
 paintLegend();
+if (scheme && scheme.addEventListener) scheme.addEventListener('change', () => {
+  PALETTE = scheme.matches ? PALETTES.dark : PALETTES.light;
+  paintLegend();
+  if (LEDGER) graph();
+});
+// Layers read left to right: a concern sits one column right of its latest prerequisite.
+function layered(ids, edges, width, height) {
+  const before = new Map(ids.map(id => [id, []]));
+  for (const [source, target] of edges) before.get(target).push(source);
+  const depth = new Map();
+  const walk = (id, seen = new Set()) => {
+    if (depth.has(id)) return depth.get(id);
+    if (seen.has(id)) return 0;
+    seen.add(id);
+    const d = before.get(id).length ? 1 + Math.max(...before.get(id).map(p => walk(p, seen))) : 0;
+    depth.set(id, d);
+    return d;
+  };
+  ids.forEach(id => walk(id));
+  const columns = [];
+  ids.forEach(id => (columns[depth.get(id)] = columns[depth.get(id)] || []).push(id));
+  const row = new Map();
+  columns[0].forEach((id, i) => row.set(id, i));
+  for (let pass = 0; pass < 4; pass++) {
+    columns.forEach((column, i) => {
+      if (!i) return;
+      const bar = id => before.get(id).reduce((sum, p) => sum + (row.get(p) || 0), 0) / before.get(id).length;
+      column.sort((x, y) => bar(x) - bar(y));
+      column.forEach((id, j) => row.set(id, j));
+    });
+  }
+  const tallest = Math.max(...columns.map(c => c.length));
+  const at = {};
+  columns.forEach((column, i) => column.forEach((id, j) => {
+    at[id] = { x: i * (width + 70), y: (j - (column.length - 1) / 2 + (tallest - 1) / 2) * (height + 18) };
+  }));
+  return at;
+}
+// An S-shaped edge: leave the source and enter the target horizontally, like the layers read.
+function sCurve(from, to) {
+  const dx = to.x - from.x, dy = to.y - from.y, length = Math.hypot(dx, dy) || 1, m = Math.abs(dx) / 2;
+  const across = (px, py) => (py * dx - px * dy) / length;
+  const along = (px, py) => (px * dx + py * dy) / (length * length);
+  return { dd: [across(m, 0), across(dx - m, dy)], ww: [along(m, 0), along(dx - m, dy)] };
+}
+function focusOn(id) {
+  if (!cy) return;
+  cy.elements().removeClass('faded hot');
+  const node = id ? cy.getElementById(id) : null;
+  if (!node || !node.length) return;
+  const chain = node.predecessors().union(node.successors()).union(node);
+  cy.elements().not(chain).addClass('faded');
+  chain.edges().addClass('hot');
+}
 function graph() {
   if (typeof cytoscape === 'undefined') { fallback(); return; }
   el('cy').hidden = false;
   el('cdn-banner').hidden = true;
   const viewport = cy && cy.nodes().length ? { pan: cy.pan(), zoom: cy.zoom() } : null;
   if (cy) cy.destroy();
+  const shown = LEDGER.nodes.filter(n => n.id !== LEDGER.origin);
+  const links = shown.flatMap(n => n.prerequisites.filter(p => p !== LEDGER.origin).map(p => [p, n.id]));
+  const places = layered(shown.map(n => n.id), links, 150, 52);
   cy = cytoscape({
     container: el('cy'),
     elements: [
-      ...LEDGER.nodes.filter(n => n.id !== LEDGER.origin).map(n => ({ data: { id: n.id, label: n.label || n.id, kind: n.kind },
+      ...shown.map(n => ({ data: { id: n.id, label: n.label || n.id, kind: n.kind }, position: places[n.id],
         classes: cls(n) + (n.id === LEDGER.origin ? ' origin' : '') + (n.id === LEDGER.current_question ? ' current' : '') })),
-      ...LEDGER.nodes.filter(n => n.id !== LEDGER.origin).flatMap(n => n.prerequisites.filter(p => p !== LEDGER.origin).map(p => ({ data: { source: p, target: n.id } })))
+      ...links.map(([source, target]) => ({ data: { source, target, ...sCurve(places[source], places[target]) } }))
     ],
-    layout: { name: 'breadthfirst', directed: true, spacingFactor: 1.4, padding: 30 },
+    layout: { name: 'preset', fit: true, padding: 36 },
+    minZoom: 0.3, maxZoom: 2.2,
     style: [
-      { selector: 'node', style: { label: 'data(label)', 'text-valign': 'center', 'text-halign': 'center',
-        width: 130, height: 55, 'font-size': 12, 'text-wrap': 'wrap', 'text-max-width': 120 } },
+      { selector: 'node', style: { label: 'data(label)', 'text-valign': 'center', 'text-halign': 'center', color: PALETTE.ink,
+        width: 150, height: 52, 'font-size': 12, 'font-weight': 600, 'text-wrap': 'wrap', 'text-max-width': 128,
+        'border-width': 1.5, 'transition-property': 'opacity, border-width', 'transition-duration': '0.25s' } },
       { selector: 'node[kind = "decision"]', style: { shape: 'round-rectangle' } },
-      { selector: '.settled', style: { 'background-color': PALETTE.settled, color: '#fff' } },
-      { selector: '.ready', style: { 'background-color': PALETTE.ready, color: '#111' } },
-      { selector: '.parked', style: { 'background-color': PALETTE.parked, color: '#111' } },
-      { selector: '.deferred', style: { 'background-color': PALETTE.deferred, color: '#fff' } },
-      { selector: '.superseded', style: { 'background-color': PALETTE.superseded, color: '#555', 'border-style': 'dashed', 'border-width': 2, 'border-color': PALETTE.supersededBorder } },
-      { selector: '.origin', style: { 'border-width': 3, 'border-color': '#111' } },
-      { selector: '.current', style: { 'border-width': 5, 'border-color': PALETTE.current } },
-      { selector: 'edge', style: { width: 2, 'line-color': '#888', 'target-arrow-color': '#888', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier' } }
+      ...['settled', 'ready', 'parked', 'deferred'].map(key => ({ selector: '.' + key,
+        style: { 'background-color': PALETTE[key].fill, 'border-color': PALETTE[key].line } })),
+      { selector: '.superseded', style: { 'background-color': PALETTE.superseded.fill, color: PALETTE.superseded.line,
+        'border-style': 'dashed', 'border-width': 2, 'border-color': PALETTE.superseded.line } },
+      { selector: '.origin', style: { 'border-width': 3, 'border-color': PALETTE.origin } },
+      { selector: '.current', style: { 'border-width': 4, 'border-color': PALETTE.current, 'underlay-color': PALETTE.current,
+        'underlay-opacity': 0.16, 'underlay-padding': 7 } },
+      { selector: 'edge', style: { width: 1.4, 'line-color': PALETTE.edge, 'target-arrow-color': PALETTE.edge,
+        'target-arrow-shape': 'triangle', 'arrow-scale': 0.8, 'curve-style': 'unbundled-bezier',
+        'control-point-distances': 'data(dd)', 'control-point-weights': 'data(ww)', 'edge-distances': 'node-position', 'transition-property': 'opacity, line-color, width', 'transition-duration': '0.25s' } },
+      { selector: 'edge.hot', style: { width: 2.4, 'line-color': PALETTE.hot, 'target-arrow-color': PALETTE.hot, 'z-index': 9 } },
+      { selector: '.faded', style: { opacity: 0.14 } }
     ]
   });
   if (viewport) cy.viewport(viewport);
   cy.on('tap', 'node', event => select(event.target.id()));
+  cy.on('tap', event => { if (event.target === cy) select(null); });
+  cy.on('mouseover', 'node', event => focusOn(event.target.id()));
+  cy.on('mouseout', 'node', () => focusOn(selectedId));
+  focusOn(selectedId);
 }
 function graphWanted() {
   return LEDGER.nodes.some(n => n.id !== LEDGER.origin && n.prerequisites.some(p => p !== LEDGER.origin));

@@ -341,6 +341,75 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#legend [data-legend=edge]").locator("xpath=ancestor::li")).to_contain_text("waits")
         self.assertEqual(self.errors, [])
 
+    def graph_page(self, context=None, current="b"):
+        """A small known graph on the real pinned Cytoscape: a -> b -> c, a -> d, and e on its own."""
+        try:
+            library = pinned_cytoscape()
+        except OSError as error:
+            if REQUIRE_BROWSER:
+                raise
+            self.skipTest(f"Could not fetch the pinned Cytoscape file ({first_line(error)})")
+        context = context or self.context
+        context.unroute("**/cytoscape.min.js")
+        context.route("**/cytoscape.min.js", lambda route: route.fulfill(path=library, content_type="application/javascript"))
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question=current)
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", answer="A"), node("b", parents=["a"]),
+                          node("c", parents=["b"]), node("d", parents=["a"]), node("e", parents=["goal"])]
+        self.publish(state)
+        page = context.new_page()
+        page.on("pageerror", lambda error: self.errors.append(str(error)))
+        page.goto(self.url)
+        page.wait_for_function("cy !== null && cy.nodes().length === 5")
+        return page
+
+    def test_graph_reads_left_to_right_in_layers_without_overlap(self):
+        page = self.graph_page()
+        x = page.evaluate("Object.fromEntries(cy.nodes().map(n => [n.id(), Math.round(n.position('x'))]))")
+        self.assertLess(x["a"], x["b"])
+        self.assertLess(x["b"], x["c"])
+        self.assertEqual(x["b"], x["d"], "nodes the same number of steps from the start share a column")
+        self.assertEqual(x["a"], x["e"])
+        boxes = page.evaluate("cy.nodes().map(n => { const b = n.boundingBox(); return [b.x1, b.y1, b.x2, b.y2]; })")
+        for i, p in enumerate(boxes):
+            for q in boxes[i + 1:]:
+                self.assertTrue(p[2] <= q[0] or q[2] <= p[0] or p[3] <= q[1] or q[3] <= p[1], f"overlap {p} {q}")
+        self.assertEqual(self.errors, [])
+
+    def test_selecting_a_node_fades_the_unrelated_and_lights_its_chain(self):
+        page = self.graph_page()
+        page.evaluate("cy.getElementById('b').emit('tap')")
+        faded = page.evaluate("cy.nodes('.faded').map(n => n.id()).sort()")
+        self.assertEqual(faded, ["d", "e"], "b's chain is its ancestors and descendants; a sibling and a separate concern fade")
+        hot = page.evaluate("cy.edges('.hot').map(e => e.source().id() + '>' + e.target().id()).sort()")
+        self.assertEqual(hot, ["a>b", "b>c"])
+        self.assertEqual(page.evaluate("cy.edges('.faded').map(e => e.source().id() + '>' + e.target().id())"), ["a>d"])
+        self.expect(page.locator("#detail h2")).to_have_text("b")
+        page.evaluate("cy.emit('tap')")
+        self.assertEqual(page.evaluate("cy.elements('.faded, .hot').length"), 0, "tapping the empty canvas clears the focus")
+        page.evaluate("cy.getElementById('c').emit('mouseover')")
+        self.assertEqual(page.evaluate("cy.nodes('.faded').map(n => n.id()).sort()"), ["d", "e"], "hover previews the chain")
+        page.evaluate("cy.getElementById('c').emit('mouseout')")
+        self.assertEqual(page.evaluate("cy.elements('.faded').length"), 0)
+        self.assertEqual(self.errors, [])
+
+    def test_graph_follows_the_color_scheme_and_the_legend_still_matches(self):
+        light = self.graph_page()
+        light_fill = light.evaluate("cy.getElementById('a').style('background-color')")
+        dark_context = self.browser.new_context(color_scheme="dark")
+        self.addCleanup(dark_context.close)
+        dark = self.graph_page(dark_context)
+        dark_fill = dark.evaluate("cy.getElementById('a').style('background-color')")
+        self.assertNotEqual(light_fill, dark_fill, "a dark page must not reuse the light node colors")
+        for page in (light, dark):
+            same = page.evaluate("""() => {
+                const digits = v => (String(v).match(/\\d+/g) || []).slice(0, 3).join(',');
+                return digits(getComputedStyle(document.querySelector('#legend [data-legend=settled]')).backgroundColor)
+                    === digits(cy.getElementById('a').style('background-color'));
+            }""")
+            self.assertTrue(same, "the legend swatch must be the node color")
+        self.assertEqual(self.errors, [])
+
     def test_graph_is_hidden_when_every_edge_only_points_at_the_goal(self):
         state = session.editable(session.load(self.directory))
         state.update(goal="Ship it", origin="goal", current_question="first")
