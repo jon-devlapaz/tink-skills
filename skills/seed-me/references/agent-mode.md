@@ -15,7 +15,9 @@ human session cannot hold `simulated` ones.
 ## Starting
 
 - Full path: `python3 "<skill>/scripts/session.py" init --operator simulated`. The viewer then shows
-  a "Simulated operator — no human decided this" banner and a "Simulated" pill.
+  a "Simulated operator — no human decided this" banner and a "Simulated" pill. Start the viewer
+  as usual; in a sandbox with no loopback or background processes, complete with
+  `end ... --no-viewer "<why>"` instead, and say so in the report.
 - Lean path: put `operator: simulated` in the file header and tag operator answers `[simulated]`.
 
 ## The operator agent

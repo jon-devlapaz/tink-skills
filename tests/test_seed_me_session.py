@@ -107,18 +107,18 @@ class TestSeedSession(unittest.TestCase):
     def test_contradicting_fact_blocks_completion_until_the_decision_is_revisited(self):
         self.publish(self.contradicted_state())
         with self.assertRaisesRegex(ValueError, "contradicts a settled decision.*: d"):
-            session.end(self.directory, "completed", "Confirmed and saved")
+            session.end(self.directory, "completed", "Confirmed and saved", no_viewer="not under test")
         state = session.editable(session.load(self.directory))
         state["nodes"][1]["answer"] = "Build the scanner as part of this work"
         self.publish(state, "Revise the decision after the contradicting evidence")
-        self.assertEqual(session.end(self.directory, "completed", "Confirmed and saved")["status"], "completed")
+        self.assertEqual(session.end(self.directory, "completed", "Confirmed and saved", no_viewer="not under test")["status"], "completed")
 
     def test_superseding_the_contradicting_fact_also_unblocks_completion(self):
         self.publish(self.contradicted_state())
         state = session.editable(session.load(self.directory))
         state["nodes"][2] = {**node("f", "fact"), "status": "superseded", "contradicts": "d"}
         self.publish(state, "The fact was wrong; superseded with a reason")
-        self.assertEqual(session.end(self.directory, "completed", "Confirmed and saved")["status"], "completed")
+        self.assertEqual(session.end(self.directory, "completed", "Confirmed and saved", no_viewer="not under test")["status"], "completed")
 
     def test_contradicts_shape_is_validated(self):
         base = self.contradicted_state()
@@ -357,7 +357,7 @@ class TestSeedSession(unittest.TestCase):
         state["current_question"] = "pending"
         before = self.publish(state)
         with self.assertRaisesRegex(ValueError, "unresolved"):
-            session.end(self.directory, "completed", "Not actually complete")
+            session.end(self.directory, "completed", "Not actually complete", no_viewer="not under test")
         self.assertEqual(session.load(self.directory), before)
         ended = session.end(self.directory, "stopped", "User stopped")
         self.assertEqual(ended["status"], "stopped")
@@ -366,14 +366,14 @@ class TestSeedSession(unittest.TestCase):
         self.assertEqual(ended["revision"], before["revision"])
         self.assertEqual(session.end(self.directory, "stopped", "Retry"), ended)
         with self.assertRaisesRegex(ValueError, "read-only"):
-            session.end(self.directory, "completed", "Change ended status")
+            session.end(self.directory, "completed", "Change ended status", no_viewer="not under test")
         with self.assertRaisesRegex(ValueError, "end status"):
             session.end(self.directory, "active", "Resume")
 
     def test_end_cli_completes_without_changing_answers(self):
         before = self.confirmed()
         result = subprocess.run([sys.executable, str(SCRIPT), "end", str(self.directory),
-                                 "--status", "completed", "--reason", "Confirmed pre-intent saved"],
+                                 "--status", "completed", "--reason", "Confirmed pre-intent saved", "--no-viewer", "not under test"],
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         saved = json.loads(result.stdout)

@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import tempfile
 import uuid
+from urllib.request import urlopen
 
 
 STATE_FIELDS = {"status", "draft", "goal", "origin", "current_question", "nodes"}
@@ -228,6 +229,65 @@ def atomic_write_text(path, content):
             os.unlink(temporary)
 
 
+ASSET = Path(__file__).resolve().parents[1] / "assets/ledger-view.html"
+SNAPSHOT_MARKER = '{"__LEDGER_JSON__":true,"revision":0,"goal":null,"origin":null,"frontier":[],"nodes":[]}'
+
+
+def snapshot_data(ledger):
+    return json.dumps(ledger, ensure_ascii=True, allow_nan=False).replace("<", "\\u003c")
+
+
+def snapshot_page(ledger):
+    template = ASSET.read_text(encoding="utf-8")
+    if template.count(SNAPSHOT_MARKER) != 1:
+        raise ValueError("viewer template requires one snapshot marker")
+    return template.replace(SNAPSHOT_MARKER, snapshot_data(ledger))
+
+
+def write_snapshot(directory):
+    """Save the view next to the ledger. Callers hold the writer lock, so the view can never lag the ledger."""
+    destination = Path(directory) / "ledger-view.html"
+    require(not destination.is_symlink(), "viewer destination must not be a symlink")
+    atomic_write_text(destination, snapshot_page(load(directory)))
+    return destination
+
+
+def viewer_record(directory):
+    try:
+        record = json.loads((Path(directory) / "viewer.json").read_text())
+    except (OSError, ValueError):
+        return None
+    return record if isinstance(record, dict) else None
+
+
+def viewer_state(directory):
+    record = viewer_record(directory)
+    if record is None:
+        return "not started"
+    if record.get("declined"):
+        return "declined: " + record["declined"]
+    try:
+        with urlopen(record["url"], timeout=1) as response:
+            if response.status == 200:
+                return "live " + record["url"]
+    except (OSError, KeyError, ValueError):
+        pass
+    return "started earlier, not running now"
+
+
+def status(directory):
+    directory = Path(directory)
+    ledger = load(directory)
+    snapshot = directory / "ledger-view.html"
+    current = snapshot.is_file() and snapshot_data(ledger) in snapshot.read_text(encoding="utf-8")
+    nodes = ledger["nodes"]
+    return {"status": ledger["status"], "revision": ledger["revision"], "version": ledger["version"],
+            "open": sum(1 for n in nodes if n["status"] == "unresolved"),
+            "settled": sum(1 for n in nodes if n["status"] == "settled"),
+            "current_question": ledger["current_question"], "viewer": viewer_state(directory),
+            "snapshot": str(snapshot), "snapshot_current": current}
+
+
 def create(root=None, operator="human"):
     require(operator in OPERATORS, "invalid operator: human or simulated")
     root = Path(root) if root is not None else Path.home() / ".local/share/seed-me/sessions"
@@ -243,6 +303,7 @@ def create(root=None, operator="human"):
               "draft": {"goal": "", "outcome": "", "options": []}, "goal": None,
               "origin": None, "current_question": None, "frontier": [], "nodes": [], "assumed": [], "operator": operator}
     atomic_write(directory / "ledger.json", ledger)
+    write_snapshot(directory)
     return directory
 
 
@@ -289,20 +350,33 @@ def publish(directory, state, expected_version, reason, revalidated=None):
         result = transition(ledger, state, expected_version, reason, revalidated)
         if result is not ledger:
             atomic_write(directory / "ledger.json", result)
+        write_snapshot(directory)
         return result
 
 
-def end(directory, status, reason):
+def end(directory, status, reason, no_viewer=None):
+    """Completing an active session needs the viewer: viewer.py was started, or no_viewer says why it could not be."""
     require(status in ("stopped", "completed"), "invalid end status")
     directory = Path(directory)
     with writer(directory):
         ledger = load(directory)
         require(ledger["status"] in ("active", status), "ended session is read-only")
+        needs_viewer = status == "completed" and ledger["status"] == "active"
+        if needs_viewer:
+            if no_viewer is not None:
+                require(no_viewer.strip(), "--no-viewer needs a reason")
+            else:
+                record = viewer_record(directory)
+                require(record and record.get("pid"), "completion needs the viewer: start viewer.py, "
+                        "or pass --no-viewer with the reason it could not run")
         state = editable(ledger)
         state.update(status=status, current_question=None)
         result = transition(ledger, state, ledger["version"], reason)
         if result is not ledger:
             atomic_write(directory / "ledger.json", result)
+        if needs_viewer and no_viewer is not None:
+            atomic_write_text(directory / "viewer.json", json.dumps({"declined": no_viewer.strip(), "at": now()}))
+        write_snapshot(directory)
         return result
 
 
@@ -320,6 +394,8 @@ def main():
     finish.add_argument("session", type=Path)
     finish.add_argument("--status", choices=("stopped", "completed"), required=True)
     finish.add_argument("--reason", required=True)
+    finish.add_argument("--no-viewer", metavar="REASON", help="complete without a running viewer, stating why")
+    commands.add_parser("status").add_argument("session", type=Path)
     args = parser.parse_args()
     try:
         if args.command == "init":
@@ -327,7 +403,9 @@ def main():
         elif args.command == "read":
             result = load(args.session)
         elif args.command == "end":
-            result = end(args.session, args.status, args.reason)
+            result = end(args.session, args.status, args.reason, args.no_viewer)
+        elif args.command == "status":
+            result = status(args.session)
         else:
             payload = json.loads(args.input.read_text())
             result = publish(args.session, **payload)
