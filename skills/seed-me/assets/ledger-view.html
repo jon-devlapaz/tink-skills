@@ -88,6 +88,9 @@
   .history { padding: var(--s2) var(--s3); border: 1px solid var(--line); border-radius: 8px; margin-top: var(--s3); }
   .history summary { font-size: 14px; }
   main { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); height: 58vh; min-height: 320px; max-width: 1100px; margin: var(--s4) auto var(--s5); padding-inline: var(--s5); }
+  main { position: relative; }
+  #clear-focus { position: absolute; top: var(--s3); left: calc(var(--s5) + var(--s3)); z-index: 2; font-size: 12px; font-weight: 500; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); cursor: pointer; }
+  #clear-focus:hover { color: var(--text); border-color: var(--muted); }
   #cy { height: 100%; min-height: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px 0 0 12px; }
   #detail { border: 1px solid var(--line); border-left: 0; border-radius: 0 12px 12px 0; padding: var(--s4); overflow-wrap: anywhere; overflow-y: auto; min-height: 0; background: var(--surface); }
   #legend { font-size: 12px; color: var(--muted); padding-block: var(--s3); }
@@ -110,7 +113,7 @@
     #draft { width: calc(100% - 2 * var(--s4)); padding: var(--s4); }
     h1 { font-size: 22px; } #call { padding: var(--s4); } #call .question { font-size: 19px; }
     .item { grid-template-columns: 1fr; row-gap: 2px; }
-    main { grid-template-columns: 1fr; height: auto; } #cy { height: 50vh; border-radius: 12px 12px 0 0; }
+    main { grid-template-columns: 1fr; height: auto; } #cy { height: min(50vh, 320px); border-radius: 12px 12px 0 0; }
     #detail { border-left: 1px solid var(--line); border-top: 0; border-radius: 0 0 12px 12px; max-height: 45vh; }
   }
 </style>
@@ -144,6 +147,7 @@
 <section id="ledger-list" aria-label="Complete ledger text view"></section>
 <main hidden>
   <div id="cy" aria-label="Decision dependency graph"></div>
+  <button id="clear-focus" type="button" hidden>Clear focus</button>
   <aside id="detail"><h2>Node detail</h2><p>Select a node to inspect it.</p></aside>
 </main>
 <div id="legend" role="group" aria-label="How to read the graph">
@@ -168,7 +172,7 @@
 {"__LEDGER_JSON__":true,"revision":0,"goal":null,"origin":null,"frontier":[],"nodes":[]}
 </script>
 <script>
-let LEDGER = null, cy = null, selectedId = null, lastText = null, polling = false;
+let LEDGER = null, cy = null, selectedId = null, clearedFor, lastText = null, polling = false;
 let timer = null;
 const el = id => document.getElementById(id);
 function element(tag, text) {
@@ -208,9 +212,13 @@ function details(parent, node) {
     parent.append(section);
   }
 }
+// A clear sticks until the question being asked changes.
+function clearFocus() { clearedFor = LEDGER ? LEDGER.current_question || null : null; select(null); }
 function select(id) {
   selectedId = id;
   focusOn(id);
+  markPicked(id);
+  el('clear-focus').hidden = !(id && LEDGER.nodes.some(n => n.id === id));
   const node = LEDGER.nodes.find(n => n.id === id);
   el('detail').replaceChildren();
   if (!node) {
@@ -307,6 +315,7 @@ function paintLegend() {
   if (current) current.style.borderColor = PALETTE.current;
 }
 paintLegend();
+el('clear-focus').addEventListener('click', () => clearFocus());
 if (scheme && scheme.addEventListener) scheme.addEventListener('change', () => {
   PALETTE = scheme.matches ? PALETTES.dark : PALETTES.light;
   paintLegend();
@@ -352,6 +361,19 @@ function sCurve(from, to) {
   const along = (px, py) => (px * dx + py * dy) / (length * length);
   return { dd: [across(m, 0), across(dx - m, dy)], ww: [along(m, 0), along(dx - m, dy)] };
 }
+// Never shrink labels to fit a wide graph: keep them readable and start on what matters, the viewer can pan.
+function readableStart() {
+  if (cy.zoom() < 0.9) cy.zoom(0.9);
+  const start = cy.getElementById(selectedId || LEDGER.current_question || '');
+  const mid = start.length ? start : cy.nodes().first();
+  if (mid.length) cy.center(mid);
+}
+function markPicked(id) {
+  if (!cy) return;
+  cy.nodes().removeClass('picked');
+  const picked = id ? cy.getElementById(id) : null;
+  if (picked && picked.length) picked.addClass('picked');
+}
 function focusOn(id) {
   if (!cy) return;
   cy.elements().removeClass('faded hot');
@@ -381,7 +403,7 @@ function graph() {
     minZoom: 0.3, maxZoom: 2.2,
     style: [
       { selector: 'node', style: { label: 'data(label)', 'text-valign': 'center', 'text-halign': 'center', color: PALETTE.ink,
-        width: 150, height: 52, 'font-size': 12, 'font-weight': 600, 'text-wrap': 'wrap', 'text-max-width': 128,
+        width: 150, height: 52, 'font-size': 13, 'font-weight': 600, 'text-wrap': 'wrap', 'text-max-width': 130,
         'border-width': 1.5, 'transition-property': 'opacity, border-width', 'transition-duration': '0.25s' } },
       { selector: 'node[kind = "decision"]', style: { shape: 'round-rectangle' } },
       ...['settled', 'ready', 'parked', 'deferred'].map(key => ({ selector: '.' + key,
@@ -395,12 +417,15 @@ function graph() {
         'target-arrow-shape': 'triangle', 'arrow-scale': 0.8, 'curve-style': 'unbundled-bezier',
         'control-point-distances': 'data(dd)', 'control-point-weights': 'data(ww)', 'edge-distances': 'node-position', 'transition-property': 'opacity, line-color, width', 'transition-duration': '0.25s' } },
       { selector: 'edge.hot', style: { width: 2.4, 'line-color': PALETTE.hot, 'target-arrow-color': PALETTE.hot, 'z-index': 9 } },
+      { selector: '.picked', style: { 'outline-width': 2.5, 'outline-color': PALETTE.ink, 'outline-offset': 3, 'outline-opacity': 1 } },
       { selector: '.faded', style: { opacity: 0.14 } }
     ]
   });
   if (viewport) cy.viewport(viewport);
+  else readableStart();
+  markPicked(selectedId);
   cy.on('tap', 'node', event => select(event.target.id()));
-  cy.on('tap', event => { if (event.target === cy) select(null); });
+  cy.on('tap', event => { if (event.target === cy) clearFocus(); });
   cy.on('mouseover', 'node', event => focusOn(event.target.id()));
   cy.on('mouseout', 'node', () => focusOn(selectedId));
   focusOn(selectedId);
@@ -604,7 +629,7 @@ function render() {
   pill.textContent = ended ? LEDGER.status : (contradictions().length ? 'Needs a second look' : (LEDGER.operator === 'simulated' ? 'Simulated' : (reviewReady() ? 'Ready for review' : (LEDGER.origin ? 'In progress' : 'Draft'))));
   renderNow();
   textView();
-  if (!selectedId) selectedId = LEDGER.current_question || null;
+  if (!selectedId && (clearedFor === undefined || LEDGER.current_question !== clearedFor)) selectedId = LEDGER.current_question || null;
   select(selectedId);
   document.querySelector('main').hidden = !graphWanted();
   el('legend').hidden = !graphWanted();

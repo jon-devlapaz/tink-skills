@@ -410,6 +410,80 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
             self.assertTrue(same, "the legend swatch must be the node color")
         self.assertEqual(self.errors, [])
 
+    def wide_graph_page(self, context=None):
+        """A chain wide enough that fitting it into the panel would shrink the labels."""
+        try:
+            library = pinned_cytoscape()
+        except OSError as error:
+            if REQUIRE_BROWSER:
+                raise
+            self.skipTest(f"Could not fetch the pinned Cytoscape file ({first_line(error)})")
+        context = context or self.context
+        context.unroute("**/cytoscape.min.js")
+        context.route("**/cytoscape.min.js", lambda route: route.fulfill(path=library, content_type="application/javascript"))
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question="n7")
+        chain = [node("goal", answer="Ship it"), node("n1", answer="One")]
+        for i in range(2, 7):
+            chain.append(node(f"n{i}", parents=[f"n{i - 1}"], answer=str(i)))
+        chain.append(node("n7", parents=["n6"]))
+        state["nodes"] = chain
+        self.publish(state)
+        page = context.new_page()
+        page.on("pageerror", lambda error: self.errors.append(str(error)))
+        page.goto(self.url)
+        page.wait_for_function("cy !== null && cy.nodes().length === 7")
+        return page
+
+    def test_a_wide_graph_pans_at_readable_size_with_the_current_question_in_view(self):
+        page = self.wide_graph_page()
+        self.assertGreaterEqual(page.evaluate("cy.zoom()"), 0.85, "labels must not shrink to fit the panel")
+        self.assertGreaterEqual(page.evaluate("parseFloat(cy.getElementById('n1').style('font-size'))"), 13)
+        inside = page.evaluate("""() => { const p = cy.getElementById('n7').renderedPosition(), r = cy.container().getBoundingClientRect();
+            return p.x > 0 && p.x < r.width && p.y > 0 && p.y < r.height; }""")
+        self.assertTrue(inside, "the question being asked must start in view")
+        self.assertEqual(self.errors, [])
+
+    def test_the_selected_node_has_a_marker_apart_from_the_current_question(self):
+        page = self.graph_page(current="d")
+        page.evaluate("cy.getElementById('b').emit('tap')")
+        self.assertEqual(page.evaluate("cy.nodes('.picked').map(n => n.id())"), ["b"])
+        self.assertGreater(page.evaluate("parseFloat(cy.getElementById('b').style('outline-width'))"), 0)
+        self.assertEqual(page.evaluate("parseFloat(cy.getElementById('d').style('outline-width'))"), 0)
+        self.assertTrue(page.evaluate("cy.getElementById('d').hasClass('current')"))
+        self.assertEqual(page.evaluate("cy.getElementById('d').style('border-color')"), "rgb(163,75,227)")
+        page.evaluate("cy.emit('tap')")
+        self.assertEqual(page.evaluate("cy.nodes('.picked').length"), 0)
+        self.assertEqual(self.errors, [])
+
+    def test_focus_can_be_cleared_with_a_visible_control_and_stays_cleared(self):
+        page = self.graph_page()
+        self.expect(page.locator("#clear-focus")).to_be_visible()  # the current question is selected on load
+        self.assertEqual(page.evaluate("cy.nodes('.picked').map(n => n.id())"), ["b"])
+        page.locator("#clear-focus").click()
+        self.assertEqual(page.evaluate("cy.elements('.faded, .hot, .picked').length"), 0)
+        self.expect(page.locator("#clear-focus")).to_be_hidden()
+        self.expect(page.locator("#detail")).to_contain_text("Select a node")
+        state = session.editable(session.load(self.directory))
+        state["nodes"][4]["answer"] = "D"
+        state["nodes"][4].update(status="settled", authority="user", authority_source="fixture chat: yes")
+        self.publish(state, "Fixture settled d")
+        page.wait_for_function("cy.getElementById('d').hasClass('settled')")
+        self.expect(page.locator("#clear-focus")).to_be_hidden()
+        self.assertEqual(page.evaluate("cy.nodes('.picked').length"), 0, "a refresh must not undo the user's clear")
+        page.evaluate("cy.getElementById('c').emit('tap')")
+        self.expect(page.locator("#clear-focus")).to_be_visible()
+        self.assertEqual(self.errors, [])
+
+    def test_the_phone_graph_panel_is_short_and_still_readable(self):
+        phone = self.browser.new_context(viewport={"width": 390, "height": 844})
+        self.addCleanup(phone.close)
+        page = self.wide_graph_page(phone)
+        self.assertLessEqual(page.evaluate("document.getElementById('cy').getBoundingClientRect().height"), 340)
+        self.assertGreaterEqual(page.evaluate("cy.zoom()"), 0.85)
+        self.assertEqual(page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), True)
+        self.assertEqual(self.errors, [])
+
     def test_graph_is_hidden_when_every_edge_only_points_at_the_goal(self):
         state = session.editable(session.load(self.directory))
         state.update(goal="Ship it", origin="goal", current_question="first")
