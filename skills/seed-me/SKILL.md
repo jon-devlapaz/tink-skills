@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.12.2"
+  version: "1.13.0"
 ---
 
 # Seed Me
@@ -19,10 +19,10 @@ its receipt; every question names its owner.
   then grill it. Ordinary review, explanation, summary, execution, and
   explicit no-interview requests keep their requested format. Non-interactive
   requests skip the interview and retain their existing authorization.
-- Before opening the interview, read [ledger-transitions.md](references/ledger-transitions.md)
-  for decision ledger setup, frontier transitions, and ranking. Start the session when the
-  user confirms the goal (see **Session lifecycle** below); until then the working draft lives in chat.
-  Maintain that decision ledger throughout; visible questions are a projection of this ledger.
+- Do not read the ledger reference yet: the size gate below decides whether the interview needs a
+  ledger at all. On the Full path, start the session when the user confirms the goal (see
+  **Session lifecycle** below); until then the working draft lives in chat. Maintain the decision
+  ledger throughout; visible questions are a projection of this ledger.
 - Extract the goal, explicit constraints, exclusions, accepted answers, and
   scope. Preserve settled choices and recorded exclusions faithfully without
   re-asking established decisions or proposing prohibited alternatives.
@@ -50,8 +50,9 @@ After the user reacts to the draft, propose a path in one line with your reason:
 or **Full**. Take Lean only if the idea is small and easy to undo — the criteria are in
 [lean-path.md](references/lean-path.md), which also holds the whole lean procedure. Lean
 means no session, ledger, or viewer: one editable `seed-contract.md`. Full means everything
-below. The user can say "lean" or "full" at any time; switching to Full publishes the lean
-file's items as the first ledger update.
+below. On Full, read [ledger-transitions.md](references/ledger-transitions.md) now for ledger
+setup, frontier transitions, and ranking; Lean never reads it. The user can say "lean" or "full"
+at any time; switching to Full publishes the lean file's items as the first ledger update.
 
 ### Agent mode (simulated operator)
 
@@ -185,15 +186,18 @@ authorize product edits. The host runs the commands and owns the viewer process.
    path for recovery. Publish the confirmed goal together with the draft in the first update;
    `draft.options` is a list of plain strings such as `"Label — tradeoff"`.
    `assets/ledger.json` illustrates the schema, not a session to copy or reuse.
-2. Offer the live view once in a sentence and start the viewer only if the user says yes,
-   through the host's background-process tool:
+2. Start the viewer now, without asking, through the host's background-process tool:
    ```sh
    python3 "<skill>/scripts/viewer.py" "<session>"
    ```
    Record its process handle and announce the printed localhost URL. It selects
-   a free loopback port and renders `assets/ledger-view.html`. Verify that it
-   loads before relying on it. If startup or polling fails, preserve the ledger and report
-   the failure; the interview continues in chat, since the view is optional.
+   a free loopback port and renders `assets/ledger-view.html`. Verify with
+   `session.py status "<session>"`, which must show `live <url>`. Every `init`, `publish` and `end`
+   also saves `<session>/ledger-view.html`, so a current view exists even where no server can
+   run. If the host cannot run a background process or loopback is blocked, say so in one
+   line, preserve the ledger, and continue in chat; completing then needs
+   `end ... --no-viewer "<why it could not run>"`. Completion without a started viewer or
+   that stated reason is refused.
 3. Each turn, read the current state and publish the next state:
    ```sh
    python3 "<skill>/scripts/session.py" read "<session>"
@@ -202,9 +206,12 @@ authorize product edits. The host runs the commands and owns the viewer process.
    Build `update.json` using the publication payload in ledger reference §1.
    Supply the observed publication version and an actual change reason. `assumed` is an
    optional list of `{"text", "why"}` entries (see Step 2); omit it when empty. The
-   helper validates, retains history, and uses atomic rename; never hand-edit
+   helper validates, retains history, saves the view, and uses atomic rename; never hand-edit
    `ledger.json` or the served HTML. On a stale version, reread and reconcile;
-   on any failure, keep the last valid state and report the blocker.
+   on any failure, keep the last valid state and report the blocker. After a publish,
+   `python3 "<skill>/scripts/session.py" status "<session>"` is the cheap check: open and settled
+   counts, the current question, whether the viewer is live and the saved view current. Use it
+   instead of rereading the whole ledger.
 4. On goal confirmation, publish a settled user decision as `origin`. Keep the
    confirmed goal prominent. Add edges only for actual prerequisites; independent
    concerns may remain unconnected. The goal is implicit: do not make `origin` a
@@ -216,11 +223,12 @@ authorize product edits. The host runs the commands and owns the viewer process.
    python3 "<skill>/scripts/session.py" end "<session>" --status stopped --reason "User stopped the interview"
    python3 "<skill>/scripts/viewer.py" "<session>" --snapshot
    ```
-   For completion, substitute `completed` and the actual confirmation/save reason.
+   For completion, substitute `completed` and the actual confirmation/save reason; completion
+   also needs the viewer to have been started (or `--no-viewer "<why>"`, see step 2).
    `end` preserves blockers on stop, rejects unresolved concerns on completion,
    and makes the session read-only. Repeating the same end operation is a no-op.
-   The snapshot command atomically saves final state inside `<session>/ledger-view.html`
-   and prints its file URL. If saving fails, report it and retry; do not claim a
+   `end` already saves the final state inside `<session>/ledger-view.html`; the snapshot
+   command refreshes it atomically and prints its file URL. If saving fails, report it and retry; do not claim a
    saved final view or change the session back to active.
 6. Verify the live view shows the ended status, then stop only the recorded viewer
    process with the host's process-control tool. If the live page is unavailable,

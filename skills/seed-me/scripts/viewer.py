@@ -1,32 +1,20 @@
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from session import atomic_write_text, load, writer
+from session import atomic_write_text, load, now, snapshot_page, write_snapshot, writer
 
 
 ASSET = Path(__file__).resolve().parents[1] / "assets/ledger-view.html"
 
 
-def snapshot_page(ledger):
-    template = ASSET.read_text(encoding="utf-8")
-    marker = '{"__LEDGER_JSON__":true,"revision":0,"goal":null,"origin":null,"frontier":[],"nodes":[]}'
-    if template.count(marker) != 1:
-        raise ValueError("viewer template requires one snapshot marker")
-    data = json.dumps(ledger, ensure_ascii=True, allow_nan=False).replace("<", "\\u003c")
-    return template.replace(marker, data)
-
-
 def save_snapshot(directory):
     directory = Path(directory).resolve()
     with writer(directory):
-        destination = directory / "ledger-view.html"
-        if destination.is_symlink():
-            raise ValueError("viewer destination must not be a symlink")
-        atomic_write_text(destination, snapshot_page(load(directory)))
-    return destination
+        return write_snapshot(directory)
 
 
 def make_server(directory, port=0):
@@ -83,7 +71,9 @@ def main():
         server = make_server(args.session, args.port)
     except (ValueError, OSError, KeyError, TypeError) as error:
         parser.exit(1, str(error) + "\n")
-    print(f"http://127.0.0.1:{server.server_port}/ledger-view.html", flush=True)
+    url = f"http://127.0.0.1:{server.server_port}/ledger-view.html"
+    atomic_write_text(args.session / "viewer.json", json.dumps({"pid": os.getpid(), "url": url, "started_at": now()}))
+    print(url, flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

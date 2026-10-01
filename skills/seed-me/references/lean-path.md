@@ -10,7 +10,8 @@ Lean only if **all** of these hold; otherwise take the full path:
 - one component or one area of the code;
 - every consequential choice is cheap to undo;
 - one user, one machine;
-- no security, data loss, money, or public exposure;
+- no security, data loss, public exposure, or financial action (moving money, charging, or
+  changing financial records); a local helper that only drafts or reads is fine;
 - about three or fewer questions would change what gets built.
 
 The agent proposes a path in one line with its reason. The user can say "lean" or "full" at
@@ -29,8 +30,9 @@ any time. Switching to full publishes this file's items as the first ledger upda
    `> agent proposes (YYYY-MM-DD): <new wording> — why: <reason>`. The user accepts by moving the
    wording into the item and deleting the blockquote.
 4. Human edits are never overwritten. The agent responds to edits only when asked in chat.
-5. One question at a time, with the same question format as the full path (two options, undo cost,
-   the case against the suggestion, and instinct first when an option is hard to undo).
+5. One question at a time. A real choice gets the full question format (two options, undo cost,
+   the case against the suggestion, and instinct first when an option is hard to undo). A plain
+   factual question (where something lives, what a name is) is just asked, in one sentence.
 6. When later evidence contradicts a decision, edit the decision and note why in the item; do not
    leave both standing.
 7. Before confirming, ask the open probes before showing any finding, and for any deletion ask the recoverability probe. Run three probes (a pre-mortem, a counter-example, an outside view), put at least one to the
