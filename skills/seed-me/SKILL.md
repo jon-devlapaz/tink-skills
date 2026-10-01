@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.15.0"
+  version: "1.16.0"
 ---
 
 # Seed Me
@@ -192,7 +192,9 @@ authorize product edits. The host runs the commands and owns the viewer process.
    ```
    Record its process handle and announce the printed localhost URL. It selects
    a free loopback port and renders `assets/ledger-view.html`. Verify with
-   `session.py status "<session>"`, which must show `live <url>`. Every `init`, `publish` and `end`
+   `session.py status "<session>"`, which must show `live <url>`.
+   The page opens on the graph when there is something to draw; a Graph | Ledger toggle (keys `G` and `L`)
+   switches to the full text view, and the selected concern carries across. Every `init`, `publish` and `end`
    also saves `<session>/ledger-view.html`, so a current view exists even where no server can
    run. If the host cannot run a background process or loopback is blocked, say so in one
    line, preserve the ledger, and continue in chat; completing then needs

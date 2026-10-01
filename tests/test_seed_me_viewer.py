@@ -295,6 +295,7 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.publish(state)
         self.page.goto(self.url)
         self.page.wait_for_function("cy !== null && cy.nodes().length === 6")
+        self.page.get_by_role("button", name="How to read").click()
         self.expect(self.page.locator("#legend")).to_be_visible()
         keys = self.page.evaluate("[...document.querySelectorAll('#legend [data-legend]')].map(e => e.dataset.legend)")
         self.assertEqual(sorted(keys), sorted(["settled", "ready", "parked", "deferred", "superseded", "current", "decision", "fact", "edge"]))
@@ -316,7 +317,9 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
             supersededStyle: getComputedStyle(document.querySelector('#legend [data-legend=superseded]')).borderTopStyle,
             currentBorder: getComputedStyle(document.querySelector('#legend [data-legend=current]')).borderTopColor})""")
         self.assertEqual(shapes["decision"], "round-rectangle")
-        self.assertEqual(shapes["fact"], "ellipse")
+        self.assertEqual(shapes["fact"], "round-rectangle")
+        self.assertGreater(self.page.evaluate("parseFloat(cy.getElementById('f').style('corner-radius'))"),
+                           self.page.evaluate("parseFloat(cy.getElementById('d1').style('corner-radius'))") + 20, "a fact is a pill")
         self.assertNotIn("50%", shapes["decisionRadius"])
         self.assertIn("50%", shapes["factRadius"])
         self.assertEqual(shapes["supersededStyle"], "dashed")
@@ -355,10 +358,10 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
 
     def test_graph_reads_left_to_right_in_layers_without_overlap(self):
         page = self.graph_page()
-        x = page.evaluate("Object.fromEntries(cy.nodes().map(n => [n.id(), Math.round(n.position('x'))]))")
+        x = page.evaluate("Object.fromEntries(cy.nodes().map(n => [n.id(), Math.round(n.position('x') - n.data('w') / 2)]))")
         self.assertLess(x["a"], x["b"])
         self.assertLess(x["b"], x["c"])
-        self.assertEqual(x["b"], x["d"], "nodes the same number of steps from the start share a column")
+        self.assertEqual(x["b"], x["d"], "nodes the same number of steps from the start share a column (their left edges line up)")
         self.assertEqual(x["a"], x["e"])
         boxes = page.evaluate("cy.nodes().map(n => { const b = n.boundingBox(); return [b.x1, b.y1, b.x2, b.y2]; })")
         for i, p in enumerate(boxes):
@@ -368,18 +371,18 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
 
     def test_selecting_a_node_fades_the_unrelated_and_lights_its_chain(self):
         page = self.graph_page()
-        page.evaluate("cy.getElementById('b').emit('tap')")
+        page.evaluate("void cy.getElementById('b').emit('tap')")
         faded = page.evaluate("cy.nodes('.faded').map(n => n.id()).sort()")
         self.assertEqual(faded, ["d", "e"], "b's chain is its ancestors and descendants; a sibling and a separate concern fade")
         hot = page.evaluate("cy.edges('.hot').map(e => e.source().id() + '>' + e.target().id()).sort()")
         self.assertEqual(hot, ["a>b", "b>c"])
         self.assertEqual(page.evaluate("cy.edges('.faded').map(e => e.source().id() + '>' + e.target().id())"), ["a>d"])
         self.expect(page.locator("#detail h2")).to_have_text("b")
-        page.evaluate("cy.emit('tap')")
+        page.evaluate("void cy.emit('tap')")
         self.assertEqual(page.evaluate("cy.elements('.faded, .hot').length"), 0, "tapping the empty canvas clears the focus")
-        page.evaluate("cy.getElementById('c').emit('mouseover')")
+        page.evaluate("void cy.getElementById('c').emit('mouseover')")
         self.assertEqual(page.evaluate("cy.nodes('.faded').map(n => n.id()).sort()"), ["d", "e"], "hover previews the chain")
-        page.evaluate("cy.getElementById('c').emit('mouseout')")
+        page.evaluate("void cy.getElementById('c').emit('mouseout')")
         self.assertEqual(page.evaluate("cy.elements('.faded').length"), 0)
         self.assertEqual(self.errors, [])
 
@@ -438,13 +441,13 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
 
     def test_the_selected_node_has_a_marker_apart_from_the_current_question(self):
         page = self.graph_page(current="d")
-        page.evaluate("cy.getElementById('b').emit('tap')")
+        page.evaluate("void cy.getElementById('b').emit('tap')")
         self.assertEqual(page.evaluate("cy.nodes('.picked').map(n => n.id())"), ["b"])
         self.assertGreater(page.evaluate("parseFloat(cy.getElementById('b').style('outline-width'))"), 0)
         self.assertEqual(page.evaluate("parseFloat(cy.getElementById('d').style('outline-width'))"), 0)
         self.assertTrue(page.evaluate("cy.getElementById('d').hasClass('current')"))
         self.assertEqual(page.evaluate("cy.getElementById('d').style('border-color')"), "rgb(163,75,227)")
-        page.evaluate("cy.emit('tap')")
+        page.evaluate("void cy.emit('tap')")
         self.assertEqual(page.evaluate("cy.nodes('.picked').length"), 0)
         self.assertEqual(self.errors, [])
 
@@ -463,13 +466,13 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         page.wait_for_function("cy.getElementById('d').hasClass('settled')")
         self.expect(page.locator("#clear-focus")).to_be_hidden()
         self.assertEqual(page.evaluate("cy.nodes('.picked').length"), 0, "a refresh must not undo the user's clear")
-        page.evaluate("cy.getElementById('c').emit('tap')")
+        page.evaluate("void cy.getElementById('c').emit('tap')")
         self.expect(page.locator("#clear-focus")).to_be_visible()
         self.assertEqual(self.errors, [])
 
     def test_the_inspector_leads_with_what_matters_and_tucks_the_plumbing_away(self):
         page = self.graph_page()
-        page.evaluate("cy.getElementById('b').emit('tap')")
+        page.evaluate("void cy.getElementById('b').emit('tap')")
         names = page.evaluate("[...document.querySelectorAll('#detail > dl > dt')].map(e => e.textContent)")
         self.assertEqual(names[0], "Status")
         self.assertLess(names.index("Gate"), names.index("Owner"))
@@ -494,23 +497,26 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
 
     def test_no_pan_hint_when_the_whole_graph_is_already_in_view(self):
         page = self.graph_page()
+        page.evaluate("void cy.zoom(0.45)")
+        page.evaluate("void cy.center()")
         self.expect(page.locator("#pan-hint")).to_be_hidden()
         self.assertEqual(self.errors, [])
 
     def test_selecting_an_offscreen_node_brings_its_neighborhood_into_view(self):
         page = self.wide_graph_page()
-        page.evaluate("cy.getElementById('n2').emit('tap')")
+        page.evaluate("void cy.getElementById('n2').emit('tap')")
         page.wait_for_function("""() => { const r = cy.container().getBoundingClientRect();
             return ['n1', 'n2', 'n3'].every(id => { const b = cy.getElementById(id).renderedBoundingBox();
                 return b.x1 >= 0 && b.x2 <= r.width; }); }""")
         self.assertGreaterEqual(page.evaluate("cy.zoom()"), 0.85)
         self.assertEqual(self.errors, [])
 
-    def test_the_phone_graph_panel_is_short_and_still_readable(self):
+    def test_the_phone_graph_fills_the_screen_stays_readable_and_never_scrolls_sideways(self):
         phone = self.browser.new_context(viewport={"width": 390, "height": 844})
         self.addCleanup(phone.close)
         page = self.wide_graph_page(phone)
-        self.assertLessEqual(page.evaluate("document.getElementById('cy').getBoundingClientRect().height"), 340)
+        self.assertGreater(page.evaluate("document.getElementById('cy').getBoundingClientRect().height / innerHeight"), 0.4)
+        self.expect(page.locator("#detail")).to_be_visible()
         self.assertGreaterEqual(page.evaluate("cy.zoom()"), 0.85)
         self.assertEqual(page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), True)
         self.assertEqual(self.errors, [])
@@ -534,6 +540,79 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.assertEqual([url for url in requests if not url.startswith("file:")], [], "nothing may leave the machine")
         self.expect(page.locator("#cdn-banner")).to_be_hidden()
         self.assertEqual(errors, [])
+
+    def test_the_graph_is_the_primary_surface_and_the_ledger_is_a_toggle(self):
+        page = self.graph_page()
+        self.assertEqual(page.evaluate("document.body.dataset.view"), "graph")
+        self.expect(page.locator("#now")).to_be_hidden()
+        self.expect(page.locator("#connection")).to_be_visible()
+        self.assertGreater(page.evaluate("document.getElementById('cy').getBoundingClientRect().height / innerHeight"), 0.6,
+                           "the graph must fill most of the screen")
+        page.evaluate("void cy.getElementById('b').emit('tap')")
+        page.get_by_role("button", name="Ledger").click()
+        self.assertEqual(page.evaluate("document.body.dataset.view"), "ledger")
+        self.expect(page.locator("#call")).to_be_visible()
+        self.expect(page.locator("main")).to_be_hidden()
+        self.expect(page.locator('details[data-node-id="b"]')).to_have_attribute("open", "")
+        page.get_by_role("button", name="Graph").click()
+        self.assertEqual(page.evaluate("document.body.dataset.view"), "graph")
+        self.assertEqual(page.evaluate("cy.nodes('.picked').map(n => n.id())"), ["b"], "the selection survives the round trip")
+        self.assertGreater(page.evaluate("document.getElementById('cy').getBoundingClientRect().height"), 100, "the graph resizes on return")
+        self.assertEqual(self.errors, [])
+
+    def test_the_view_can_be_chosen_by_link_and_by_keyboard(self):
+        page = self.graph_page()
+        page.keyboard.press("l")
+        self.assertEqual(page.evaluate("document.body.dataset.view + location.hash"), "ledger#ledger")
+        page.keyboard.press("g")
+        self.assertEqual(page.evaluate("document.body.dataset.view + location.hash"), "graph#graph")
+        page.goto(self.url + "#ledger")
+        page.wait_for_function("LEDGER !== null")
+        self.assertEqual(page.evaluate("document.body.dataset.view"), "ledger")
+        self.assertEqual(self.errors, [])
+
+    def test_every_node_is_an_html_card_that_follows_pan_and_zoom(self):
+        page = self.graph_page(current="b")
+        self.assertEqual(page.evaluate("document.querySelectorAll('#cards .card').length"), 5)
+        self.assertEqual(page.evaluate("document.querySelector('#cards .card[data-id=a] .t').textContent"), "a")
+        self.assertIn("settled", page.evaluate("document.querySelector('#cards .card[data-id=a]').className"))
+        question = page.evaluate("document.querySelector('#cards .card.cur').textContent")
+        self.assertIn("a proposal, not a decision" if "recommendation" in question else "Your call", question)
+        before = page.evaluate("document.querySelector('#cards .card[data-id=a]').getBoundingClientRect().left")
+        page.evaluate("void cy.panBy({x: 60, y: 0})")
+        after = page.evaluate("document.querySelector('#cards .card[data-id=a]').getBoundingClientRect().left")
+        self.assertAlmostEqual(after - before, 60, delta=1)
+        a = page.evaluate("(() => { const r = document.querySelector('#cards .card[data-id=a]').getBoundingClientRect(); const p = cy.getElementById('a').renderedPosition(), c = cy.container().getBoundingClientRect(); return [r.left + r.width / 2 - c.left - p.x, r.top + r.height / 2 - c.top - p.y]; })()")
+        self.assertLess(abs(a[0]) + abs(a[1]), 2, "the card is centered on its node")
+        self.assertEqual(self.errors, [])
+
+    def test_zooming_out_keeps_titles_and_hides_the_detail(self):
+        page = self.graph_page()
+        page.evaluate("void cy.zoom(1)")
+        self.assertEqual(page.evaluate("document.getElementById('cards').classList.contains('far')"), False)
+        page.evaluate("void cy.zoom(0.4)")
+        self.assertEqual(page.evaluate("document.getElementById('cards').classList.contains('far')"), True)
+        self.assertEqual(page.evaluate("getComputedStyle(document.querySelector('#cards .card[data-id=a] .a')).display"), "none")
+        self.assertNotEqual(page.evaluate("getComputedStyle(document.querySelector('#cards .card[data-id=a] .t')).display"), "none")
+        self.assertEqual(self.errors, [])
+
+    def test_cards_fade_and_pick_with_the_graph_focus(self):
+        page = self.graph_page()
+        page.evaluate("void cy.getElementById('b').emit('tap')")
+        self.assertEqual(page.evaluate("[...document.querySelectorAll('#cards .card.dim')].map(c => c.dataset.id).sort()"), ["d", "e"])
+        self.assertEqual(page.evaluate("[...document.querySelectorAll('#cards .card.pick')].map(c => c.dataset.id)"), ["b"])
+        page.evaluate("void cy.emit('tap')")
+        self.assertEqual(page.evaluate("document.querySelectorAll('#cards .card.dim, #cards .card.pick').length"), 0)
+        self.assertEqual(self.errors, [])
+
+    def test_the_legend_lives_behind_a_button(self):
+        page = self.graph_page()
+        self.expect(page.locator("#legend")).to_be_hidden()
+        page.get_by_role("button", name="How to read").click()
+        self.expect(page.locator("#legend")).to_be_visible()
+        page.get_by_role("button", name="How to read").click()
+        self.expect(page.locator("#legend")).to_be_hidden()
+        self.assertEqual(self.errors, [])
 
     def test_graph_is_hidden_when_every_edge_only_points_at_the_goal(self):
         state = session.editable(session.load(self.directory))

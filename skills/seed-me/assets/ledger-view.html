@@ -124,6 +124,49 @@
     main { grid-template-columns: 1fr; height: auto; } #cy { height: min(50vh, 320px); border-radius: 12px 12px 0 0; }
     #detail { border-left: 1px solid var(--line); border-top: 0; border-radius: 0 0 12px 12px; max-height: 45vh; }
   }
+
+  /* Graph first: a compact top bar and a full-height graph; the text column is the Ledger view behind a toggle. */
+  header { position: relative; }
+  #views { position: absolute; top: var(--s4); right: var(--s5); display: inline-flex; gap: var(--s2); align-items: center; }
+  #views button { font: inherit; font-size: 13px; padding: 3px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 8px; cursor: pointer; }
+  #views button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+  #views #how { background: none; }
+  body[data-view="graph"] { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  body[data-view="graph"] header { max-width: none; width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s1) var(--s4); padding: var(--s3) var(--s5) var(--s2); }
+  body[data-view="graph"] h1 { font-size: 17px; margin: 0; flex: 1 1 260px; min-width: 0; }
+  body[data-view="graph"] #views { position: static; margin-left: auto; }
+  body[data-view="graph"] .eyebrow { margin: 0; }
+  body[data-view="graph"] #counts { font-size: 13px; }
+  body[data-view="graph"] #accept-summary, body[data-view="graph"] #now, body[data-view="graph"] #draft, body[data-view="graph"] #ledger-list, body[data-view="graph"] #meta-foot { display: none; }
+  body[data-view="graph"] #connection, body[data-view="graph"] #cdn-banner { max-width: none; padding-block: 2px; }
+  body[data-view="graph"] #connection[data-health="error"] { background: var(--warn-bg); color: var(--warn); padding: var(--s2) var(--s5); font-size: 14px; }
+  body[data-view="graph"] main { flex: 1; min-height: 0; height: auto; max-width: none; width: 100%; margin: 0; padding: 0 var(--s3) var(--s3); grid-template-rows: minmax(0, 1fr); }
+  body[data-view="graph"] #legend { position: fixed; left: var(--s4); bottom: var(--s4); max-width: 440px; z-index: 20; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: var(--s3) var(--s4); box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+  body[data-view="ledger"] main, body[data-view="ledger"] #legend { display: none; }
+  #graph-wrap { overflow: hidden; border-radius: 12px 0 0 12px; }
+  #cards { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; pointer-events: none; z-index: 1; }
+  #cards .card { position: absolute; padding: 10px 14px; overflow: hidden; color: var(--text); font-size: 13px; line-height: 1.35; transition: opacity .25s; }
+  #cards .card .t { font-weight: 650; font-size: 14px; display: flex; gap: 8px; align-items: center; }
+  #cards .card .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  #cards .card .a { margin-top: 3px; color: var(--muted); font-size: 12.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #cards .card .bd { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 0 9px; background: var(--line); color: var(--text); }
+  #cards .card.fact { padding-inline: 22px; }
+  #cards .card.cur .t { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; font-size: 12px; color: var(--accent); }
+  #cards .card.cur .q { font-size: 17px; font-weight: 650; line-height: 1.3; margin: 6px 0 8px; }
+  #cards .card.cur .rec { background: var(--accent-bg); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; margin: 0 0 6px; }
+  #cards .card.cur .rec b { display: block; font-size: 11px; color: var(--accent); }
+  #cards .card.cur .cta { font-size: 12.5px; color: var(--muted); }
+  #cards .card.dim { opacity: .14; }
+  #cards.far .card .a, #cards.far .card .bd { display: none; }
+  #cards.far .card .t { font-size: 17px; }
+  @media (max-width: 700px) {
+    #views { position: static; margin-top: var(--s2); }
+    body[data-view="graph"] header { padding-inline: var(--s4); }
+    body[data-view="graph"] main { padding-inline: var(--s2); grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+    body[data-view="graph"] #cy { height: 100%; border-radius: 12px 12px 0 0; }
+    body[data-view="graph"] #graph-wrap { border-radius: 12px 12px 0 0; }
+    body[data-view="graph"] #detail { max-height: 34vh; }
+  }
 </style>
 </head>
 <body>
@@ -132,6 +175,10 @@
   <p class="eyebrow"><span>Seed Me · read-only view</span><span id="status-pill" data-kind="draft">Draft</span></p>
   <h1 id="title">Seed Me Ledger</h1>
   <div id="counts"></div>
+  <div id="views" role="group" aria-label="View" hidden>
+    <button id="view-graph" type="button" aria-pressed="false">Graph</button><button id="view-ledger" type="button" aria-pressed="true">Ledger</button>
+    <button id="how" type="button" hidden>How to read</button>
+  </div>
   <div id="accept-summary" hidden></div>
   <p id="current" class="sr-only">No question currently presented.</p>
 </header>
@@ -156,6 +203,7 @@
 <main hidden>
   <div id="graph-wrap">
     <div id="cy" aria-label="Decision dependency graph"></div>
+    <div id="cards" aria-hidden="true"></div>
     <button id="clear-focus" type="button" hidden>Clear focus</button>
     <span id="pan-hint" hidden>Drag to pan</span>
   </div>
@@ -172,7 +220,7 @@
   </ul>
   <ul class="legend-row" aria-label="Shape, outline and arrows">
     <li><span class="sw sw-decision" data-legend="decision"></span>Rounded box: a decision</li>
-    <li><span class="sw sw-fact" data-legend="fact"></span>Oval: a fact that was checked</li>
+    <li><span class="sw sw-fact" data-legend="fact"></span>Pill: a fact that was checked</li>
     <li><span class="sw sw-current" data-legend="current"></span>Purple outline: the question being asked now</li>
     <li><span class="edge-sample" data-legend="edge" aria-hidden="true">→</span>Arrow A → B: B waits for A</li>
   </ul>
@@ -303,6 +351,7 @@ function textView() {
 }
 function fallback() {
   if (cy) { cy.destroy(); cy = null; }
+  if (view === 'graph') setView('ledger');
   el('cy').hidden = true;
   el('cdn-banner').hidden = false;
   el('cdn-banner').textContent = 'Graph unavailable. The live text view below includes every node, dependency, receipt, and prior answer.';
@@ -335,7 +384,7 @@ if (scheme && scheme.addEventListener) scheme.addEventListener('change', () => {
   if (LEDGER) graph();
 });
 // Layers read left to right: a concern sits one column right of its latest prerequisite.
-function layered(ids, edges, width, height) {
+function layered(ids, edges, sizeOf) {
   const before = new Map(ids.map(id => [id, []]));
   for (const [source, target] of edges) before.get(target).push(source);
   const depth = new Map();
@@ -360,11 +409,15 @@ function layered(ids, edges, width, height) {
       column.forEach((id, j) => row.set(id, j));
     });
   }
-  const tallest = Math.max(...columns.map(c => c.length));
+  // Cards keep their own size; a column sits right of the widest card before it. Positions are node centers.
   const at = {};
-  columns.forEach((column, i) => column.forEach((id, j) => {
-    at[id] = { x: i * (width + 70), y: (j - (column.length - 1) / 2 + (tallest - 1) / 2) * (height + 18) };
-  }));
+  let left = 0;
+  columns.forEach(column => {
+    const total = column.reduce((sum, id) => sum + sizeOf(id).h + 20, -20);
+    let top = -total / 2;
+    column.forEach(id => { const { w, h } = sizeOf(id); at[id] = { x: left + w / 2, y: top + h / 2 }; top += h + 20; });
+    left += Math.max(...column.map(id => sizeOf(id).w)) + 70;
+  });
   return at;
 }
 // An S-shaped edge: leave the source and enter the target horizontally, like the layers read.
@@ -400,15 +453,100 @@ function markPicked(id) {
   cy.nodes().removeClass('picked');
   const picked = id ? cy.getElementById(id) : null;
   if (picked && picked.length) picked.addClass('picked');
+  syncCards();
 }
 function focusOn(id) {
   if (!cy) return;
   cy.elements().removeClass('faded hot');
   const node = id ? cy.getElementById(id) : null;
-  if (!node || !node.length) return;
+  if (!node || !node.length) { syncCards(); return; }
   const chain = node.predecessors().union(node.successors()).union(node);
   cy.elements().not(chain).addClass('faded');
   chain.edges().addClass('hot');
+  syncCards();
+}
+// ---- HTML cards over the drawn nodes: Cytoscape draws fill, border and edges; the card carries the words.
+const SHORT = { user: 'You decided', standing: 'Standing delegation', accepted: 'You accepted', evidence: 'Checked fact', simulated: 'Simulated' };
+function buildCards() {
+  const layer = el('cards');
+  layer.replaceChildren();
+  for (const gn of cy.nodes()) {
+    const node = LEDGER.nodes.find(n => n.id === gn.id());
+    const p = gn.position(), w = gn.data('w'), h = gn.data('h');
+    const card = element('div');
+    card.className = `card ${node.kind} ${cls(node)}` + (node.id === LEDGER.current_question ? ' cur' : '');
+    card.dataset.id = node.id;
+    card.style.cssText = `left:${p.x - w / 2}px;top:${p.y - h / 2}px;width:${w}px;height:${h}px`;
+    const title = element('div');
+    title.className = 't';
+    const dot = element('span');
+    dot.className = 'dot';
+    dot.style.background = node.id === LEDGER.current_question ? PALETTE.current : (PALETTE[cls(node)] || PALETTE.settled).line;
+    title.append(dot, document.createTextNode(node.id === LEDGER.current_question ? 'Your call' : (node.label || node.id)));
+    card.append(title);
+    if (node.id === LEDGER.current_question) {
+      const q = element('div', node.question || node.label || node.id);
+      q.className = 'q';
+      card.append(q);
+      if (node.recommendation) {
+        const rec = element('div');
+        rec.className = 'rec';
+        rec.append(element('b', 'Recommended by the agent — a proposal, not a decision'), document.createTextNode(node.recommendation));
+        card.append(rec);
+      }
+      const cta = element('div', 'Reply in chat: agree, change it, or say what you would do instead.');
+      cta.className = 'cta';
+      card.append(cta);
+    } else {
+      const a = element('div', node.status === 'settled' ? node.answer : (node.question || ''));
+      a.className = 'a';
+      card.append(a);
+      const waiting = waitingOn(node);
+      const key = standing(node) ? 'standing' : (node.authority === 'delegated' ? 'accepted' : node.authority);
+      const bd = element('span', node.status === 'settled' ? (SHORT[key] || '') : (node.status === 'deferred' ? 'Deferred' : (waiting.length ? `Waiting on ${waiting.length}` : 'Ready')));
+      bd.className = 'bd';
+      card.append(bd);
+    }
+    layer.append(card);
+  }
+  placeCards();
+  syncCards();
+}
+function placeCards() {
+  if (!cy) return;
+  const pan = cy.pan();
+  el('cards').style.transform = `translate(${pan.x}px, ${pan.y}px) scale(${cy.zoom()})`;
+  el('cards').classList.toggle('far', cy.zoom() < 0.6);
+}
+function syncCards() {
+  if (!cy) return;
+  for (const card of el('cards').children) {
+    const gn = cy.getElementById(card.dataset.id);
+    card.classList.toggle('dim', gn.hasClass('faded'));
+    card.classList.toggle('pick', gn.hasClass('picked'));
+  }
+}
+// ---- Graph | Ledger: the graph is the default surface when there is something to draw; the text column is the other view.
+let view = null, legendOpen = false, pickedView = ['#graph', '#ledger'].includes(location.hash) ? location.hash.slice(1) : null;
+function graphAvailable() { return typeof cytoscape !== 'undefined' && graphWanted(); }
+function setView(next, byUser) {
+  if (next === 'graph' && !graphAvailable()) next = 'ledger';
+  view = next;
+  document.body.dataset.view = next;
+  const possible = graphAvailable();
+  el('views').hidden = !possible;
+  el('view-graph').setAttribute('aria-pressed', String(next === 'graph'));
+  el('view-ledger').setAttribute('aria-pressed', String(next === 'ledger'));
+  el('how').hidden = next !== 'graph';
+  el('legend').hidden = !(next === 'graph' && legendOpen);
+  document.querySelector('main').hidden = next !== 'graph';
+  if (byUser) { pickedView = next; try { history.replaceState(null, '', '#' + next); } catch { /* a saved file may refuse */ } }
+  if (next === 'graph') {
+    try { graph(); if (selectedId && byUser) bringIntoView(cy.getElementById(selectedId)); } catch { fallback(); }
+  } else if (selectedId) {
+    const open = document.querySelector(`#ledger-list details[data-node-id="${CSS.escape(selectedId)}"]`);
+    if (open) { open.open = true; if (byUser) open.scrollIntoView({ block: 'center' }); }
+  }
 }
 function graph() {
   if (typeof cytoscape === 'undefined') { fallback(); return; }
@@ -418,21 +556,21 @@ function graph() {
   if (cy) cy.destroy();
   const shown = LEDGER.nodes.filter(n => n.id !== LEDGER.origin);
   const links = shown.flatMap(n => n.prerequisites.filter(p => p !== LEDGER.origin).map(p => [p, n.id]));
-  const places = layered(shown.map(n => n.id), links, 150, 52);
+  const sizeOf = id => (id === LEDGER.current_question ? { w: 380, h: 250 } : { w: 232, h: 112 });
+  const places = layered(shown.map(n => n.id), links, sizeOf);
   cy = cytoscape({
     container: el('cy'),
     elements: [
-      ...shown.map(n => ({ data: { id: n.id, label: n.label || n.id, kind: n.kind }, position: places[n.id],
+      ...shown.map(n => ({ data: { id: n.id, label: n.label || n.id, kind: n.kind, w: sizeOf(n.id).w, h: sizeOf(n.id).h }, position: places[n.id],
         classes: cls(n) + (n.id === LEDGER.origin ? ' origin' : '') + (n.id === LEDGER.current_question ? ' current' : '') })),
       ...links.map(([source, target]) => ({ data: { source, target, ...sCurve(places[source], places[target]) } }))
     ],
     layout: { name: 'preset', fit: true, padding: 36 },
     minZoom: 0.3, maxZoom: 2.2,
     style: [
-      { selector: 'node', style: { label: 'data(label)', 'text-valign': 'center', 'text-halign': 'center', color: PALETTE.ink,
-        width: 150, height: 52, 'font-size': 13, 'font-weight': 600, 'text-wrap': 'wrap', 'text-max-width': 130,
-        'border-width': 1.5, 'transition-property': 'opacity, border-width', 'transition-duration': '0.25s' } },
-      { selector: 'node[kind = "decision"]', style: { shape: 'round-rectangle' } },
+      { selector: 'node', style: { shape: 'round-rectangle', 'corner-radius': 14, width: 'data(w)', height: 'data(h)', color: PALETTE.ink,
+        'font-size': 13, 'border-width': 1.5, 'transition-property': 'opacity, border-width', 'transition-duration': '0.25s' } },
+      { selector: 'node[kind = "fact"]', style: { 'corner-radius': 56 } },
       ...['settled', 'ready', 'parked', 'deferred'].map(key => ({ selector: '.' + key,
         style: { 'background-color': PALETTE[key].fill, 'border-color': PALETTE[key].line } })),
       { selector: '.superseded', style: { 'background-color': PALETTE.superseded.fill, color: PALETTE.superseded.line,
@@ -449,6 +587,8 @@ function graph() {
   });
   if (viewport) cy.viewport(viewport);
   else readableStart();
+  buildCards();
+  cy.on('pan zoom resize', placeCards);
   markPicked(selectedId);
   cy.on('tap', 'node', event => select(event.target.id(), true));
   cy.on('viewport', updatePanHint);
@@ -659,10 +799,10 @@ function render() {
   textView();
   if (!selectedId && (clearedFor === undefined || LEDGER.current_question !== clearedFor)) selectedId = LEDGER.current_question || null;
   select(selectedId);
-  document.querySelector('main').hidden = !graphWanted();
-  el('legend').hidden = !graphWanted();
-  if (!graphWanted()) { if (cy) { cy.destroy(); cy = null; } el('cdn-banner').hidden = true; return; }
-  try { graph(); } catch { fallback(); }
+  if (graphWanted() && typeof cytoscape === 'undefined') fallback();
+  else if (!graphWanted()) { if (cy) { cy.destroy(); cy = null; } el('cdn-banner').hidden = true; }
+  // Until the person chooses a view, the graph is the default whenever there is something to draw.
+  setView(pickedView || (graphAvailable() ? 'graph' : 'ledger'));
 }
 function health(kind, message) {
   el('connection').dataset.health = kind;
@@ -693,7 +833,16 @@ async function poll() {
     health('error', `Viewer unavailable or stale: ${error.message}. ${LEDGER ? 'Showing the last valid snapshot.' : 'No session data loaded.'} Pause new interview questions until restored.`);
   } finally { polling = false; }
 }
-el('graph-library').addEventListener('load', () => { if (LEDGER && graphWanted()) { try { graph(); } catch { fallback(); } } });
+el('graph-library').addEventListener('load', () => { if (LEDGER && graphWanted()) { el('cdn-banner').hidden = true; setView(pickedView || (graphAvailable() ? 'graph' : 'ledger')); } });
+el('view-graph').addEventListener('click', () => setView('graph', true));
+el('view-ledger').addEventListener('click', () => setView('ledger', true));
+el('how').addEventListener('click', () => { legendOpen = !legendOpen; el('legend').hidden = !(view === 'graph' && legendOpen); });
+addEventListener('hashchange', () => { pickedView = ['#graph', '#ledger'].includes(location.hash) ? location.hash.slice(1) : null; if (LEDGER) setView(pickedView || (graphAvailable() ? 'graph' : 'ledger')); });
+addEventListener('keydown', event => {
+  if (event.metaKey || event.ctrlKey || event.altKey || event.target.closest('input, textarea, select')) return;
+  if (event.key === 'g' || event.key === 'G') setView('graph', true);
+  if (event.key === 'l' || event.key === 'L') setView('ledger', true);
+});
 try {
   const embedded = JSON.parse(el('ledger-data').textContent);
   if (!embedded.__LEDGER_JSON__) { LEDGER = validate(embedded); render(); }
