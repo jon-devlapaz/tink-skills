@@ -47,23 +47,9 @@ def first_line(error):
 
 
 def pinned_cytoscape():
-    """Path to the Cytoscape file the viewer pins, fetched once and checked against the page's SRI hash."""
+    """The vendored Cytoscape build (its bytes are checked against the page's SRI pin in test_seed_me_offline_snapshot)."""
     override = os.environ.get("SEED_ME_CYTOSCAPE_PATH")
-    if override:
-        return Path(override)
-    tag = re.search(r'<script[^>]*id="graph-library"[^>]*>', VIEWER_ASSET.read_text()).group(0)
-    url = re.search(r'src="([^"]+)"', tag).group(1)
-    expected = re.search(r'integrity="sha384-([^"]+)"', tag).group(1)
-    cached = Path(tempfile.gettempdir()) / "seed-me-cytoscape" / hashlib.sha256(expected.encode()).hexdigest()[:16]
-    if not cached.is_file():
-        with urlopen(url, timeout=20) as response:
-            body = response.read()
-        actual = base64.b64encode(hashlib.sha384(body).digest()).decode()
-        if actual != expected:
-            raise AssertionError(f"{url} does not match the pinned SRI hash: got sha384-{actual}")
-        cached.parent.mkdir(parents=True, exist_ok=True)
-        cached.write_bytes(body)
-    return cached
+    return Path(override) if override else VIEWER_ASSET.parent / "vendor/cytoscape.min.js"
 
 
 class ViewerFixture:
@@ -229,6 +215,10 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.assertEqual(self.errors, [])
 
     def test_complete_fallback_and_selected_detail_refresh_without_reload(self):
+        # The library is inlined now; take it away to prove the text view still carries everything.
+        gone = patch.object(sys.modules["session"], "VENDOR", Path("/nonexistent/cytoscape.min.js"))
+        gone.start()
+        self.addCleanup(gone.stop)
         self.confirm()
         self.page.goto(self.url)
         self.expect(self.page.locator("#cdn-banner")).to_be_visible()
@@ -524,6 +514,26 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.assertGreaterEqual(page.evaluate("cy.zoom()"), 0.85)
         self.assertEqual(page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), True)
         self.assertEqual(self.errors, [])
+
+    def test_a_saved_snapshot_draws_the_graph_with_no_network_at_all(self):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Ship it", origin="goal", current_question=None)
+        state["nodes"] = [node("goal", answer="Ship it"), node("a", answer="A"), node("b", parents=["a"], answer="B")]
+        self.publish(state)
+        session.end(self.directory, "completed", "Confirmed and saved", no_viewer="offline test")
+        saved = viewer.save_snapshot(self.directory)
+        context = self.browser.new_context(offline=True)
+        self.addCleanup(context.close)
+        requests = []
+        context.on("request", lambda request: requests.append(request.url))
+        page = context.new_page()
+        errors = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.goto(saved.as_uri())
+        page.wait_for_function("cy !== null && cy.nodes().length === 2")
+        self.assertEqual([url for url in requests if not url.startswith("file:")], [], "nothing may leave the machine")
+        self.expect(page.locator("#cdn-banner")).to_be_hidden()
+        self.assertEqual(errors, [])
 
     def test_graph_is_hidden_when_every_edge_only_points_at_the_goal(self):
         state = session.editable(session.load(self.directory))
