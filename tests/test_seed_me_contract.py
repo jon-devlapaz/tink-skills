@@ -115,7 +115,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                 self.assertIn(required, skill)
         text = lean.read_text()
         for required in ("You are confirming", "status: draft | confirmed", "[evidence]",
-                         "cmd: `<exact command>`", "skip the session, ledger, and viewer",
+                         "cmd: `<exact command>`", "start the session and viewer",
                          "print its absolute path as a `file://` link"):
             with self.subTest(lean=required):
                 self.assertIn(required, text)

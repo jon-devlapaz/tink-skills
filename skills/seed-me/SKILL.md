@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.16.1"
+  version: "1.17.0"
 ---
 
 # Seed Me
@@ -19,8 +19,8 @@ its receipt; every question names its owner.
   then grill it. Ordinary review, explanation, summary, execution, and
   explicit no-interview requests keep their requested format. Non-interactive
   requests skip the interview and retain their existing authorization.
-- Do not read the ledger reference yet: the size gate below decides whether the interview needs a
-  ledger at all. On the Full path, start the session when the user confirms the goal (see
+- Do not read the ledger reference yet: the size gate below decides how much interview structure is needed.
+  On both Lean and Full, start the session when the user confirms the goal (see
   **Session lifecycle** below); until then the working draft lives in chat. Maintain the decision
   ledger throughout; visible questions are a projection of this ledger.
 - Extract the goal, explicit constraints, exclusions, accepted answers, and
@@ -49,10 +49,11 @@ record only explicit choices as accepted answers. Only then does the frontier lo
 After the user reacts to the draft, propose a path in one line with your reason: **Lean**
 or **Full**. Take Lean only if the idea is small and easy to undo — the criteria are in
 [lean-path.md](references/lean-path.md), which also holds the whole lean procedure. Lean
-means no session, ledger, or viewer: one editable `seed-contract.md`. Full means everything
-below. On Full, read [ledger-transitions.md](references/ledger-transitions.md) now for ledger
+keeps one editable `seed-contract.md` and a short interview, with the same session and viewer
+startup as Full (see **Session lifecycle**). Neither startup nor graph availability depends on
+dependency edges. Full means everything below. On Full, read [ledger-transitions.md](references/ledger-transitions.md) now for ledger
 setup, frontier transitions, and ranking; Lean never reads it. The user can say "lean" or "full"
-at any time; switching to Full publishes the lean file's items as the first ledger update.
+at any time; switching to Full continues the existing session and preserves the lean file's items.
 
 ### Agent mode (simulated operator)
 
@@ -127,7 +128,7 @@ Option B: <choice> — tradeoff: <one line>. If you pick A instead: <what change
 Against my suggestion: <the strongest case for the other option>.
 ➡️ My suggestion: <A or B>, grounded in the lines above. Confidence: <low | medium | high>.
    Observed: <what I verified>. Inferred: <what I assumed>. Would flip if: <what would change my mind>. Not checked: <what I did not verify>. My number to change: <any figure I invented, or "none">.
-Ledger: <the viewer URL on the Full path, or the seed-contract.md file:// link on the Lean path>
+Ledger: <the viewer URL on either path, or its saved HTML snapshot if the server cannot run>
 ```
 
 - `❓` marks an unresolved decision. `❔` optionally marks an unresolved decision
@@ -177,7 +178,7 @@ Requires Python 3 on a POSIX host (`fcntl` locking). Resolve `<skill>` to this
 skill's directory. These commands maintain interview artifacts only; they do not
 authorize product edits. The host runs the commands and owns the viewer process.
 
-1. When the user confirms the goal, initialize once:
+1. On both Lean and Full, when the user confirms the goal, initialize once:
    ```sh
    python3 "<skill>/scripts/session.py" init
    ```
@@ -190,14 +191,17 @@ authorize product edits. The host runs the commands and owns the viewer process.
    ```sh
    python3 "<skill>/scripts/viewer.py" "<session>"
    ```
-   Record its process handle and announce the printed localhost URL. It selects
+   Record its process handle and announce the printed localhost URL in the same message.
+   Attempt to open it only where browser permissions allow; do not bypass a declined permission.
+   Opening the page is separate from starting the server. It selects
    a free loopback port and renders `assets/ledger-view.html`. Verify with
    `session.py status "<session>"`, which must show `live <url>`.
-   The page opens on the graph when there is something to draw; a Graph | Ledger toggle (keys `G` and `L`)
+   Independent concerns appear as cards with no invented links; a goal-only session explains that
+   no concerns are recorded yet. The page opens on the graph when there is something to draw; a Graph | Ledger toggle (keys `G` and `L`)
    switches to the full text view, and the selected concern carries across. Every `init`, `publish` and `end`
    also saves `<session>/ledger-view.html`, so a current view exists even where no server can
    run. If the host cannot run a background process or loopback is blocked, say so in one
-   line, preserve the ledger, and continue in chat; completing then needs
+   line, preserve the ledger, link the current saved HTML snapshot, and continue in chat; completing then needs
    `end ... --no-viewer "<why it could not run>"`. Completion without a started viewer or
    that stated reason is refused.
 3. Each turn, read the current state and publish the next state:
@@ -205,7 +209,8 @@ authorize product edits. The host runs the commands and owns the viewer process.
    python3 "<skill>/scripts/session.py" read "<session>"
    python3 "<skill>/scripts/session.py" publish "<session>" "<session>/update.json"
    ```
-   Build `update.json` using the publication payload in ledger reference §1.
+   Build `update.json` using the publication payload in ledger reference §1 on Full,
+   or the compact publication instructions in the lean procedure.
    Supply the observed publication version and an actual change reason. `assumed` is an
    optional list of `{"text", "why"}` entries (see Step 2); omit it when empty. The
    helper validates, retains history, saves the view, and uses atomic rename; never hand-edit

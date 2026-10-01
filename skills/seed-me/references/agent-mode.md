@@ -14,11 +14,11 @@ human session cannot hold `simulated` ones.
 
 ## Starting
 
-- Full path: `python3 "<skill>/scripts/session.py" init --operator simulated`. The viewer then shows
+- Both paths: `python3 "<skill>/scripts/session.py" init --operator simulated`. The viewer then shows
   a "Simulated operator — no human decided this" banner and a "Simulated" pill. Start the viewer
   as usual; in a sandbox with no loopback or background processes, complete with
   `end ... --no-viewer "<why>"` instead, and say so in the report.
-- Lean path: put `operator: simulated` in the file header and tag operator answers `[simulated]`.
+- Lean also: put `operator: simulated` in the file header and tag operator answers `[simulated]`.
 
 ## The operator agent
 
@@ -105,7 +105,7 @@ Rules for an engram operator, on top of the ones above:
 - Save the result as `seed-contract.simulated.md`, never `seed-contract.md`, with the status
   `simulated — not confirmed by a human`. The operator's "confirm" is recorded as a simulated
   answer, not as confirmation, and never authorizes implementation.
-- To adopt a simulated contract, a person reads it and starts a normal session or lean file
+- To adopt a simulated contract, a person reads it and starts a normal session (with a lean file when appropriate)
   with their own confirmation. The simulated session's operator cannot be changed afterwards.
 
 ## Limits
