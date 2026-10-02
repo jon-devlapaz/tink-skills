@@ -23,6 +23,10 @@ CLAIM_TYPES = ("observation", "inference", "unknown")
 CLAIM_FIELDS = {"type", "scope", "limits"}
 RATIONALE_FIELDS = {"feasibility", "intent"}
 RECEIPT_FIELDS = {"checked", "at", "observed", "check", "artifact"}
+# Helper-owned, never published. premise_version: the publication that last changed what a node records as evidence.
+# reviewed_version: the publication that last reviewed what the node relies on. Labels, questions and owners move neither.
+HELPER_NODE_FIELDS = ("revision", "premise_version", "reviewed_version")
+EVIDENCE_FIELDS = ("status", "answer", "evidence", "claim", "supported_by")
 # A best-effort backstop for the rule "no secrets in receipts"; the rule itself is the host's to keep.
 SECRET = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----|\bAKIA[0-9A-Z]{16}\b|\bgh[pousr]_[A-Za-z0-9]{20,}"
                     r"|\bsk-[A-Za-z0-9_-]{20,}|\bxox[abprs]-[A-Za-z0-9-]{10,}|://[^/\s:@]+:[^/\s@]+@"
@@ -97,7 +101,8 @@ def editable(ledger):
     state["operator"] = ledger.get("operator", "human")
     for node in state["nodes"]:
         node.pop("history", None)
-        node.pop("revision", None)
+        for field in HELPER_NODE_FIELDS:
+            node.pop(field, None)
     return state
 
 
@@ -235,6 +240,11 @@ def support_dependents(nodes, starts):
         reached.update(added)
 
 
+def evidence_differs(before, after):
+    """Whether what a node records as evidence changed. Classifying a legacy entry (no claim yet) only labels it."""
+    return any(before.get(f) != after.get(f) for f in EVIDENCE_FIELDS if not (f == "claim" and before.get(f) is None))
+
+
 def review_flags(nodes):
     """Settled nodes that rely on evidence that changed, was withdrawn, or was contradicted since they were recorded.
 
@@ -250,9 +260,9 @@ def review_flags(nodes):
             found = by_id[source]
             if found["status"] != "settled":
                 why = "withdrawn"
-            elif found["revision"] > node["revision"]:
+            elif found.get("premise_version", 0) > node.get("reviewed_version", 0):
                 why = "changed"
-            elif source in contradicted and found["revision"] <= contradicted[source]["revision"]:
+            elif source in contradicted and found.get("premise_version", 0) <= contradicted[source].get("premise_version", 0):
                 why = "contradicted"
             else:
                 continue
@@ -327,6 +337,13 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
                             "superseded_at": updated, "reason": revalidated.get(node["id"], reason)})
         node["history"] = history
         node["revision"] = revision if previous is None or material_change else previous["revision"]
+        reviewed = previous is None or node["id"] in revalidated or previous["status"] != "settled" and node["status"] == "settled" \
+            or previous.get("supported_by") != node.get("supported_by")
+        for field, now_moved in (("premise_version", previous is None or evidence_differs(old[node["id"]], node)), ("reviewed_version", reviewed)):
+            if now_moved:
+                node[field] = result["version"]
+            elif field in previous:
+                node[field] = previous[field]
     if state["status"] == "completed":
         blocked = contradiction_blockers(result["nodes"])
         require(not blocked, "cannot complete: evidence contradicts a settled decision that was not revisited: " + ", ".join(blocked))
@@ -452,11 +469,13 @@ def load(directory):
     for node in ledger.get("nodes", []):
         require(isinstance(node, dict) and isinstance(node.get("history"), list), "missing node history")
         require(type(node.get("revision")) is int and 0 <= node["revision"] <= ledger["revision"], "invalid node revision")
+        for field in HELPER_NODE_FIELDS[1:]:
+            require(field not in node or (type(node[field]) is int and 0 <= node[field] <= ledger["version"]), "invalid node " + field)
         for entry in node["history"]:
             require(isinstance(entry, dict) and set(entry) == {"state", "superseded_at", "reason"}
                     and text(entry["reason"]) and text(entry["superseded_at"]), "invalid history entry")
             prior = entry["state"]
-            require(isinstance(prior, dict) and not set(prior) - (NODE_FIELDS | {"revision"})
+            require(isinstance(prior, dict) and not set(prior) - (NODE_FIELDS | set(HELPER_NODE_FIELDS))
                     and prior.get("id") == node["id"] and prior.get("kind") == node["kind"],
                     "invalid historical node")
     require(validate(editable(ledger)) == ledger.get("frontier"), "stored frontier is inconsistent")

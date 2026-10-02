@@ -288,8 +288,8 @@ function reviewFlags() {
       const found = byId.get(source);
       if (!found) continue;
       if (found.status !== 'settled') add(node.id, source, 'withdrawn');
-      else if (found.revision > node.revision) add(node.id, source, 'changed');
-      else if (contradicted.has(source) && found.revision <= contradicted.get(source).revision) add(node.id, source, 'contradicted');
+      else if ((found.premise_version || 0) > (node.reviewed_version || 0)) add(node.id, source, 'changed');
+      else if (contradicted.has(source) && (found.premise_version || 0) <= (contradicted.get(source).premise_version || 0)) add(node.id, source, 'contradicted');
     }
   }
   for (let grew = true; grew;) {

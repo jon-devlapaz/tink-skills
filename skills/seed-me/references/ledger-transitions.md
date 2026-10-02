@@ -45,6 +45,7 @@ requiredness depends on kind and status, not every field is mandatory.
 | `defer_reason` | string | Required, nonempty when deferred: why this non-blocking concern was postponed. |
 | `revisit_condition` | string | Required, nonempty when deferred: concrete trigger for revisiting it. |
 | `revision` | integer | Helper-owned premise revision; omit from publication payloads. |
+| `premise_version`, `reviewed_version` | integers | Helper-owned counters behind review flags (§7.3); omit from publication payloads. |
 | `history` | array of objects | Helper-owned prior node states with timestamps and reasons; omit from publication payloads. |
 
 Omit `owner` and `gate` on facts; the validator permits them but does not require
@@ -387,11 +388,18 @@ Observations and unknowns cite nothing. The viewer draws evidence arrows
 ### 7.3 Review flags
 
 A settled node is flagged for review when a node in its `supported_by` has
-(a) **changed** after it was recorded (a later revision), (b) been **withdrawn**
+(a) **changed** after the node was last reviewed, (b) been **withdrawn**
 (no longer settled), or (c) been **contradicted** by a settled fact naming it in
 `contradicts` and not revisited. A node relying on a flagged node is flagged as
 **under review**. Flags are derived, never stored. They never reopen a node, change
 its `answer`, `authority` or `authority_source`, or choose a replacement.
+
+They compare two helper-owned counters, `premise_version` (the publication that
+last changed a node's `status`, `answer`, `evidence`, `claim` or `supported_by`) and
+`reviewed_version` (the publication that created it, first settled it, changed its
+`supported_by`, or revalidated it). Editing a label, question, owner, or gate moves
+neither, so such an edit never clears a flag and never raises one. Only explicit
+revalidation clears a flag. Omit both counters from publication payloads.
 
 Completion is blocked while flags are unreviewed. To review, publish
 `revalidated` with a nonblank reason for each flagged ID; the node keeps its

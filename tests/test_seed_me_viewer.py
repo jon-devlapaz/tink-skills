@@ -887,6 +887,14 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.assertEqual(page.locator("#facts-list .badge.review").count(), 1)
         python_flags = {k: v for k, v in session.review_flags(session.load(self.directory)["nodes"]).items()}
         self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), python_flags, "the viewer and the helper derive the same flags")
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] in ("ownership-policy", "mixed-ownership"):
+                item["label"] = item["label"] + " (renamed)"
+        self.publish(state, "Rename only: a label edit is not a review")
+        self.expect(page.locator("#settled-list > li", has_text="renamed")).to_contain_text("needs review")
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (2)")
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), session.review_flags(session.load(self.directory)["nodes"]))
 
     def test_a_recommendation_is_a_proposal_and_its_rationale_is_split(self):
         page = self.epistemic_page(graph=False)

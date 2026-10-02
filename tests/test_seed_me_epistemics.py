@@ -264,9 +264,79 @@ class TestEvidenceChangesFlagReviewWithoutRewritingDecisions(EpistemicCase):
         result = self.seed()
         self.change_observation()
         stored = session.load(self.directory)
-        self.assertFalse([k for k in stored if "review" in k])
-        self.assertFalse([k for n in stored["nodes"] for k in n if "review" in k and k != "reopen_reason"])
+        stored_keys = set(stored) | {k for n in stored["nodes"] for k in n}
+        self.assertFalse(stored_keys & {"review", "review_flags", "needs_review", "flags"}, "only the helper-owned counters are stored, never the flags")
+        self.assertTrue({"premise_version", "reviewed_version"} <= {k for n in stored["nodes"] for k in n})
         self.assertTrue(session.review_flags(stored["nodes"]))
+
+class TestReviewFlagsOnlyClearByExplicitReview(EpistemicCase):
+    """A flag is cleared by revalidating the flagged node, never by an unrelated edit."""
+
+    FLAGGED = ["contain-handlers", "mixed-ownership", "ownership-policy"]
+
+    def changed(self):
+        """contain-handlers relies directly on command-paths; the other two rely on layout-observed (one through the inference)."""
+        self.seed(acceptance_nodes() + [decision("contain-handlers", answer="Wrap the three handlers", supported_by=["command-paths"])])
+        state = self.edit(**{"layout-observed": {"answer": "3 live entries are symlinks; 3 are plain copies."},
+                             "command-paths": {"answer": "Each inspected handler runs commands directly; one has a timeout."}})
+        return self.publish(state, "Re-checked both; the findings changed")
+
+    def assert_still_flagged(self, result):
+        self.assertEqual(sorted(session.review_flags(result["nodes"])), self.FLAGGED)
+        with self.assertRaisesRegex(ValueError, "cannot complete: evidence behind these settled nodes"):
+            self.complete()
+
+    def complete(self):
+        state = self.edit(**{"safety-target": {"status": "deferred", "defer_reason": "later", "revisit_condition": "after review"}})
+        state["current_question"] = None
+        try:
+            self.publish(state, "Defer the open choice")
+        except ValueError:
+            pass
+        return session.end(self.directory, "completed", "Done", no_viewer="not under test")
+
+    def test_editing_the_dependents_label_does_not_clear_the_flag(self):
+        self.changed()
+        result = self.publish(self.edit(**{"contain-handlers": {"label": "Renamed", "question": "Wrap which handlers?"}}), "Rename the decision")
+        self.assert_still_flagged(result)
+
+    def test_editing_the_inferences_or_decisions_other_fields_does_not_clear_the_flag(self):
+        self.changed()
+        result = self.publish(self.edit(**{"mixed-ownership": {"label": "Renamed"}, "contain-handlers": {"owner": "Someone else", "gate": "Other gate"},
+                                           "ownership-policy": {"label": "Also renamed"}}), "Edit unrelated fields")
+        self.assert_still_flagged(result)
+
+    def test_editing_the_decisions_answer_without_review_does_not_clear_the_flag(self):
+        self.changed()
+        result = self.publish(self.edit(**{"contain-handlers": {"answer": "Wrap every handler"}}), "Change the answer, no review")
+        self.assert_still_flagged(result)
+
+    def test_a_label_edit_on_the_evidence_does_not_flag_what_relies_on_it(self):
+        self.seed(acceptance_nodes() + [decision("contain-handlers", answer="Wrap the three handlers", supported_by=["command-paths"])])
+        result = self.publish(self.edit(**{"layout-observed": {"label": "Renamed observation"}, "command-paths": {"label": "Renamed too"}}), "Rename only")
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+
+    def test_explicit_revalidation_still_clears_the_flag(self):
+        self.changed()
+        self.publish(self.edit(**{"contain-handlers": {"label": "Renamed"}}), "Rename the decision")
+        result = self.publish(session.editable(session.load(self.directory)), "Reviewed with the user",
+                              revalidated={"mixed-ownership": "Counts changed; still holds", "ownership-policy": "User kept the decision",
+                                           "contain-handlers": "User kept the decision"})
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+
+    def test_evidence_that_changes_again_after_a_review_flags_again(self):
+        self.changed()
+        self.publish(session.editable(session.load(self.directory)), "Reviewed",
+                     revalidated={"mixed-ownership": "Still holds", "ownership-policy": "Kept", "contain-handlers": "Kept"})
+        result = self.publish(self.edit(**{"command-paths": {"answer": "Each inspected handler runs commands directly; two have timeouts."}}), "Changed again")
+        self.assertEqual(sorted(session.review_flags(result["nodes"])), ["contain-handlers"])
+
+    def test_the_helper_owned_counters_are_not_accepted_in_a_publication(self):
+        state = session.editable(self.seed())
+        state["nodes"][1]["reviewed_version"] = 99
+        with self.assertRaisesRegex(ValueError, "invalid node fields"):
+            self.publish(state, "Forge a review")
+
 
 class TestLegacyDataAndHistory(EpistemicCase):
     def legacy(self):
