@@ -141,10 +141,10 @@ python3 -m unittest discover -s tests -v
 ```
 
 Pull requests and pushes to `main` run the same suite plus package-manifest,
-Python compilation, shell syntax, and whitespace checks. A scheduled weekly run
+Python compilation and whitespace checks. A scheduled weekly run
 also detects stale CI configuration. These checks validate repository code; they
 do not fabricate SDLC review receipts. For an actual change run, create and
-approve a run, then execute `_system/scripts/verify.sh <run-id>` in its isolated
+approve a run, then execute `python3 _system/scripts/sdlc.py verify <run-id>` in its isolated
 checkout.
 
 ## License

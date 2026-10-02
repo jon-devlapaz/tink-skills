@@ -31,9 +31,6 @@ jobs:
       - name: Compile Python sources
         run: python3 -m compileall -q skills _system tests
 
-      - name: Check shell scripts
-        run: bash -n _system/scripts/*.sh
-
       - name: Check whitespace
         run: git diff --check HEAD^ HEAD
 
