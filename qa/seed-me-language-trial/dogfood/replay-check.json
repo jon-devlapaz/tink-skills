@@ -1,0 +1,5 @@
+{
+  "exit_code": 0,
+  "stdout": "ledgers: 1 items\n  accept-rate            pass   1  fail   0  n/a   0\n  source-cites-user-words pass   1  fail   0  n/a   0\n  valid-ledger           pass   1  fail   0  n/a   0\n",
+  "stderr": ""
+}
