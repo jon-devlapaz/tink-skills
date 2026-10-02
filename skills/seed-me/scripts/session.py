@@ -241,12 +241,28 @@ def support_dependents(nodes, starts):
 
 
 def evidence_differs(before, after):
-    """Whether what a node records as evidence changed. Classifying a legacy entry (no claim yet) only labels it."""
-    return any(before.get(f) != after.get(f) for f in EVIDENCE_FIELDS if not (f == "claim" and before.get(f) is None))
+    """Whether what a node records as evidence changed. Classifying a legacy entry (no claim yet) only labels it,
+    and the order of `supported_by` carries no meaning."""
+    def view(node, field):
+        value = node.get(field)
+        return sorted(value) if field == "supported_by" and isinstance(value, list) else value
+    return any(view(before, f) != view(after, f) for f in EVIDENCE_FIELDS if not (f == "claim" and before.get(f) is None))
+
+
+def support_chain(by_id, node_id):
+    """Everything the node relies on as evidence, directly or through other nodes, nearest first."""
+    seen, queue = [], list(by_id[node_id].get("supported_by", ()))
+    while queue:
+        source = queue.pop(0)
+        if source not in seen and source in by_id:
+            seen.append(source)
+            queue.extend(by_id[source].get("supported_by", ()))
+    return seen
 
 
 def review_flags(nodes):
-    """Settled nodes that rely on evidence that changed, was withdrawn, or was contradicted since they were recorded.
+    """Settled nodes that rely, directly or through other nodes, on evidence that changed, was withdrawn, or was
+    contradicted after the node was last reviewed. Each node is measured against its own `reviewed_version` only.
 
     Derived and read-only: a flag asks for review. It never reopens a node, erases its answer or authority, or picks a replacement.
     """
@@ -257,28 +273,16 @@ def review_flags(nodes):
         if node["status"] != "settled":
             continue
         reviewed = node.get("reviewed_version", 0)
-        for source in node.get("supported_by", ()):
-            found = by_id[source]
-            moved = found.get("premise_version", 1)
+        for source in support_chain(by_id, node["id"]):
+            found, moved = by_id[source], by_id[source].get("premise_version", 1)
+            fact_moved = contradicted[source].get("premise_version", 1) if source in contradicted else 0
             if moved > reviewed:
                 why = "withdrawn" if found["status"] != "settled" else "changed"
-            elif found["status"] == "settled" and source in contradicted and moved <= contradicted[source].get("premise_version", 1) \
-                    and contradicted[source].get("premise_version", 1) > reviewed:
+            elif found["status"] == "settled" and moved <= fact_moved and fact_moved > reviewed:
                 why = "contradicted"
             else:
                 continue
             flags.setdefault(node["id"], []).append({"because": source, "why": why})
-    grew = True
-    while grew:
-        grew = False
-        for node in nodes:
-            if node["status"] != "settled":
-                continue
-            for source in node.get("supported_by", ()):
-                known = flags.get(node["id"], [])
-                if source in flags and not any(f["because"] == source for f in known):
-                    flags.setdefault(node["id"], []).append({"because": source, "why": "under review"})
-                    grew = True
     return flags
 
 
@@ -315,8 +319,9 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
     for node_id in changed:
         affected |= descendants(list(old.values()), {node_id}) | descendants(list(new.values()), {node_id})
     revalidated = {} if revalidated is None else revalidated
-    reviewable = affected | support_dependents(list(old.values()), changed) | support_dependents(list(new.values()), changed) \
-        | set(review_flags(ledger["nodes"]))
+    # Per changed node, so a node that changed itself can still be reviewed for evidence it relies on that also changed.
+    relying = set().union(*(support_dependents(nodes, {node_id}) for node_id in changed for nodes in (list(old.values()), list(new.values()))))
+    reviewable = affected | relying | set(review_flags(ledger["nodes"]))
     require(isinstance(revalidated, dict) and set(revalidated) <= reviewable, "invalid revalidation targets")
     require(all(text(v) for v in revalidated.values()), "revalidation requires a justification")
     for node_id in affected:
@@ -329,7 +334,6 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
     result = {**deepcopy(ledger), **state, "version": ledger["version"] + 1,
               "revision": revision, "updated_at": updated, "frontier": ready}
     old_stored = {n["id"]: n for n in ledger["nodes"]}
-    flagged_before = set(review_flags(ledger["nodes"]))
     for node in result["nodes"]:
         previous = old_stored.get(node["id"])
         history = deepcopy(previous["history"]) if previous else []
@@ -339,13 +343,11 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
                             "superseded_at": updated, "reason": revalidated.get(node["id"], reason)})
         node["history"] = history
         node["revision"] = revision if previous is None or material_change else previous["revision"]
-        # Reviewing a node that was flagged is itself news for whatever relies on it: that node must be reviewed in its own right.
-        moved = previous is None or evidence_differs(old[node["id"]], node) or (node["id"] in revalidated and node["id"] in flagged_before)
-        # Settling on evidence that is not yet recorded is not a review; only an explicit revalidation is.
-        grounded = all(new[s]["status"] == "settled" for s in node.get("supported_by", ()))
-        implicit = previous is None or (previous["status"] != "settled" and node["status"] == "settled") \
-            or previous.get("supported_by") != node.get("supported_by")
-        reviewed = node["id"] in revalidated or (implicit and grounded)
+        moved = previous is None or evidence_differs(old[node["id"]], node)
+        first_settled = node["status"] == "settled" and (previous is None or previous["status"] != "settled")
+        missing = [s for s in support_chain(new, node["id"]) if new[s]["status"] != "settled"] if first_settled else []
+        require(not missing, "cannot settle on evidence that is not recorded: " + ", ".join(missing))
+        reviewed = node["id"] in revalidated or previous is None or first_settled
         for field, now_moved in (("premise_version", moved), ("reviewed_version", reviewed)):
             if now_moved:
                 node[field] = result["version"]

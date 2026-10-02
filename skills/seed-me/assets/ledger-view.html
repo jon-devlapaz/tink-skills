@@ -269,7 +269,7 @@ const CLAIM_MEANING = {
   unknown: 'this investigation has not established it; that is not the same as it not existing',
   unclassified: 'recorded before findings were typed; not known to be an observation or an inference'
 };
-const WHY = { changed: 'changed after this was recorded', withdrawn: 'is no longer on record', contradicted: 'is contradicted by later evidence', 'under review': 'is itself under review' };
+const WHY = { changed: 'changed after this was recorded', withdrawn: 'is no longer on record', contradicted: 'is contradicted by later evidence' };
 function receiptText(entry) {
   if (typeof entry === 'string') return 'Unstructured note (no receipt): ' + entry;
   return ['Checked: ' + entry.checked, 'When: ' + entry.at, 'Observed: ' + entry.observed,
@@ -280,26 +280,25 @@ function nameOf(id) { const n = LEDGER.nodes.find(x => x.id === id); return n ? 
 function reviewFlags() {
   const byId = new Map(LEDGER.nodes.map(n => [n.id, n]));
   const contradicted = new Map(LEDGER.nodes.filter(f => f.status === 'settled' && f.contradicts).map(f => [f.contradicts, f]));
+  const chain = id => {
+    const seen = [], queue = [...(byId.get(id).supported_by || [])];
+    while (queue.length) {
+      const source = queue.shift();
+      if (!seen.includes(source) && byId.has(source)) { seen.push(source); queue.push(...(byId.get(source).supported_by || [])); }
+    }
+    return seen;
+  };
   const flags = new Map();
-  const add = (id, because, why) => flags.set(id, [...(flags.get(id) || []), { because, why }]);
   for (const node of LEDGER.nodes) {
     if (node.status !== 'settled') continue;
     const reviewed = node.reviewed_version || 0;
-    for (const source of node.supported_by || []) {
-      const found = byId.get(source);
-      if (!found) continue;
-      const moved = found.premise_version ?? 1, fact = contradicted.get(source), factMoved = fact ? (fact.premise_version ?? 1) : 0;
-      if (moved > reviewed) add(node.id, source, found.status !== 'settled' ? 'withdrawn' : 'changed');
-      else if (found.status === 'settled' && fact && moved <= factMoved && factMoved > reviewed) add(node.id, source, 'contradicted');
-    }
-  }
-  for (let grew = true; grew;) {
-    grew = false;
-    for (const node of LEDGER.nodes) {
-      if (node.status !== 'settled') continue;
-      for (const source of node.supported_by || []) {
-        if (flags.has(source) && !(flags.get(node.id) || []).some(f => f.because === source)) { add(node.id, source, 'under review'); grew = true; }
-      }
+    for (const source of chain(node.id)) {
+      const found = byId.get(source), moved = found.premise_version ?? 1;
+      const factMoved = contradicted.has(source) ? (contradicted.get(source).premise_version ?? 1) : 0;
+      let why = null;
+      if (moved > reviewed) why = found.status !== 'settled' ? 'withdrawn' : 'changed';
+      else if (found.status === 'settled' && moved <= factMoved && factMoved > reviewed) why = 'contradicted';
+      if (why) flags.set(node.id, [...(flags.get(node.id) || []), { because: source, why }]);
     }
   }
   return flags;

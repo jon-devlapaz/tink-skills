@@ -931,6 +931,20 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(page.locator("#review-h")).to_be_hidden()
         self.assertEqual(viewer_flags(), {})
 
+    def test_the_viewer_flags_a_decision_when_evidence_changes_and_only_its_inference_is_reviewed_in_the_same_update(self):
+        page = self.epistemic_page(acceptance_nodes(), graph=False)
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "layout-observed":
+                item["answer"] = "3 live entries are symlinks; 3 are plain copies."
+        session.publish(self.directory, state, session.load(self.directory)["version"], "Changed and the inference reviewed together",
+                        revalidated={"mixed-ownership": "Still holds"})
+        helper = session.review_flags(session.load(self.directory)["nodes"])
+        self.assertEqual(sorted(helper), ["ownership-policy"])
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (1)")
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), helper)
+        self.expect(page.locator("#review-list")).to_contain_text("Live vs repository layout changed")
+
     def decision_on(self, node_id, support):
         return {"id": node_id, "kind": "decision", "status": "settled", "prerequisites": ["goal"], "evidence": [], "owner": "User", "gate": "Choose",
                 "answer": "Wrap the three handlers", "authority": "user", "authority_source": "chat turn 10: user chose it", "supported_by": [support]}

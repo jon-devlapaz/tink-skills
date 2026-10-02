@@ -387,25 +387,26 @@ Observations and unknowns cite nothing. The viewer draws evidence arrows
 
 ### 7.3 Review flags
 
-A settled node is flagged for review when a node in its `supported_by` has
-(a) **changed** after the node was last reviewed, (b) been **withdrawn**
-(no longer settled), or (c) been **contradicted** by a settled fact naming it in
-`contradicts` and not revisited. A node relying on a flagged node is flagged as
-**under review**. Flags are derived, never stored. They never reopen a node, change
-its `answer`, `authority` or `authority_source`, or choose a replacement.
+A settled node is flagged for review when anything it relies on, directly or
+through other nodes in `supported_by`, has (a) **changed** after the node was last
+reviewed, (b) been **withdrawn** (no longer settled), or (c) been **contradicted**
+by a settled fact naming it in `contradicts` and not revisited. The flag names
+that evidence, not the claim in between. Flags are derived, never stored. They
+never reopen a node, change its `answer`, `authority` or `authority_source`, or
+choose a replacement.
 
-They compare two helper-owned counters, `premise_version` (the publication that
-last changed a node's `status`, `answer`, `evidence`, `claim` or `supported_by`) and
-`reviewed_version` (the publication that revalidated it, or that created it, first
-settled it, or changed its `supported_by` while all its support was settled).
-Editing a label, question, owner, or gate moves neither, so such an edit never
-clears a flag and never raises one. Only explicit revalidation clears a flag,
-including one for withdrawn or contradicted evidence: the user may keep a decision
-after seeing that its evidence is gone. A node settled on evidence that is not yet
-recorded starts unreviewed. Revalidating a flagged node counts as a change to it for
-everything that relies on it, so each of those nodes needs its own review: an
-inference reviewed alone leaves the decision resting on it flagged. Omit both
-counters from publication payloads.
+Each node is measured against its own review only. Two helper-owned counters
+decide it: `premise_version` (the publication that last changed a node's `status`,
+`answer`, `evidence`, `claim`, or the set of IDs in `supported_by`) and
+`reviewed_version` (the publication that created the node, first settled it, or
+revalidated it). Editing a label, question, owner, or gate, or reordering
+`supported_by`, moves neither, so such an edit never clears a flag and never raises
+one. Only explicit revalidation clears a flag, including one for withdrawn or
+contradicted evidence: the user may keep a decision after seeing that its evidence
+is gone. Reviewing an inference does not review the decision that rests on it, and
+changing evidence while reviewing only the inference in the same publication
+still leaves the decision flagged. A node cannot be settled on evidence in its
+chain that is not yet settled. Omit both counters from publication payloads.
 
 Completion is blocked while flags are unreviewed. To review, publish
 `revalidated` with a nonblank reason for each flagged ID; the node keeps its

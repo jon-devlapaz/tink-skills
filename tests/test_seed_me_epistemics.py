@@ -212,7 +212,7 @@ class TestEvidenceChangesFlagReviewWithoutRewritingDecisions(EpistemicCase):
         after = {n["id"]: n for n in result["nodes"]}["ownership-policy"]
         flags = session.review_flags(result["nodes"])
         self.assertEqual(flags["mixed-ownership"], [{"because": "layout-observed", "why": "changed"}])
-        self.assertEqual(flags["ownership-policy"], [{"because": "mixed-ownership", "why": "under review"}])
+        self.assertEqual(flags["ownership-policy"], [{"because": "layout-observed", "why": "changed"}])
         for field in ("status", "answer", "authority", "authority_source", "supported_by", "rationale", "revision", "history"):
             self.assertEqual(after[field], before[field], field + " is untouched by a review flag")
         self.assertIsNone(after.get("reopen_reason"))
@@ -364,7 +364,7 @@ class TestEveryFlaggedNodeNeedsItsOwnReview(EpistemicCase):
         result = self.review(**{"mixed-ownership": "Counts changed; the inference still holds"})
         flags = session.review_flags(result["nodes"])
         self.assertEqual(sorted(flags), ["ownership-policy"], "the inference is reviewed; the decision is not")
-        self.assertEqual(flags["ownership-policy"], [{"because": "mixed-ownership", "why": "changed"}])
+        self.assertEqual(flags["ownership-policy"], [{"because": "layout-observed", "why": "changed"}])
         with self.assertRaisesRegex(ValueError, "cannot complete: evidence behind these settled nodes.*ownership-policy"):
             self.finish()
         policy = {n["id"]: n for n in result["nodes"]}["ownership-policy"]
@@ -404,11 +404,11 @@ class TestEveryFlaggedNodeNeedsItsOwnReview(EpistemicCase):
         result = self.publish(state, "Re-recorded the finding")
         self.assertEqual(session.review_flags(result["nodes"])["contain-handlers"], [{"because": "command-paths", "why": "changed"}])
 
-    def test_a_node_settled_on_unsettled_evidence_starts_out_flagged(self):
+    def test_a_node_cannot_be_settled_on_evidence_that_is_not_recorded(self):
         nodes = acceptance_nodes() + [decision("contain-handlers", answer="Wrap the three handlers", supported_by=["pending-fact"]),
                                       {**node("pending-fact", "fact"), "claim": {"type": "observation", "scope": "not read yet"}}]
-        result = self.seed(nodes)
-        self.assertEqual(session.review_flags(result["nodes"])["contain-handlers"], [{"because": "pending-fact", "why": "withdrawn"}])
+        with self.assertRaisesRegex(ValueError, "cannot settle on evidence that is not recorded: pending-fact"):
+            self.seed(nodes)
 
     def test_a_contradiction_is_acknowledged_by_reviewing_what_relied_on_the_contradicted_claim(self):
         self.seed()
@@ -418,6 +418,143 @@ class TestEveryFlaggedNodeNeedsItsOwnReview(EpistemicCase):
         self.assertEqual(session.review_flags(result["nodes"])["mixed-ownership"], [{"because": "layout-observed", "why": "contradicted"}])
         result = self.review(**{"mixed-ownership": "Reviewed against the second listing", "ownership-policy": "User kept the decision"})
         self.assertEqual(session.review_flags(result["nodes"]), {})
+
+
+class TestFlagsFollowTheWholeSupportChain(EpistemicCase):
+    """A node is flagged by anything it transitively relies on, measured against its own last review."""
+
+    def seeded(self):
+        self.seed()
+
+    def change_observation(self, **extra):
+        return self.edit(**{"layout-observed": {"answer": "3 live entries are symlinks; 3 are plain copies."}, **extra})
+
+    def complete(self):
+        state = self.edit(**{"safety-target": {"status": "deferred", "defer_reason": "later", "revisit_condition": "after review"}})
+        state["current_question"] = None
+        try:
+            self.publish(state, "Defer the open choice")
+        except ValueError:
+            pass
+        return session.end(self.directory, "completed", "Done", no_viewer="not under test")
+
+    def test_changing_evidence_and_reviewing_only_the_inference_in_one_publication_still_flags_the_decision(self):
+        self.seeded()
+        result = self.publish(self.change_observation(), "Observation changed; the inference reviewed in the same update",
+                              revalidated={"mixed-ownership": "Counts changed; the inference still holds"})
+        flags = session.review_flags(result["nodes"])
+        self.assertEqual(sorted(flags), ["ownership-policy"])
+        self.assertEqual(flags["ownership-policy"], [{"because": "layout-observed", "why": "changed"}])
+        with self.assertRaisesRegex(ValueError, "cannot complete: evidence behind these settled nodes.*ownership-policy"):
+            self.complete()
+        policy = {n["id"]: n for n in result["nodes"]}["ownership-policy"]
+        self.assertEqual((policy["answer"], policy["authority"]), ("The repository owns every skill", "user"))
+
+    def test_the_decision_clears_when_reviewed_in_the_same_publication_as_the_change(self):
+        self.seeded()
+        result = self.publish(self.change_observation(), "Changed and reviewed together",
+                              revalidated={"mixed-ownership": "Still holds", "ownership-policy": "User kept the decision"})
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+
+    def test_the_flag_names_the_changed_evidence_not_the_intermediate_claim(self):
+        self.seeded()
+        result = self.publish(self.change_observation(), "Observation changed")
+        flags = session.review_flags(result["nodes"])
+        self.assertEqual(flags["mixed-ownership"], [{"because": "layout-observed", "why": "changed"}])
+        self.assertEqual(flags["ownership-policy"], [{"because": "layout-observed", "why": "changed"}])
+
+    def test_a_node_that_changes_itself_can_still_be_reviewed_for_evidence_that_also_changed(self):
+        self.seeded()
+        state = self.change_observation(**{"ownership-policy": {"answer": "The live folder owns every skill"}})
+        result = self.publish(state, "Evidence changed and the user chose differently", revalidated={"ownership-policy": "User re-decided after seeing the new listing"})
+        self.assertNotIn("ownership-policy", session.review_flags(result["nodes"]))
+        self.assertEqual({n["id"]: n for n in result["nodes"]}["ownership-policy"]["answer"], "The live folder owns every skill")
+
+    def test_reordering_supported_by_neither_clears_nor_raises_a_flag(self):
+        nodes = acceptance_nodes() + [decision("contain-handlers", answer="Wrap the handlers", supported_by=["command-paths", "sdk-version"])]
+        self.seed(nodes)
+        result = self.publish(self.edit(**{"sdk-version": {"answer": "The runtime reports 2.5.0; the local SDK manifest pins 2.3.0."}}), "SDK changed")
+        self.assertEqual(session.review_flags(result["nodes"])["contain-handlers"], [{"because": "sdk-version", "why": "changed"}])
+        reordered = self.publish(self.edit(**{"contain-handlers": {"supported_by": ["sdk-version", "command-paths"]}}), "Reorder only")
+        self.assertEqual(sorted(session.review_flags(reordered["nodes"])), ["contain-handlers"], "a reorder is not a review")
+
+    def test_reordering_alone_does_not_flag_what_relies_on_the_reordered_node(self):
+        nodes = acceptance_nodes()
+        nodes[2]["supported_by"] = ["layout-observed", "sdk-version"]
+        self.seed(nodes)
+        result = self.publish(self.edit(**{"mixed-ownership": {"supported_by": ["sdk-version", "layout-observed"]}}), "Reorder only")
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+
+    def test_the_whole_chain_must_be_recorded_before_a_node_settles_on_it(self):
+        nodes = acceptance_nodes()
+        nodes[1].update(status="unresolved", answer=None, authority=None, authority_source=None)
+        with self.assertRaisesRegex(ValueError, "cannot settle on evidence that is not recorded: layout-observed"):
+            self.seed(nodes)
+
+    def test_a_node_may_settle_after_its_evidence_is_recorded_in_the_same_publication(self):
+        self.assertEqual(session.review_flags(self.seed()["nodes"]), {})
+
+class TestFlagsAgreeWithAnIndependentModelOfTheLog(EpistemicCase):
+    """Random publications, checked against a model built only from what each publication did:
+    a node is flagged iff something in its support chain changed in a later publication than the node's last review."""
+
+    def graph(self):
+        obs = lambda i: finding(i, {"type": "observation", "scope": "s"}, "Seen " + i, ["note " + i])
+        inf = lambda i, sup: finding(i, {"type": "inference", "scope": "s", "limits": "l"}, "Concluded " + i, ["note " + i], supported_by=sup)
+        dec = lambda i, sup: decision(i, answer="Chose " + i, supported_by=sup)
+        return [node("goal", answer="Goal"), obs("a"), obs("b"), obs("c"), inf("i1", ["a", "b"]), inf("i2", ["b"]),
+                dec("d1", ["i1"]), dec("d2", ["i1", "a"]), dec("d3", ["i2", "c"]), dec("d4", ["c"])]
+
+    def chain(self, nodes, node_id):
+        seen, queue = [], list(nodes[node_id].get("supported_by", ()))
+        while queue:
+            source = queue.pop(0)
+            if source not in seen:
+                seen.append(source)
+                queue.extend(nodes[source].get("supported_by", ()))
+        return seen
+
+    def run_sequence(self, seed):
+        import random
+        rng = random.Random(seed)
+        result = self.seed(self.graph(), current=None)
+        structure = {n["id"]: n for n in result["nodes"]}
+        changed, reviewed = {i: result["version"] for i in structure}, {i: result["version"] for i in structure}
+        for step in range(12):
+            state = session.editable(session.load(self.directory))
+            by_id = {n["id"]: n for n in state["nodes"]}
+            version = session.load(self.directory)["version"] + 1
+            touched = []
+            for _ in range(rng.randint(1, 3)):
+                op = rng.choice(("label", "reorder", "evidence", "evidence", "answer"))
+                if op == "label":
+                    by_id[rng.choice(list(by_id))]["label"] = "label %d" % rng.randint(0, 9999)
+                elif op == "reorder":
+                    target = by_id[rng.choice(("i1", "d2", "d3"))]
+                    target["supported_by"] = list(reversed(target["supported_by"]))
+                elif op == "evidence":
+                    target = by_id[rng.choice(("a", "b", "c", "i1", "i2"))]
+                    target["answer"] = "Changed %d" % rng.randint(0, 99999)
+                    touched.append(target["id"])
+                else:
+                    by_id[rng.choice(("d1", "d2", "d3", "d4"))]["answer"] = "Rechose %d" % rng.randint(0, 99999)
+            for node_id in touched:
+                changed[node_id] = version
+            flagged = [i for i in structure if i != "goal" and any(changed[s] > reviewed[i] for s in self.chain(structure, i))]
+            review = {i: "reviewed at %d" % version for i in flagged if rng.random() < 0.5}
+            if state == session.editable(session.load(self.directory)) and not review:
+                continue
+            result = session.publish(self.directory, state, version - 1, "step %d" % step, revalidated=review)
+            for node_id in review:
+                reviewed[node_id] = version
+            expected = sorted(i for i in structure if i != "goal" and any(changed[s] > reviewed[i] for s in self.chain(structure, i)))
+            self.assertEqual(sorted(session.review_flags(result["nodes"])), expected, "seed %d step %d" % (seed, step))
+
+    def test_random_publication_sequences_never_clear_or_raise_a_flag_wrongly(self):
+        for seed in range(40):
+            with self.subTest(seed=seed):
+                self.setUp()
+                self.run_sequence(seed)
 
 
 class TestLegacyDataAndHistory(EpistemicCase):
