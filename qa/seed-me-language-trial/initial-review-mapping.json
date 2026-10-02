@@ -1,0 +1,26 @@
+{
+  "rough": {
+    "X": "baseline",
+    "Y": "after"
+  },
+  "technical": {
+    "X": "after",
+    "Y": "baseline"
+  },
+  "assumption": {
+    "X": "baseline",
+    "Y": "after"
+  },
+  "recommendation": {
+    "X": "after",
+    "Y": "baseline"
+  },
+  "hard": {
+    "X": "baseline",
+    "Y": "after"
+  },
+  "stop": {
+    "X": "after",
+    "Y": "baseline"
+  }
+}

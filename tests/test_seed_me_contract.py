@@ -96,7 +96,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         skill = (SKILL_DIR / "SKILL.md").read_text()
         ledger = (SKILL_DIR / "references/ledger-transitions.md").read_text()
         for required in ("Question 1 of 3 ready", "Option A:", "Option B:", "Undo cost:",
-                         "My number to change", "Confidence:", "Would flip if:", "Not checked:", "contradicts: <node id>", "never by \"Q3\"", "You are confirming",
+                         "Proposed number", "Confidence:", "I would change my suggestion if:", "Not checked:", "contradicts: <node id>", "never by \"Q3\"", "You are confirming",
                          "I'll assume these unless you object", "`assumed`", "seed-contract.md",
                          "naming the three riskiest items"):
             with self.subTest(required=required):
@@ -143,7 +143,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         lean = (SKILL_DIR / "references" / "lean-path.md").read_text()
         for required in ("### Look for what we don't know we don't know", "Pre-mortem:", "Counter-example:",
                          "Outside view:", "Probe: <question>", "Where we did not look:", "**Knowledge map**",
-                         "What we know, with proof", "What we know we don't know", "What is true but nobody has read",
+                         "What we know, with proof", "What we know we don't know", "What we have not read",
                          "What could surprise us", "teach-back", "re-check trigger"):
             with self.subTest(required=required):
                 self.assertIn(required, skill)

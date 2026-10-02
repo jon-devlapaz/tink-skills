@@ -1,6 +1,6 @@
 ---
 name: seed-me
-description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract through epistemic investigation: resolving inspectable facts yourself and grilling only the consequential judgments. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
+description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract by checking facts and asking the user about choices that matter. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
   version: "1.18.0"
@@ -8,9 +8,31 @@ metadata:
 
 # Seed Me
 
-Resolve inspectable facts yourself; reserve questions for consequential user
-judgment. Keep actual answers separate from recommendations. Every claim carries
-its receipt; every question names its owner.
+Check facts yourself. Ask the user about choices that change the outcome.
+Keep actual answers separate from recommendations. Cite evidence for claims and
+name who decides each question.
+
+## Write for the person reading
+
+Apply these rules to drafts, assumptions, questions, options, recommendations,
+status messages, and the seed contract on both Lean and Full:
+
+- Use common words, short sentences, and active voice. Keep one main point per
+  sentence. Name who acts and what they must do.
+- Use the same term for the same thing. Keep a necessary technical term and
+  explain it briefly on first use. Preserve exact quotes, paths, commands, and
+  data field names; explain them outside the quoted text.
+- Separate what you checked, what you infer, what you assume, what you suggest,
+  and what the user decided. Keep missing evidence and uncertainty visible.
+  Shorter wording must not strengthen a claim or imply permission.
+- State each option's benefit, cost, and undo cost once. Keep the meaningful
+  difference, the decision owner, and the answer needed to settle it.
+- Keep required actions explicit. In status and stop messages, say what is saved,
+  what remains blocked, and whether the handoff is confirmed. Name the next owner
+  when known; if no owner is assigned, say so.
+
+These rules borrow clear-writing ideas from ASD-STE100; they do not claim compliance
+with its controlled language standard. Interview and authority rules below still apply.
 
 ## 1. Triage the ask and extract context
 
@@ -32,8 +54,8 @@ its receipt; every question names its owner.
 ### Shape the working draft
 
 Distill whatever arrived into a working draft before any grill
-turn: candidate goal, candidate proposed outcome, and candidate options with
-tradeoffs. Keep the graph empty until goal confirmation; retain choices already
+turn: proposed goal, proposed outcome, and possible options with
+benefits and costs. Keep the graph empty until goal confirmation; retain choices already
 explicit in the input and record them when the confirmed nodes are published.
 Anything uncertain, assumed, or missing is labeled PROVISIONAL assumption, never
 an answer or a claim. The draft lives in chat until the goal is confirmed: it creates
@@ -127,12 +149,14 @@ promptly as they arise.
 Question 1 of 3 ready (2 waiting on earlier answers)
 ❓ <Title>: <the consequence or tradeoff needing your judgment, one line>
 📜 What I found: <verbatim quote ≤2 lines> (<exact path>:<line>, session observation); ...
-Option A: <choice> — tradeoff: <one line>. If you pick B instead: <what changes>. Undo cost: <cheap | moderate | hard>.
-Option B: <choice> — tradeoff: <one line>. If you pick A instead: <what changes>. Undo cost: <cheap | moderate | hard>.
-👤 Owner: <named decider or role> — Gate: <answer shape that settles it> — Why it matters: <what it unblocks or endangers>.
+Option A: <choice> — <benefit and cost compared with B>. Undo cost: <cheap | moderate | hard>.
+Option B: <choice> — <benefit and cost compared with A>. Undo cost: <cheap | moderate | hard>.
+👤 Owner: <named decider or role> — To decide: <the answer needed to settle this> — Why it matters: <what it unblocks or endangers>.
 Against my suggestion: <the strongest case for the other option>.
 ➡️ My suggestion: <A or B>, grounded in the lines above. Confidence: <low | medium | high>.
-   Observed: <what I verified>. Inferred: <what I assumed>. Would flip if: <what would change my mind>. Not checked: <what I did not verify>. My number to change: <any figure I invented, or "none">.
+   Checked: <what I verified>. Inference: <what I conclude from it, still uncertain>.
+   Assumptions: <what I assumed, not confirmed>. Not checked: <what I did not verify>.
+   I would change my suggestion if: <what would change my mind>. Proposed number: <any figure I invented for you to change, or "none">.
 Ledger: <the viewer URL on either path, or its saved HTML snapshot if the server cannot run>
 ```
 
@@ -148,7 +172,8 @@ Ledger: <the viewer URL on either path, or its saved HTML snapshot if the server
 - **Always show where the ledger is.** End every question turn with the `Ledger:` line, and print the
   same link in the message that creates the session or file, so the user never has to ask for it.
 - **Instinct first for hard-to-undo questions.** When either option's undo cost is `hard`,
-  show only the question and what you found, and ask "What's your instinct?" Publish the
+  show the question, evidence, owner, and answer needed; keep the `Ledger:` link.
+  Ask "What's your instinct?" before showing options or a suggestion. Publish the
   node without `recommendation` until the user answers or says "show me" or "your arrow";
   then show the options, the case against your suggestion, and your suggestion. For `cheap`
   and `moderate` questions, show everything at once. This exists because a suggestion shown
@@ -312,8 +337,8 @@ Once the local review and close checklist are resolved:
 1. Present the revision-labeled seed contract, opening with the **You are confirming** box, using the structure below (on the lean path the file itself is the seed contract and uses the lean template), including
    actual accepted choices and their authority, with status
    `unconfirmed — awaiting affirmation`; flip to `confirmed for intake` only
-   when the user affirms the displayed revision label. State completion as “local completeness
-   review complete” to reflect local verification.
+   when the user affirms the displayed revision label. Describe the review as “I checked this draft for missing decisions and contradictions.”
+   State its limits; this review does not verify implementation.
 2. Ask for a **teach-back**: the user says in a sentence or two what will be built and what will not, and
    you list any mismatch with the seed contract (record "teach-back skipped" if they decline). Then ask the
    user to confirm that displayed revision. Confirmation requires the
@@ -369,7 +394,7 @@ The displayed and saved revision must contain:
   1. *What we know, with proof:* each item has its receipt and the date it was observed, and, for a fact that can
      change, a re-check trigger (`observed 2026-09-29; re-check if X changes or after N days`).
   2. *What we know we don't know:* each item with its owner and how to find out.
-  3. *What is true but nobody has read:* the close checklist's unread material.
+  3. *What we have not read:* the close checklist's unread material.
   4. *What could surprise us:* the `Probe:` lines, `Where we did not look:`, and what would tell us we were
      wrong (a concrete signal, not a mood).
 - Evidence and uncertainty: inspected paths, measurements, unverified hypotheses,
