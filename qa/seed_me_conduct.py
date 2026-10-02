@@ -70,7 +70,7 @@ def turn_findings(text, operator_facing=False):
         elif conf.group(1).lower() not in ("low", "medium", "high"):
             out["calibration"] = ("fail", f"confidence '{conf.group(1)}' is not low|medium|high")
         else:
-            missing = [f for f in ("Observed:", "Inferred:", "Would flip if:", "Not checked:", "My number to change:") if f not in text]
+            missing = [f for f in ("Checked:", "Inference:", "Assumptions:", "I would change my suggestion if:", "Not checked:", "Proposed number:") if f not in text]
             out["calibration"] = ("fail", "missing " + ", ".join(missing)) if missing else ("pass", "")
     ids = re.findall(r"\bQ\d+\b", text)
     out["names-not-ids"] = ("fail", "uses " + ", ".join(sorted(set(ids)))) if ids else ("pass", "")
@@ -134,7 +134,7 @@ def ledger_findings(directory):
 
 # ---------- contracts ----------
 MAP_PARTS = (("what we know", "What we know"), ("we know we don't know", "What we know we don't know"),
-             ("nobody has read", "What is true but nobody has read"), ("could surprise us", "What could surprise us"))
+             ("we have not read", "What we have not read"), ("could surprise us", "What could surprise us"))
 
 
 def knowledge_map_finding(text):

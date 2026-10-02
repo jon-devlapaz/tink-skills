@@ -21,7 +21,7 @@ GOOD = """Question 1 of 1 ready (0 waiting on earlier answers)
 **Option B: plain move.** Tradeoff: simpler. If you pick A instead: a prompt. Undo cost: **moderate.**
 
 Against my suggestion: Finder adds a permission dependency.
-➡️ **My suggestion: A.** Confidence: medium. Observed: the folder exists. Inferred: Put Back works. Would flip if: the prompt blocks you. Not checked: I did not test it. My number to change: none.
+➡️ **My suggestion: A.** Confidence: medium. Checked: the folder exists. Inference: Put Back may work. Assumptions: none. I would change my suggestion if: the prompt blocks you. Not checked: I did not test it. Proposed number: none.
 Ledger: file:///tmp/x/seed-contract.md"""
 
 INSTINCT = """Question 1 (1 more waiting after this)
@@ -57,8 +57,12 @@ class TestTurnRules(unittest.TestCase):
                 self.assertEqual(statuses(text)[rule], "fail", rule)
 
     def test_calibration_names_the_missing_field(self):
-        detail = conduct.turn_findings(GOOD.replace("Not checked: I did not test it. ", ""))["calibration"][1]
-        self.assertIn("Not checked:", detail)
+        for field in ("Checked:", "Inference:", "Assumptions:", "Not checked:",
+                      "I would change my suggestion if:", "Proposed number:"):
+            with self.subTest(field=field):
+                status, detail = conduct.turn_findings(GOOD.replace(field, ""))["calibration"]
+                self.assertEqual(status, "fail")
+                self.assertIn(field, detail)
 
     def test_instinct_turn_must_not_show_options_or_a_suggestion(self):
         self.assertTrue(conduct.is_instinct_turn(INSTINCT))
@@ -153,7 +157,7 @@ class TestContractRules(unittest.TestCase):
 ## Knowledge map
 - What we know, with proof: E1 (observed 2026-09-29)
 - What we know we don't know: growth rate, owner: you
-- What is true but nobody has read: the PR bodies
+- What we have not read: the PR bodies
 - What could surprise us:
   Probe: pre-mortem — answer: it lists a worktree that is in use — changed: added an in-use verdict
   Probe: counter-example — answer: a repo with no remote — changed: nothing
@@ -182,7 +186,7 @@ class TestContractRules(unittest.TestCase):
         self.assertEqual(self.check(self.BODY)["knowledge-map"], "pass")
         defects = {
             "no section": self.BODY.replace("## Knowledge map", "## Notes"),
-            "missing part": self.BODY.replace("- What is true but nobody has read: the PR bodies\n", ""),
+            "missing part": self.BODY.replace("- What we have not read: the PR bodies\n", ""),
             "too few probes": self.BODY.replace("  Probe: counter-example — answer: a repo with no remote — changed: nothing\n", ""),
             "probe without answer": self.BODY.replace("answer: it lists a worktree that is in use — ", ""),
             "no limits": self.BODY.replace("  Where we did not look: other machines and repos outside ~/dev/active\n", ""),
