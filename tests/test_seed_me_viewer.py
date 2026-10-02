@@ -896,6 +896,45 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(page.locator("#review-h")).to_have_text("Needs review (2)")
         self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), session.review_flags(session.load(self.directory)["nodes"]))
 
+    def test_review_flags_follow_the_same_rules_in_the_viewer_through_a_review_chain(self):
+        nodes = acceptance_nodes() + [{**self.decision_on("contain-handlers", "command-paths")}]
+        page = self.epistemic_page(nodes, graph=False)
+        helper = lambda: session.review_flags(session.load(self.directory)["nodes"])
+
+        def viewer_flags():
+            page.wait_for_function("version => LEDGER && LEDGER.version >= version", arg=session.load(self.directory)["version"], timeout=8000)
+            return page.evaluate("Object.fromEntries(reviewFlags())")
+
+        def edit(**by_id):
+            state = session.editable(session.load(self.directory))
+            for item in state["nodes"]:
+                item.update(by_id.get(item["id"], {}))
+            return state
+
+        self.publish(edit(**{"layout-observed": {"answer": "3 live entries are symlinks; 3 are plain copies."}}), "Observation changed")
+        self.assertEqual(sorted(helper()), ["mixed-ownership", "ownership-policy"])
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (2)")
+        self.assertEqual(viewer_flags(), helper())
+        version = session.load(self.directory)["version"]
+        session.publish(self.directory, session.editable(session.load(self.directory)), version, "Review the inference only",
+                        revalidated={"mixed-ownership": "Still holds"})
+        self.assertEqual(sorted(helper()), ["ownership-policy"], "reviewing the inference does not review the decision")
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (1)")
+        self.assertEqual(viewer_flags(), helper())
+        self.publish(edit(**{"command-paths": {"status": "superseded", "answer": None, "authority": None, "authority_source": None}}), "Withdraw evidence")
+        self.assertEqual(sorted(helper()), ["contain-handlers", "ownership-policy"])
+        self.assertEqual(viewer_flags(), helper())
+        version = session.load(self.directory)["version"]
+        session.publish(self.directory, session.editable(session.load(self.directory)), version, "Review the decisions",
+                        revalidated={"ownership-policy": "User kept it", "contain-handlers": "User kept it without that evidence"})
+        self.assertEqual(helper(), {})
+        self.expect(page.locator("#review-h")).to_be_hidden()
+        self.assertEqual(viewer_flags(), {})
+
+    def decision_on(self, node_id, support):
+        return {"id": node_id, "kind": "decision", "status": "settled", "prerequisites": ["goal"], "evidence": [], "owner": "User", "gate": "Choose",
+                "answer": "Wrap the three handlers", "authority": "user", "authority_source": "chat turn 10: user chose it", "supported_by": [support]}
+
     def test_a_recommendation_is_a_proposal_and_its_rationale_is_split(self):
         page = self.epistemic_page(graph=False)
         call = page.locator("#call")

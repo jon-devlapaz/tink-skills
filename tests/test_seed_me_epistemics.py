@@ -338,6 +338,88 @@ class TestReviewFlagsOnlyClearByExplicitReview(EpistemicCase):
             self.publish(state, "Forge a review")
 
 
+class TestEveryFlaggedNodeNeedsItsOwnReview(EpistemicCase):
+    """Observation -> inference -> decision: each flagged node is cleared by its own explicit review, and review can always be given."""
+
+    def seeded(self):
+        self.seed()
+        state = self.edit(**{"layout-observed": {"answer": "3 live entries are symlinks; 3 are plain copies."}})
+        return self.publish(state, "Re-listed the folders; the counts changed")
+
+    def finish(self):
+        state = self.edit(**{"safety-target": {"status": "deferred", "defer_reason": "later", "revisit_condition": "after review"}})
+        state["current_question"] = None
+        try:
+            self.publish(state, "Defer the open choice")
+        except ValueError:
+            pass
+        return session.end(self.directory, "completed", "Done", no_viewer="not under test")
+
+    def review(self, **reasons):
+        return self.publish(session.editable(session.load(self.directory)), "Review", revalidated=reasons)
+
+    def test_reviewing_only_the_inference_leaves_the_decision_flagged_and_completion_blocked(self):
+        result = self.seeded()
+        self.assertEqual(sorted(session.review_flags(result["nodes"])), ["mixed-ownership", "ownership-policy"])
+        result = self.review(**{"mixed-ownership": "Counts changed; the inference still holds"})
+        flags = session.review_flags(result["nodes"])
+        self.assertEqual(sorted(flags), ["ownership-policy"], "the inference is reviewed; the decision is not")
+        self.assertEqual(flags["ownership-policy"], [{"because": "mixed-ownership", "why": "changed"}])
+        with self.assertRaisesRegex(ValueError, "cannot complete: evidence behind these settled nodes.*ownership-policy"):
+            self.finish()
+        policy = {n["id"]: n for n in result["nodes"]}["ownership-policy"]
+        self.assertEqual((policy["answer"], policy["authority"]), ("The repository owns every skill", "user"))
+
+    def test_the_decision_clears_when_it_is_reviewed_in_its_own_right(self):
+        self.seeded()
+        self.review(**{"mixed-ownership": "Still holds"})
+        result = self.review(**{"ownership-policy": "User saw the changed evidence and kept the decision"})
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+        self.assertEqual(self.finish()["status"], "completed")
+
+    def test_reviewing_the_inference_and_the_decision_together_clears_both(self):
+        self.seeded()
+        result = self.review(**{"mixed-ownership": "Still holds", "ownership-policy": "User kept the decision"})
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+
+    def test_withdrawn_evidence_can_be_acknowledged_by_reviewing_the_decision(self):
+        self.seed(acceptance_nodes() + [decision("contain-handlers", answer="Wrap the three handlers", supported_by=["command-paths"])])
+        state = self.edit(**{"command-paths": {"status": "superseded", "answer": None, "authority": None, "authority_source": None}})
+        result = self.publish(state, "The handler read was of the wrong folder")
+        self.assertEqual(session.review_flags(result["nodes"])["contain-handlers"], [{"because": "command-paths", "why": "withdrawn"}])
+        result = self.review(**{"contain-handlers": "User confirmed the choice without that evidence"})
+        self.assertNotIn("contain-handlers", session.review_flags(result["nodes"]))
+        self.assertEqual({n["id"]: n for n in result["nodes"]}["command-paths"]["status"], "superseded", "the evidence stays withdrawn")
+        self.assertEqual(self.finish()["status"], "completed")
+
+    def test_evidence_that_returns_after_a_withdrawal_must_be_reviewed_again(self):
+        self.seed(acceptance_nodes() + [decision("contain-handlers", answer="Wrap the three handlers", supported_by=["command-paths"])])
+        state = self.edit(**{"command-paths": {"status": "unresolved", "answer": None, "authority": None, "authority_source": None,
+                                               "reopen_reason": "Re-reading the handlers"}})
+        self.publish(state, "Withdraw while re-reading")
+        self.review(**{"contain-handlers": "Confirmed without it"})
+        state = self.edit(**{"command-paths": {"status": "settled", "answer": "Each inspected handler runs commands directly.", "authority": "evidence",
+                                               "authority_source": "re-read a.py b.py c.py"}})
+        state["nodes"] = [{k: v for k, v in n.items() if k != "reopen_reason"} for n in state["nodes"]]
+        result = self.publish(state, "Re-recorded the finding")
+        self.assertEqual(session.review_flags(result["nodes"])["contain-handlers"], [{"because": "command-paths", "why": "changed"}])
+
+    def test_a_node_settled_on_unsettled_evidence_starts_out_flagged(self):
+        nodes = acceptance_nodes() + [decision("contain-handlers", answer="Wrap the three handlers", supported_by=["pending-fact"]),
+                                      {**node("pending-fact", "fact"), "claim": {"type": "observation", "scope": "not read yet"}}]
+        result = self.seed(nodes)
+        self.assertEqual(session.review_flags(result["nodes"])["contain-handlers"], [{"because": "pending-fact", "why": "withdrawn"}])
+
+    def test_a_contradiction_is_acknowledged_by_reviewing_what_relied_on_the_contradicted_claim(self):
+        self.seed()
+        nodes = acceptance_nodes() + [finding("listing-was-stale", {"type": "observation", "scope": "A second listing"}, "The first listing was stale.",
+                                              ["ls -l again"], contradicts="layout-observed")]
+        result = self.publish(self.state_with(nodes, "safety-target"), "A later check contradicts the first listing")
+        self.assertEqual(session.review_flags(result["nodes"])["mixed-ownership"], [{"because": "layout-observed", "why": "contradicted"}])
+        result = self.review(**{"mixed-ownership": "Reviewed against the second listing", "ownership-policy": "User kept the decision"})
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+
+
 class TestLegacyDataAndHistory(EpistemicCase):
     def legacy(self):
         nodes = [node("goal", answer="Recover data"), node("import-behavior", "fact", answer="Imports replace existing data"),

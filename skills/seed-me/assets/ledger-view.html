@@ -284,12 +284,13 @@ function reviewFlags() {
   const add = (id, because, why) => flags.set(id, [...(flags.get(id) || []), { because, why }]);
   for (const node of LEDGER.nodes) {
     if (node.status !== 'settled') continue;
+    const reviewed = node.reviewed_version || 0;
     for (const source of node.supported_by || []) {
       const found = byId.get(source);
       if (!found) continue;
-      if (found.status !== 'settled') add(node.id, source, 'withdrawn');
-      else if ((found.premise_version || 0) > (node.reviewed_version || 0)) add(node.id, source, 'changed');
-      else if (contradicted.has(source) && (found.premise_version || 0) <= (contradicted.get(source).premise_version || 0)) add(node.id, source, 'contradicted');
+      const moved = found.premise_version ?? 1, fact = contradicted.get(source), factMoved = fact ? (fact.premise_version ?? 1) : 0;
+      if (moved > reviewed) add(node.id, source, found.status !== 'settled' ? 'withdrawn' : 'changed');
+      else if (found.status === 'settled' && fact && moved <= factMoved && factMoved > reviewed) add(node.id, source, 'contradicted');
     }
   }
   for (let grew = true; grew;) {

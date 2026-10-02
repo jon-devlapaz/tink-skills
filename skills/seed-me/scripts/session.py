@@ -256,13 +256,14 @@ def review_flags(nodes):
     for node in nodes:
         if node["status"] != "settled":
             continue
+        reviewed = node.get("reviewed_version", 0)
         for source in node.get("supported_by", ()):
             found = by_id[source]
-            if found["status"] != "settled":
-                why = "withdrawn"
-            elif found.get("premise_version", 0) > node.get("reviewed_version", 0):
-                why = "changed"
-            elif source in contradicted and found.get("premise_version", 0) <= contradicted[source].get("premise_version", 0):
+            moved = found.get("premise_version", 1)
+            if moved > reviewed:
+                why = "withdrawn" if found["status"] != "settled" else "changed"
+            elif found["status"] == "settled" and source in contradicted and moved <= contradicted[source].get("premise_version", 1) \
+                    and contradicted[source].get("premise_version", 1) > reviewed:
                 why = "contradicted"
             else:
                 continue
@@ -328,6 +329,7 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
     result = {**deepcopy(ledger), **state, "version": ledger["version"] + 1,
               "revision": revision, "updated_at": updated, "frontier": ready}
     old_stored = {n["id"]: n for n in ledger["nodes"]}
+    flagged_before = set(review_flags(ledger["nodes"]))
     for node in result["nodes"]:
         previous = old_stored.get(node["id"])
         history = deepcopy(previous["history"]) if previous else []
@@ -337,13 +339,20 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
                             "superseded_at": updated, "reason": revalidated.get(node["id"], reason)})
         node["history"] = history
         node["revision"] = revision if previous is None or material_change else previous["revision"]
-        reviewed = previous is None or node["id"] in revalidated or previous["status"] != "settled" and node["status"] == "settled" \
+        # Reviewing a node that was flagged is itself news for whatever relies on it: that node must be reviewed in its own right.
+        moved = previous is None or evidence_differs(old[node["id"]], node) or (node["id"] in revalidated and node["id"] in flagged_before)
+        # Settling on evidence that is not yet recorded is not a review; only an explicit revalidation is.
+        grounded = all(new[s]["status"] == "settled" for s in node.get("supported_by", ()))
+        implicit = previous is None or (previous["status"] != "settled" and node["status"] == "settled") \
             or previous.get("supported_by") != node.get("supported_by")
-        for field, now_moved in (("premise_version", previous is None or evidence_differs(old[node["id"]], node)), ("reviewed_version", reviewed)):
+        reviewed = node["id"] in revalidated or (implicit and grounded)
+        for field, now_moved in (("premise_version", moved), ("reviewed_version", reviewed)):
             if now_moved:
                 node[field] = result["version"]
-            elif field in previous:
+            elif previous is not None and field in previous:
                 node[field] = previous[field]
+            elif field == "reviewed_version":
+                node[field] = 0
     if state["status"] == "completed":
         blocked = contradiction_blockers(result["nodes"])
         require(not blocked, "cannot complete: evidence contradicts a settled decision that was not revisited: " + ", ".join(blocked))

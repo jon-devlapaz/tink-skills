@@ -396,10 +396,16 @@ its `answer`, `authority` or `authority_source`, or choose a replacement.
 
 They compare two helper-owned counters, `premise_version` (the publication that
 last changed a node's `status`, `answer`, `evidence`, `claim` or `supported_by`) and
-`reviewed_version` (the publication that created it, first settled it, changed its
-`supported_by`, or revalidated it). Editing a label, question, owner, or gate moves
-neither, so such an edit never clears a flag and never raises one. Only explicit
-revalidation clears a flag. Omit both counters from publication payloads.
+`reviewed_version` (the publication that revalidated it, or that created it, first
+settled it, or changed its `supported_by` while all its support was settled).
+Editing a label, question, owner, or gate moves neither, so such an edit never
+clears a flag and never raises one. Only explicit revalidation clears a flag,
+including one for withdrawn or contradicted evidence: the user may keep a decision
+after seeing that its evidence is gone. A node settled on evidence that is not yet
+recorded starts unreviewed. Revalidating a flagged node counts as a change to it for
+everything that relies on it, so each of those nodes needs its own review: an
+inference reviewed alone leaves the decision resting on it flagged. Omit both
+counters from publication payloads.
 
 Completion is blocked while flags are unreviewed. To review, publish
 `revalidated` with a nonblank reason for each flagged ID; the node keeps its
