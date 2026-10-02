@@ -279,7 +279,8 @@ function nameOf(id) { const n = LEDGER.nodes.find(x => x.id === id); return n ? 
 // Mirrors session.py review_flags: derived, never stored. Settled nodes whose evidence changed, was withdrawn, or was contradicted.
 function reviewFlags() {
   const byId = new Map(LEDGER.nodes.map(n => [n.id, n]));
-  const contradicted = new Map(LEDGER.nodes.filter(f => f.status === 'settled' && f.contradicts).map(f => [f.contradicts, f]));
+  const contradicted = new Map();
+  for (const f of LEDGER.nodes) if (f.status === 'settled' && f.contradicts) contradicted.set(f.contradicts, [...(contradicted.get(f.contradicts) || []), f]);
   const chain = id => {
     const seen = [], queue = [...(byId.get(id).supported_by || [])];
     while (queue.length) {
@@ -294,7 +295,7 @@ function reviewFlags() {
     const reviewed = node.reviewed_version || 0;
     for (const source of chain(node.id)) {
       const found = byId.get(source), moved = found.premise_version ?? 1;
-      const factMoved = contradicted.has(source) ? (contradicted.get(source).premise_version ?? 1) : 0;
+      const factMoved = Math.max(0, ...(contradicted.get(source) || []).map(f => f.premise_version ?? 1));
       let why = null;
       if (moved > reviewed) why = found.status !== 'settled' ? 'withdrawn' : 'changed';
       else if (found.status === 'settled' && moved <= factMoved && factMoved > reviewed) why = 'contradicted';

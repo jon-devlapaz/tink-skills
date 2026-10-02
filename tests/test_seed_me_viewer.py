@@ -945,6 +945,44 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), helper)
         self.expect(page.locator("#review-list")).to_contain_text("Live vs repository layout changed")
 
+    def test_the_viewer_flags_what_relies_on_evidence_that_a_fact_newly_contradicts(self):
+        nodes = acceptance_nodes() + [self.decision_on("contain-handlers", "command-paths"),
+                                      finding("second-look", {"type": "observation", "scope": "A second read"}, "One handler does sandbox.", ["a.py:50"])]
+        page = self.epistemic_page(nodes, graph=False)
+        self.assertEqual(session.review_flags(session.load(self.directory)["nodes"]), {})
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "second-look":
+                item["contradicts"] = "command-paths"
+        self.publish(state, "The second read contradicts the first")
+        helper = session.review_flags(session.load(self.directory)["nodes"])
+        self.assertEqual(helper["contain-handlers"], [{"because": "command-paths", "why": "contradicted"}])
+        self.expect(page.locator("#review-list")).to_contain_text("Multiple command execution paths is contradicted by later evidence")
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), helper)
+
+    def test_the_viewer_counts_every_contradicting_fact_whatever_the_node_order(self):
+        nodes = acceptance_nodes() + [self.decision_on("contain-handlers", "command-paths"),
+                                      finding("old-look", {"type": "observation", "scope": "x"}, "Old", ["n"]),
+                                      finding("new-look", {"type": "observation", "scope": "y"}, "New", ["n"])]
+        page = self.epistemic_page(nodes, graph=False)
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "old-look":
+                item["contradicts"] = "command-paths"
+        self.publish(state, "An older contradiction")
+        session.publish(self.directory, session.editable(session.load(self.directory)), session.load(self.directory)["version"], "Reviewed",
+                        revalidated={"contain-handlers": "Kept after the first contradiction"})
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "new-look":
+                item["contradicts"] = "command-paths"
+        state["nodes"].sort(key=lambda n: n["id"] != "new-look")
+        self.publish(state, "A newer contradiction, listed before the older one")
+        helper = session.review_flags(session.load(self.directory)["nodes"])
+        self.assertEqual(helper["contain-handlers"], [{"because": "command-paths", "why": "contradicted"}])
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (1)")
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), helper)
+
     def decision_on(self, node_id, support):
         return {"id": node_id, "kind": "decision", "status": "settled", "prerequisites": ["goal"], "evidence": [], "owner": "User", "gate": "Choose",
                 "answer": "Wrap the three handlers", "authority": "user", "authority_source": "chat turn 10: user chose it", "supported_by": [support]}

@@ -397,7 +397,8 @@ choose a replacement.
 
 Each node is measured against its own review only. Two helper-owned counters
 decide it: `premise_version` (the publication that last changed a node's `status`,
-`answer`, `evidence`, `claim`, or the set of IDs in `supported_by`) and
+`answer`, `evidence`, `claim`, the set of IDs in `supported_by`, or, on a fact, its
+`contradicts`) and
 `reviewed_version` (the publication that created the node, first settled it, or
 revalidated it). Editing a label, question, owner, or gate, or reordering
 `supported_by`, moves neither, so such an edit never clears a flag and never raises
@@ -405,8 +406,12 @@ one. Only explicit revalidation clears a flag, including one for withdrawn or
 contradicted evidence: the user may keep a decision after seeing that its evidence
 is gone. Reviewing an inference does not review the decision that rests on it, and
 changing evidence while reviewing only the inference in the same publication
-still leaves the decision flagged. A node cannot be settled on evidence in its
-chain that is not yet settled. Omit both counters from publication payloads.
+still leaves the decision flagged. Every settled fact naming a piece of evidence in
+`contradicts` counts, in any node order. A settled node cannot take on evidence,
+when it is first settled or when its `supported_by` grows, that is not yet settled,
+or that a settled fact contradicts and nobody has revisited. A review may target
+exactly the nodes this rule flags on the state being published. Omit both counters
+from publication payloads.
 
 Completion is blocked while flags are unreviewed. To review, publish
 `revalidated` with a nonblank reason for each flagged ID; the node keeps its

@@ -470,6 +470,72 @@ class TestFlagsFollowTheWholeSupportChain(EpistemicCase):
         self.assertNotIn("ownership-policy", session.review_flags(result["nodes"]))
         self.assertEqual({n["id"]: n for n in result["nodes"]}["ownership-policy"]["answer"], "The live folder owns every skill")
 
+    def contradictable(self):
+        """A decision relying on command-paths, plus a separate observation that can later contradict it."""
+        nodes = acceptance_nodes() + [decision("contain-handlers", answer="Wrap the three handlers", supported_by=["command-paths"]),
+                                      finding("second-look", {"type": "observation", "scope": "A second read of the handlers"}, "One handler does sandbox.", ["a.py:50 sandbox(cmd)"])]
+        return self.seed(nodes)
+
+    def defer_and_complete(self):
+        state = self.edit(**{"safety-target": {"status": "deferred", "defer_reason": "later", "revisit_condition": "after review"}})
+        state["current_question"] = None
+        try:
+            self.publish(state, "Defer the open choice")
+        except ValueError:
+            pass
+        return session.end(self.directory, "completed", "Done", no_viewer="not under test")
+
+    def test_adding_contradicts_to_an_existing_settled_fact_flags_what_relies_on_the_contradicted_claim(self):
+        self.contradictable()
+        result = self.publish(self.edit(**{"second-look": {"contradicts": "command-paths"}}), "The second read contradicts the first")
+        self.assertEqual(session.review_flags(result["nodes"])["contain-handlers"], [{"because": "command-paths", "why": "contradicted"}])
+        with self.assertRaisesRegex(ValueError, "cannot complete"):
+            self.defer_and_complete()
+        reviewed = self.publish(session.editable(session.load(self.directory)), "User saw the contradiction and kept the decision",
+                                revalidated={"contain-handlers": "User kept the decision after the second read"})
+        self.assertNotIn("contain-handlers", session.review_flags(reviewed["nodes"]))
+
+    def test_every_contradicting_fact_counts_whatever_the_node_order(self):
+        nodes = acceptance_nodes() + [decision("contain-handlers", answer="Wrap the three handlers", supported_by=["command-paths"]),
+                                      finding("old-look", {"type": "observation", "scope": "x"}, "Old", ["n"]),
+                                      finding("new-look", {"type": "observation", "scope": "y"}, "New", ["n"])]
+        self.seed(nodes)
+        self.publish(self.edit(**{"old-look": {"contradicts": "command-paths"}}), "An older contradiction")
+        self.publish(session.editable(session.load(self.directory)), "Reviewed", revalidated={"contain-handlers": "Kept after the first contradiction"})
+        state = self.edit(**{"new-look": {"contradicts": "command-paths"}})
+        for newer_first in (False, True):
+            with self.subTest(newer_listed_first=newer_first):
+                ordered = sorted(state["nodes"], key=lambda n: (n["id"] != "new-look") if newer_first else (n["id"] == "new-look"))
+                ledger = session.load(self.directory)
+                result = session.transition(ledger, {**state, "nodes": ordered}, ledger["version"], "A newer contradiction")
+                self.assertEqual(session.review_flags(result["nodes"])["contain-handlers"], [{"because": "command-paths", "why": "contradicted"}])
+
+    def test_adding_withdrawn_evidence_to_a_settled_decision_is_refused(self):
+        nodes = acceptance_nodes() + [decision("contain-handlers", answer="Wrap the three handlers", supported_by=["command-paths"]),
+                                      {**finding("gone", {"type": "observation", "scope": "x"}, "Gone", ["n"]), "status": "superseded", "answer": None,
+                                       "authority": None, "authority_source": None}]
+        self.seed(nodes)
+        with self.assertRaisesRegex(ValueError, "cannot settle on evidence that is not recorded: gone"):
+            self.publish(self.edit(**{"contain-handlers": {"supported_by": ["command-paths", "gone"]}}), "Rely on withdrawn evidence")
+
+    def test_adding_contradicted_evidence_to_a_settled_decision_is_refused(self):
+        self.contradictable()
+        self.publish(self.edit(**{"second-look": {"contradicts": "sdk-version"}}), "The second read contradicts the SDK reading")
+        with self.assertRaisesRegex(ValueError, "cannot rely on evidence that is contradicted and not revisited: sdk-version"):
+            self.publish(self.edit(**{"contain-handlers": {"supported_by": ["command-paths", "sdk-version"]}}), "Rely on contradicted evidence")
+
+    def test_adding_clean_recorded_evidence_is_allowed_and_flags_nothing(self):
+        self.contradictable()
+        result = self.publish(self.edit(**{"contain-handlers": {"supported_by": ["command-paths", "sdk-version"]}}), "Also rely on the SDK reading")
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+
+    def test_retargeting_or_retracting_a_contradiction_is_a_change_to_the_contradicting_fact(self):
+        self.contradictable()
+        self.publish(self.edit(**{"second-look": {"contradicts": "command-paths"}}), "Contradicts")
+        self.publish(session.editable(session.load(self.directory)), "Reviewed", revalidated={"contain-handlers": "Kept"})
+        result = self.publish(self.edit(**{"second-look": {"answer": "One handler does sandbox, and so does another."}}), "The contradicting fact changed")
+        self.assertEqual(session.review_flags(result["nodes"])["contain-handlers"], [{"because": "command-paths", "why": "contradicted"}])
+
     def test_reordering_supported_by_neither_clears_nor_raises_a_flag(self):
         nodes = acceptance_nodes() + [decision("contain-handlers", answer="Wrap the handlers", supported_by=["command-paths", "sdk-version"])]
         self.seed(nodes)
@@ -496,62 +562,129 @@ class TestFlagsFollowTheWholeSupportChain(EpistemicCase):
 
 class TestFlagsAgreeWithAnIndependentModelOfTheLog(EpistemicCase):
     """Random publications, checked against a model built only from what each publication did:
-    a node is flagged iff something in its support chain changed in a later publication than the node's last review."""
+    a node is flagged iff something in its support chain changed (or was withdrawn, or is contradicted by a fact recorded)
+    after the node's last review, and reliance is refused when it newly rests on withdrawn or contradicted evidence."""
+
+    OBS = ("a", "b", "c", "k1", "k2")
 
     def graph(self):
         obs = lambda i: finding(i, {"type": "observation", "scope": "s"}, "Seen " + i, ["note " + i])
         inf = lambda i, sup: finding(i, {"type": "inference", "scope": "s", "limits": "l"}, "Concluded " + i, ["note " + i], supported_by=sup)
         dec = lambda i, sup: decision(i, answer="Chose " + i, supported_by=sup)
-        return [node("goal", answer="Goal"), obs("a"), obs("b"), obs("c"), inf("i1", ["a", "b"]), inf("i2", ["b"]),
+        return [node("goal", answer="Goal"), *[obs(i) for i in self.OBS], inf("i1", ["a", "b"]), inf("i2", ["b"]),
                 dec("d1", ["i1"]), dec("d2", ["i1", "a"]), dec("d3", ["i2", "c"]), dec("d4", ["c"])]
 
-    def chain(self, nodes, node_id):
-        seen, queue = [], list(nodes[node_id].get("supported_by", ()))
+    def chain(self, supports, node_id):
+        seen, queue = [], list(supports.get(node_id, ()))
         while queue:
             source = queue.pop(0)
             if source not in seen:
                 seen.append(source)
-                queue.extend(nodes[source].get("supported_by", ()))
+                queue.extend(supports.get(source, ()))
         return seen
+
+    def flagged(self, m):
+        result = []
+        for node_id in m["ids"]:
+            if node_id == "goal" or m["status"][node_id] != "settled":
+                continue
+            for source in self.chain(m["supports"], node_id):
+                facts = [k for k, target in m["contra"].items() if target == source]
+                fact_moved = max((m["changed"][k] for k in facts), default=0)
+                if m["changed"][source] > m["reviewed"][node_id] or (
+                        m["status"][source] == "settled" and m["changed"][source] <= fact_moved and fact_moved > m["reviewed"][node_id]):
+                    result.append(node_id)
+                    break
+        return sorted(result)
+
+    def contradicted_unrevisited(self, m, source):
+        return any(target == source and m["changed"][source] <= m["changed"][k] for k, target in m["contra"].items())
 
     def run_sequence(self, seed):
         import random
         rng = random.Random(seed)
         result = self.seed(self.graph(), current=None)
-        structure = {n["id"]: n for n in result["nodes"]}
-        changed, reviewed = {i: result["version"] for i in structure}, {i: result["version"] for i in structure}
-        for step in range(12):
+        v0 = result["version"]
+        ids = [n["id"] for n in result["nodes"]]
+        m = {"ids": ids, "status": {i: "settled" for i in ids}, "changed": {i: v0 for i in ids}, "reviewed": {i: v0 for i in ids},
+             "supports": {n["id"]: list(n.get("supported_by", ())) for n in result["nodes"]}, "contra": {}}
+        for step in range(14):
             state = session.editable(session.load(self.directory))
             by_id = {n["id"]: n for n in state["nodes"]}
             version = session.load(self.directory)["version"] + 1
-            touched = []
+            t = {k: (dict(v) if isinstance(v, dict) else v) for k, v in m.items()}
+            t["supports"] = {k: list(v) for k, v in m["supports"].items()}
+            moved, implicit = set(), set()
             for _ in range(rng.randint(1, 3)):
-                op = rng.choice(("label", "reorder", "evidence", "evidence", "answer"))
+                op = rng.choice(("label", "reorder", "evidence", "evidence", "answer", "contradict", "contradict", "add_support", "withdraw", "restore"))
                 if op == "label":
-                    by_id[rng.choice(list(by_id))]["label"] = "label %d" % rng.randint(0, 9999)
+                    by_id[rng.choice(ids)]["label"] = "label %d" % rng.randint(0, 9999)
                 elif op == "reorder":
                     target = by_id[rng.choice(("i1", "d2", "d3"))]
                     target["supported_by"] = list(reversed(target["supported_by"]))
+                    t["supports"][target["id"]] = list(target["supported_by"])
                 elif op == "evidence":
-                    target = by_id[rng.choice(("a", "b", "c", "i1", "i2"))]
-                    target["answer"] = "Changed %d" % rng.randint(0, 99999)
-                    touched.append(target["id"])
-                else:
+                    node_id = rng.choice(("a", "b", "c", "k1", "k2", "i1", "i2"))
+                    if t["status"][node_id] == "settled":
+                        by_id[node_id]["answer"] = "Changed %d" % rng.randint(0, 99999)
+                        moved.add(node_id)
+                elif op == "answer":
                     by_id[rng.choice(("d1", "d2", "d3", "d4"))]["answer"] = "Rechose %d" % rng.randint(0, 99999)
-            for node_id in touched:
-                changed[node_id] = version
-            flagged = [i for i in structure if i != "goal" and any(changed[s] > reviewed[i] for s in self.chain(structure, i))]
-            review = {i: "reviewed at %d" % version for i in flagged if rng.random() < 0.5}
-            if state == session.editable(session.load(self.directory)) and not review:
+                elif op == "contradict":
+                    k = by_id[rng.choice(("k1", "k2"))]
+                    target = rng.choice(("a", "b", "c", "i1", "i2", None))
+                    if target is None:
+                        k.pop("contradicts", None)
+                        t["contra"].pop(k["id"], None)
+                    else:
+                        k["contradicts"] = target
+                        t["contra"][k["id"]] = target
+                    moved.add(k["id"])
+                elif op == "add_support":
+                    options = [x for x in ("a", "b", "c", "i1", "i2", "k1", "k2") if x not in by_id["d4"]["supported_by"]]
+                    if options:
+                        pick = rng.choice(options)
+                        by_id["d4"]["supported_by"] = by_id["d4"]["supported_by"] + [pick]
+                        t["supports"]["d4"] = list(by_id["d4"]["supported_by"])
+                        moved.add("d4")
+                elif op == "withdraw" and t["status"]["c"] == "settled":
+                    by_id["c"].update(status="unresolved", answer=None, authority=None, authority_source=None, reopen_reason="Withdrawn %d" % version)
+                    t["status"]["c"] = "withdrawn"
+                    moved.add("c")
+                elif op == "restore" and t["status"]["c"] == "withdrawn":
+                    by_id["c"].update(status="settled", answer="Restored %d" % version, authority="evidence", authority_source="re-read")
+                    t["status"]["c"] = "settled"
+                    moved.add("c")
+                    implicit.add("c")
+            stored = {n["id"]: n for n in session.editable(session.load(self.directory))["nodes"]}
+            real = {i for i in moved if self.differs(stored[i], by_id[i])}
+            for node_id in real:
+                t["changed"][node_id] = version
+            for node_id in implicit & real:
+                t["reviewed"][node_id] = version
+            # reliance newly taken on by a settled node must be recorded and not contradicted
+            added = [x for x in self.chain(t["supports"], "d4") if x not in self.chain(m["supports"], "d4")]
+            refused = any(t["status"][x] != "settled" or self.contradicted_unrevisited(t, x) for x in added)
+            if state == session.editable(session.load(self.directory)):
                 continue
-            result = session.publish(self.directory, state, version - 1, "step %d" % step, revalidated=review)
+            if refused:
+                with self.assertRaises(ValueError, msg="seed %d step %d" % (seed, step)):
+                    session.publish(self.directory, state, version - 1, "step %d" % step)
+                continue
+            review = {i: "reviewed at %d" % version for i in self.flagged(t) if rng.random() < 0.5}
+            published = session.publish(self.directory, state, version - 1, "step %d" % step, revalidated=review)
             for node_id in review:
-                reviewed[node_id] = version
-            expected = sorted(i for i in structure if i != "goal" and any(changed[s] > reviewed[i] for s in self.chain(structure, i)))
-            self.assertEqual(sorted(session.review_flags(result["nodes"])), expected, "seed %d step %d" % (seed, step))
+                t["reviewed"][node_id] = version
+            m = t
+            self.assertEqual(sorted(session.review_flags(published["nodes"])), self.flagged(m), "seed %d step %d" % (seed, step))
+
+    @staticmethod
+    def differs(before, after):
+        view = lambda n: (n.get("status"), n.get("answer"), n.get("evidence"), n.get("claim"), sorted(n.get("supported_by", ())), n.get("contradicts"))
+        return view(before) != view(after)
 
     def test_random_publication_sequences_never_clear_or_raise_a_flag_wrongly(self):
-        for seed in range(40):
+        for seed in range(60):
             with self.subTest(seed=seed):
                 self.setUp()
                 self.run_sequence(seed)
