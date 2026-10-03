@@ -28,20 +28,24 @@ requiredness depends on kind and status, not every field is mandatory.
 | `status` | string | Required: `unresolved`, `settled`, `deferred`, or `superseded`. |
 | `prerequisites` | array of strings | Required; distinct nonempty node IDs. Use `[]` for none. Each prerequisite must be settled before this node is ready. |
 | `predicate` | boolean or null | Optional; omitted means `true`, `null` means unknown. Record an observed condition, not an expression for the helper to evaluate. |
-| `evidence` | array of strings (`list[str]`) | Required; each entry is nonempty text recording an inspected path, fact, schema snippet, configuration key, or access limitation. `[]` is valid except when settling by `evidence` or `delegated` authority. |
+| `evidence` | array of strings or receipts | Required; each entry is nonempty text recording an inspected path, fact, schema snippet, configuration key, or access limitation, or a receipt object (§7). Legacy strings stay valid and are never converted. `[]` is valid except when settling by `evidence` or `delegated` authority. |
+| `claim` | object | Optional, facts only: `{type, scope, limits?}` with `type` one of `observation`, `inference`, `unknown` (§7). Absent means **unclassified**: recorded before findings were typed, never guessed. |
+| `supported_by` | array of strings | Optional, decisions and inferences only: distinct IDs of findings this node relies on as evidence (§7). Separate from `prerequisites`. |
+| `rationale` | object | Optional, decisions only: `feasibility` (what the current architecture allows) and/or `intent` (the user's outcome or threat model), nonblank. |
 | `owner` | string | Required, nonempty for decisions: who can settle this choice. Facts need no owner. |
 | `gate` | string | Required, nonempty for decisions: the answer needed to settle this choice, e.g. “Explicitly confirm this investigation goal.” This describes the interview answer, not an SDLC approval gate or executable rule. Facts need no gate. |
 | `label` | string | Optional short display title. |
 | `question` | string | Optional one-line ask for display. |
 | `recommendation` | string | Optional grounded host proposal based on evidence and settled prerequisites. |
-| `answer` | string or null | Required, nonempty when settled: actual user choice, evidence-derived fact, or delegated choice. Otherwise omit or use `null`. |
+| `answer` | string or null | Required, nonempty when settled: actual user choice, the recorded finding, or delegated choice. Otherwise omit or use `null`. |
 | `authority` | string or null | Required when settled: `evidence` for facts; `user` or `delegated` for decisions. Otherwise omit or use `null`. |
 | `authority_source` | string or null | Required, nonempty when settled: actual user-answer/delegation reference or inspected fact source. Otherwise omit or use `null`. |
-| `contradicts` | string | Optional, facts only: the ID of a settled decision that this fact's evidence contradicts. Completion is blocked while that decision is still settled and unchanged since the fact was recorded; reopen or revise it, or supersede the fact with a reason. |
+| `contradicts` | string | Optional, facts only: the ID of a settled node that this fact's evidence contradicts (usually a decision, or an observation others rely on). The contradicted node is flagged for review (§7.3) until you revise it, reopen and re-settle it, revalidate it with a reason, or supersede the fact; completion is blocked meanwhile. |
 | `reopen_reason` | string | Nonempty whenever present; required when a settled node becomes unresolved. Retained in history on subsequent changes. |
 | `defer_reason` | string | Required, nonempty when deferred: why this non-blocking concern was postponed. |
 | `revisit_condition` | string | Required, nonempty when deferred: concrete trigger for revisiting it. |
 | `revision` | integer | Helper-owned premise revision; omit from publication payloads. |
+| `premise_version`, `reviewed_version` | integers | Helper-owned counters behind review flags (§7.3); omit from publication payloads. |
 | `history` | array of objects | Helper-owned prior node states with timestamps and reasons; omit from publication payloads. |
 
 Omit `owner` and `gate` on facts; the validator permits them but does not require
@@ -50,7 +54,7 @@ conventions, not validator guarantees. Clear `answer`, `authority`, and `authori
 reopening; their previous values remain in history.
 
 Record default behaviors and engineering conventions as labeled **assumptions**,
-never as user answers. Fact nodes resolve through verified workspace evidence;
+never as user answers. Fact nodes resolve through workspace evidence recorded within a stated scope;
 consequential decisions strictly require explicit user choice or scoped delegation.
 
 ### JSON serialization (`ledger.json`)
@@ -172,7 +176,7 @@ seed contract save. Empty frontier alone is not completion.
 | Status | Meaning |
 | --- | --- |
 | `unresolved` | Still needs evidence or user judgment. Ready if all prerequisites are settled and activation predicates are true; otherwise parked. |
-| `settled` | Fact established or actual decision accepted, with evidence or authority recorded. |
+| `settled` | Workflow status only. A decision: an authorized actor chose it. A fact: its evidence was recorded within a stated scope, so dependents may proceed. It does not mean a fact is proven or exhaustively checked; the viewer says "decided" and "recorded", never one "settled" for both. |
 | `deferred` | Non-blocking concern intentionally postponed, with reason and revisit condition documented. |
 | `superseded` | Branch no longer applies due to a changed prerequisite or false predicate; history and inactivation reason preserved. |
 
@@ -343,3 +347,100 @@ After traversal, recompute readiness: reopened descendants remain parked until t
 updated prerequisites settle. When re-asking a reopened question, explicitly state
 the changed premise that prompted reopening. Reopen only for a recorded factual
 or authority change, never on a hunch alone.
+
+---
+
+## 7. Findings, Evidence Support, and Review
+
+Workflow status says what can happen next. It is separate from what is known.
+Every field here is optional, so existing ledgers load unchanged (`schema_version`
+stays `1`) and nothing is rewritten on read.
+
+### 7.1 Finding types (facts)
+
+One fact records one kind of statement; do not combine them in one entry.
+
+| `claim.type` | Meaning | Required |
+| --- | --- | --- |
+| `observation` | Seen directly, within `scope`. | `scope`; `limits` optional |
+| `inference` | Concluded from observations; not itself observed. | `scope`, `limits` (what it does not establish), and `supported_by` naming observations |
+| `unknown` | This investigation has not established it. | `scope` (what was examined) |
+
+An `unknown` is not an absence claim. Phrase it "This investigation has not
+established X", with the evidence of what was read. "Nothing was found in A, B, C"
+is an `observation` scoped to A, B, C; "X does not exist anywhere" needs an
+`inference` that states its limits. An `unknown` cannot be cited as support.
+A fact with no `claim` is **unclassified**: classifying it later is an ordinary
+publication, recorded in history, and changes no premise by itself. No numeric
+confidence exists.
+
+### 7.2 Two kinds of dependency
+
+- `prerequisites`: workflow. "B waits for A": B is not ready until A is settled.
+  It says nothing about whether A is evidence for B.
+- `supported_by`: evidence. "A supports B": B's justification relies on A. It does
+  not make B wait, and A being unsettled does not park B.
+
+A decision may cite any recorded fact; an inference may cite only observations.
+Observations and unknowns cite nothing. The viewer draws evidence arrows
+(dashed) only for the selected node.
+
+### 7.3 Review flags
+
+A settled node is flagged for review when anything it relies on, directly or
+through other nodes in `supported_by`, has (a) **changed** after the node was last
+reviewed, (b) been **withdrawn** (no longer settled), or (c) been **contradicted**
+by a settled fact naming it in `contradicts` and not revisited. The flag names
+that evidence, not the claim in between. A node that a settled fact contradicts is
+flagged itself, until it is revised, reopened and re-settled, or revalidated, or
+the fact is superseded; this is the one rule behind the completion block for
+contradictions. Flags are derived, never stored. They
+never reopen a node, change its `answer`, `authority` or `authority_source`, or
+choose a replacement.
+
+Each node is measured against its own review only. Two helper-owned counters
+decide it: `premise_version` (the publication that last changed a node's `status`,
+`answer`, `evidence`, `claim`, the set of IDs in `supported_by`, or, on a fact, its
+`contradicts`) and
+`reviewed_version` (the publication that created the node, first settled it, or
+revalidated it). An explicit review counts as later than everything recorded in the
+same publication, so a contradiction and the review of what it contradicts can be
+published together; creating or first settling a node is not a review, so a node
+recorded together with the fact that contradicts it stays flagged. Editing a label, question, owner, or gate, or reordering
+`supported_by`, moves neither, so such an edit never clears a flag and never raises
+one. Only explicit revalidation clears a flag, including one for withdrawn or
+contradicted evidence: the user may keep a decision after seeing that its evidence
+is gone. Reviewing an inference does not review the decision that rests on it, and
+changing evidence while reviewing only the inference in the same publication
+still leaves the decision flagged. Every settled fact naming a piece of evidence in
+`contradicts` counts, in any node order. A settled node cannot take on evidence,
+when it is first settled or when its `supported_by` grows, that is not yet settled,
+or that a settled fact still contradicts (the evidence has been neither revised nor
+reviewed since; reviewing it first, or in the same publication, makes it usable). A review may target
+exactly the nodes this rule flags on the state being published. Omit both counters
+from publication payloads.
+
+Completion is blocked while flags are unreviewed. To review, publish
+`revalidated` with a nonblank reason for each flagged ID; the node keeps its
+answer and the reason enters its history. For a decision, the reason must record
+that the user was shown the changed evidence and kept or changed their answer;
+never invent that confirmation.
+
+### 7.4 Receipts
+
+An `evidence` entry may be a receipt: `{checked, at, observed}` required, `check`
+and `artifact` optional, all nonblank strings. `at` is ISO 8601 with a UTC offset.
+`check` is the exact command or query, stored as data and **never executed** by the
+helper or viewer. `artifact` is a version, commit, hash, or other stable
+identifier. Never put a secret in a receipt; record where it lives. The helper
+rejects obvious secret patterns as a backstop only. A string entry is an
+unstructured note with no receipt, and is shown that way.
+
+### 7.5 Human authority
+
+A `recommendation` is a proposal; it never fills `answer`, `authority` or
+`authority_source`. Only a recorded user choice or explicit delegation does.
+Accepting a proposal does not change the claims it relies on: a fact's
+authority stays `evidence`. Keep `rationale.feasibility` apart from
+`rationale.intent`; a recommendation with no `intent` rests on feasibility alone
+and stays provisional until the user states their outcome or threat model.

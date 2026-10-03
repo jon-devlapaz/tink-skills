@@ -14,6 +14,7 @@ from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from test_seed_me_epistemics import acceptance_nodes, finding, receipt
 from test_seed_me_session import node, session
 
 
@@ -198,7 +199,7 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         state["current_question"] = None
         self.publish(state)
         self.expect(self.page.locator("#detail")).to_contain_text(attack)
-        self.expect(self.page.locator("#counts")).to_contain_text("2 settled")
+        self.expect(self.page.locator("#counts")).to_contain_text("2 decided")
         state = session.editable(session.load(self.directory))
         state["nodes"][1].update(answer="Merge data", evidence=["fixture import.py:10: merge(existing, incoming)"])
         state["nodes"][2] = {**node("backup", parents=["import-behavior"]), "question": "Still require a backup?",
@@ -298,7 +299,7 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.page.get_by_role("button", name="How to read").click()
         self.expect(self.page.locator("#legend")).to_be_visible()
         keys = self.page.evaluate("[...document.querySelectorAll('#legend [data-legend]')].map(e => e.dataset.legend)")
-        self.assertEqual(sorted(keys), sorted(["settled", "ready", "parked", "deferred", "superseded", "current", "decision", "fact", "edge"]))
+        self.assertEqual(sorted(keys), sorted(["settled", "ready", "parked", "deferred", "superseded", "current", "decision", "fact", "edge", "support"]))
         for key in keys:
             self.assertTrue(self.page.evaluate("key => document.querySelector(`#legend [data-legend=${key}]`).closest('li').textContent.trim().length > 6", key), key)
         colors = self.page.evaluate("""() => {
@@ -476,7 +477,7 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         names = page.evaluate("[...document.querySelectorAll('#detail > dl > dt')].map(e => e.textContent)")
         self.assertEqual(names[0], "Status")
         self.assertLess(names.index("Gate"), names.index("Owner"))
-        self.assertLess(names.index("Owner"), names.index("Prerequisites"))
+        self.assertLess(names.index("Owner"), names.index("Waits for (workflow order)"))
         for plumbing in ("ID", "Kind", "Premise revision", "Evidence"):
             self.assertNotIn(plumbing, names, "plumbing and empty fields do not lead the inspector")
         meta = page.locator("#detail .meta")
@@ -695,7 +696,7 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.page.goto(self.url)
         self.expect(self.page.locator("#settled-list > li")).to_have_count(5)
         self.expect(self.page.locator("#settled-list > li").first).to_contain_text("Settled 12")
-        self.expect(self.page.locator("#settled-more-sum")).to_have_text("Show 7 earlier settled")
+        self.expect(self.page.locator("#settled-more-sum")).to_have_text("Show 7 earlier decided")
         self.expect(self.page.locator("#settled-more")).not_to_have_attribute("open", "")
         self.expect(self.page.locator("#open-list")).to_contain_text("Open one")
         self.assertEqual(self.errors, [])
@@ -783,12 +784,277 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
                           {**node("now", parents=["goal"]), "question": "Now?"}]
         self.publish(state)
         self.page.goto(self.url)
-        self.expect(self.page.locator("#settled-h")).to_have_text("Settled (1)")
-        self.expect(self.page.locator("#facts-h")).to_have_text("Facts checked (2)")
-        self.expect(self.page.locator("#counts")).to_contain_text("1 settled")
-        self.expect(self.page.locator("#counts")).to_contain_text("2 facts")
-        self.expect(self.page.locator("#facts-list")).to_contain_text("fact checked")
+        self.expect(self.page.locator("#settled-h")).to_have_text("Decided (1)")
+        self.expect(self.page.locator("#facts-h")).to_have_text("Findings on record (2)")
+        self.expect(self.page.locator("#counts")).to_contain_text("1 decided")
+        self.expect(self.page.locator("#counts")).to_contain_text("2 findings")
+        self.expect(self.page.locator("#facts-list")).to_contain_text("Unclassified record")
         self.assertEqual(self.errors, [])
+
+    def epistemic_page(self, nodes=None, graph=True, current="safety-target"):
+        state = session.editable(session.load(self.directory))
+        state.update(goal="Decide how skills are owned and kept safe", origin="goal", current_question=current)
+        state["nodes"] = nodes or acceptance_nodes()
+        self.publish(state)
+        if graph:
+            library = pinned_cytoscape()
+            self.context.unroute("**/cytoscape.min.js")
+            self.context.route("**/cytoscape.min.js", lambda route: route.fulfill(path=library, content_type="application/javascript"))
+        self.page.goto(self.url + ("#graph" if graph else "#ledger"))
+        if graph:
+            self.page.wait_for_function("cy !== null")
+        return self.page
+
+    def test_decisions_and_findings_are_labelled_differently_and_never_both_called_settled(self):
+        legacy = {**node("legacy-fact", "fact", answer="Imports replace existing data"), "label": "Old fact"}
+        page = self.epistemic_page(acceptance_nodes() + [legacy], graph=False)
+        self.expect(page.locator("#settled-h")).to_have_text("Decided (1)")
+        self.expect(page.locator("#facts-h")).to_have_text("Findings on record (6)")
+        text = page.locator("#now").inner_text()
+        self.assertNotRegex(text, r"(?i)\bsettled\b")
+        self.assertNotIn("verified", text.lower(), "recorded findings are not relabelled as verified")
+        rows = {row.locator("strong").inner_text(): row for row in page.locator("#facts-list > li").all()}
+        for label, badge in (("Live vs repository layout", "Observed"), ("Mixed live and repository ownership", "Inferred"),
+                             ("Intended ownership workflow", "Not established"), ("Old fact", "Unclassified record")):
+            with self.subTest(label):
+                self.expect(rows[label].locator(".badge")).to_have_text(badge)
+        self.expect(page.locator("#settled-list .badge.user")).to_have_text("you decided")
+        self.assertEqual(page.locator("#facts-list .badge.user, #facts-list .badge.delegated").count(), 0)
+        page.locator('#ledger-list details[data-node-id="mixed-ownership"] summary').click()
+        detail = page.locator('#ledger-list details[data-node-id="mixed-ownership"]')
+        self.expect(detail).to_contain_text("not proof the finding is true")
+        self.expect(detail).to_contain_text("Nobody decided this, and accepting it would not make it true")
+        self.expect(detail).to_contain_text("concluded from observations; not itself observed")
+        self.expect(detail).to_contain_text("Limits")
+        self.assertEqual(self.errors, [])
+
+    def test_unknown_means_not_established_and_is_not_phrased_as_absence(self):
+        page = self.epistemic_page(graph=False)
+        row = page.locator("#facts-list > li", has_text="Intended ownership workflow")
+        self.expect(row).to_contain_text("This investigation has not yet established the intended ownership workflow.")
+        self.expect(row.locator(".badge")).to_have_text("Not established")
+        self.expect(row.locator(".badge")).to_have_attribute("title", "this investigation has not established it; that is not the same as it not existing")
+        self.assertNotIn("does not exist", row.inner_text())
+        scoped = page.locator("#facts-list > li", has_text="Multiple command execution paths")
+        self.expect(scoped).to_contain_text("Other handlers were not read")
+
+    def test_workflow_arrows_and_evidence_arrows_are_distinct_and_evidence_is_shown_on_demand(self):
+        page = self.epistemic_page(acceptance_nodes() + [{**node("after-layout", parents=["layout-observed"]), "question": "Then what?"}], current="after-layout")
+        waits = page.evaluate("cy.edges().filter(e => !e.hasClass('support')).map(e => e.id())")
+        self.assertEqual(waits, ["waits:layout-observed>after-layout"])
+        self.assertEqual(page.evaluate("cy.edges('.support').length"), 3)
+        self.assertEqual(page.evaluate("cy.edges('.support').filter(e => e.style('display') !== 'none').length"), 0, "evidence edges are hidden until a node is selected")
+        page.evaluate("void cy.getElementById('mixed-ownership').emit('tap')")
+        shown = page.evaluate("cy.edges('.support.shown').map(e => e.id()).sort()")
+        self.assertEqual(shown, ["supports:layout-observed>mixed-ownership", "supports:mixed-ownership>ownership-policy"])
+        self.assertEqual(page.evaluate("cy.edges('.hot').length"), 0, "evidence is not a workflow chain")
+        page.evaluate("void cy.getElementById('layout-observed').emit('tap')")
+        self.assertEqual(page.evaluate("cy.edges('.hot').map(e => e.id())"), ["waits:layout-observed>after-layout"])
+        self.assertFalse(page.evaluate("cy.getElementById('mixed-ownership').hasClass('faded')"), "a supported claim stays in view")
+        self.assertTrue(page.evaluate("cy.getElementById('sdk-version').hasClass('faded')"))
+        page.evaluate("void cy.getElementById('mixed-ownership').emit('tap')")
+        self.expect(page.locator("#detail")).to_contain_text("Relies on as evidence")
+        self.expect(page.locator("#detail")).to_contain_text("Evidence for")
+        page.get_by_role("button", name="How to read").click()
+        legend = page.locator("#legend").inner_text()
+        self.assertIn("B waits for A (workflow order only; it does not mean A proves B)", legend)
+        self.assertIn("A is evidence for B", legend)
+        self.assertIn("not proof it is true", legend)
+        self.assertEqual(self.errors, [])
+
+    def test_graph_cards_name_the_finding_type_and_mark_unknowns(self):
+        page = self.epistemic_page()
+        badges = page.evaluate("Object.fromEntries([...document.querySelectorAll('#cards .card')].map(c => [c.dataset.id, c.querySelector('.bd')?.textContent]))")
+        self.assertEqual((badges["layout-observed"], badges["mixed-ownership"], badges["ownership-workflow"]), ("Observed", "Inferred", "Not established"))
+        self.assertEqual(badges["ownership-policy"], "You decided")
+        self.assertEqual(page.evaluate("cy.getElementById('ownership-workflow').style('border-style')"), "dotted")
+
+    def test_changed_evidence_flags_for_review_and_leaves_the_decision_as_it_was(self):
+        page = self.epistemic_page(graph=False)
+        self.assertEqual(page.locator(".badge.review").count(), 0)
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "layout-observed":
+                item.update(answer="3 live entries are symlinks; 3 are plain copies.", evidence=[receipt(observed="3 and 3", at="2026-10-03T08:00:00+00:00")])
+        self.publish(state, "Re-listed the folders")
+        self.expect(page.locator("#status-pill")).to_have_text("Needs a second look")
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (2)")
+        self.expect(page.locator("#review-list")).to_contain_text("Its answer and authorization are unchanged.")
+        decided = page.locator("#settled-list > li", has_text="Skill ownership")
+        self.expect(decided).to_contain_text("The repository owns every skill")
+        self.expect(decided.locator(".badge.user")).to_have_text("you decided")
+        self.expect(decided.locator(".badge.review")).to_have_text("needs review")
+        self.assertEqual(page.locator("#facts-list .badge.review").count(), 1)
+        python_flags = {k: v for k, v in session.review_flags(session.load(self.directory)["nodes"]).items()}
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), python_flags, "the viewer and the helper derive the same flags")
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] in ("ownership-policy", "mixed-ownership"):
+                item["label"] = item["label"] + " (renamed)"
+        self.publish(state, "Rename only: a label edit is not a review")
+        self.expect(page.locator("#settled-list > li", has_text="renamed")).to_contain_text("needs review")
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (2)")
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), session.review_flags(session.load(self.directory)["nodes"]))
+
+    def test_review_flags_follow_the_same_rules_in_the_viewer_through_a_review_chain(self):
+        nodes = acceptance_nodes() + [{**self.decision_on("contain-handlers", "command-paths")}]
+        page = self.epistemic_page(nodes, graph=False)
+        helper = lambda: session.review_flags(session.load(self.directory)["nodes"])
+
+        def viewer_flags():
+            page.wait_for_function("version => LEDGER && LEDGER.version >= version", arg=session.load(self.directory)["version"], timeout=8000)
+            return page.evaluate("Object.fromEntries(reviewFlags())")
+
+        def edit(**by_id):
+            state = session.editable(session.load(self.directory))
+            for item in state["nodes"]:
+                item.update(by_id.get(item["id"], {}))
+            return state
+
+        self.publish(edit(**{"layout-observed": {"answer": "3 live entries are symlinks; 3 are plain copies."}}), "Observation changed")
+        self.assertEqual(sorted(helper()), ["mixed-ownership", "ownership-policy"])
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (2)")
+        self.assertEqual(viewer_flags(), helper())
+        version = session.load(self.directory)["version"]
+        session.publish(self.directory, session.editable(session.load(self.directory)), version, "Review the inference only",
+                        revalidated={"mixed-ownership": "Still holds"})
+        self.assertEqual(sorted(helper()), ["ownership-policy"], "reviewing the inference does not review the decision")
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (1)")
+        self.assertEqual(viewer_flags(), helper())
+        self.publish(edit(**{"command-paths": {"status": "superseded", "answer": None, "authority": None, "authority_source": None}}), "Withdraw evidence")
+        self.assertEqual(sorted(helper()), ["contain-handlers", "ownership-policy"])
+        self.assertEqual(viewer_flags(), helper())
+        version = session.load(self.directory)["version"]
+        session.publish(self.directory, session.editable(session.load(self.directory)), version, "Review the decisions",
+                        revalidated={"ownership-policy": "User kept it", "contain-handlers": "User kept it without that evidence"})
+        self.assertEqual(helper(), {})
+        self.expect(page.locator("#review-h")).to_be_hidden()
+        self.assertEqual(viewer_flags(), {})
+
+    def test_the_viewer_flags_a_decision_when_evidence_changes_and_only_its_inference_is_reviewed_in_the_same_update(self):
+        page = self.epistemic_page(acceptance_nodes(), graph=False)
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "layout-observed":
+                item["answer"] = "3 live entries are symlinks; 3 are plain copies."
+        session.publish(self.directory, state, session.load(self.directory)["version"], "Changed and the inference reviewed together",
+                        revalidated={"mixed-ownership": "Still holds"})
+        helper = session.review_flags(session.load(self.directory)["nodes"])
+        self.assertEqual(sorted(helper), ["ownership-policy"])
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (1)")
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), helper)
+        self.expect(page.locator("#review-list")).to_contain_text("Live vs repository layout changed")
+
+    def test_the_viewer_flags_what_relies_on_evidence_that_a_fact_newly_contradicts(self):
+        nodes = acceptance_nodes() + [self.decision_on("contain-handlers", "command-paths"),
+                                      finding("second-look", {"type": "observation", "scope": "A second read"}, "One handler does sandbox.", ["a.py:50"])]
+        page = self.epistemic_page(nodes, graph=False)
+        self.assertEqual(session.review_flags(session.load(self.directory)["nodes"]), {})
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "second-look":
+                item["contradicts"] = "command-paths"
+        self.publish(state, "The second read contradicts the first")
+        helper = session.review_flags(session.load(self.directory)["nodes"])
+        self.assertEqual(helper["contain-handlers"], [{"because": "command-paths", "why": "contradicted"}])
+        self.expect(page.locator("#review-list")).to_contain_text("Multiple command execution paths is contradicted by later evidence")
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), helper)
+
+    def test_the_viewer_counts_every_contradicting_fact_whatever_the_node_order(self):
+        nodes = acceptance_nodes() + [self.decision_on("contain-handlers", "command-paths"),
+                                      finding("old-look", {"type": "observation", "scope": "x"}, "Old", ["n"]),
+                                      finding("new-look", {"type": "observation", "scope": "y"}, "New", ["n"])]
+        page = self.epistemic_page(nodes, graph=False)
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "old-look":
+                item["contradicts"] = "command-paths"
+        self.publish(state, "An older contradiction")
+        session.publish(self.directory, session.editable(session.load(self.directory)), session.load(self.directory)["version"], "Reviewed",
+                        revalidated={"command-paths": "Re-read after the first contradiction", "contain-handlers": "Kept after the first contradiction"})
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "new-look":
+                item["contradicts"] = "command-paths"
+        state["nodes"].sort(key=lambda n: n["id"] != "new-look")
+        self.publish(state, "A newer contradiction, listed before the older one")
+        helper = session.review_flags(session.load(self.directory)["nodes"])
+        self.assertEqual(helper["contain-handlers"], [{"because": "command-paths", "why": "contradicted"}])
+        self.assertEqual(helper["command-paths"], [{"because": "new-look", "why": "contradicting"}])
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (2)")
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), helper)
+
+    def test_the_viewer_shows_one_contradiction_rule_and_it_clears_with_the_documented_review(self):
+        nodes = acceptance_nodes() + [self.decision_on("contain-handlers", "command-paths"),
+                                      finding("second-look", {"type": "observation", "scope": "A second read"}, "One handler does sandbox.", ["a.py:50"])]
+        page = self.epistemic_page(nodes, graph=False)
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "second-look":
+                item["contradicts"] = "command-paths"
+        self.publish(state, "The second read contradicts the first")
+        helper = session.review_flags(session.load(self.directory)["nodes"])
+        self.assertEqual(sorted(helper), ["command-paths", "contain-handlers"])
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (2)")
+        self.expect(page.locator("#review-list")).to_contain_text("second-look contradicts this")
+        self.expect(page.locator("#review-list")).to_contain_text("Multiple command execution paths is contradicted by later evidence")
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), helper)
+        self.assertEqual(page.locator("text=contradicted — needs a second look").count(), 0, "the older, separate warning is gone")
+        self.expect(page.locator("#status-pill")).to_have_text("Needs a second look")
+        session.publish(self.directory, session.editable(session.load(self.directory)), session.load(self.directory)["version"], "Reviewed",
+                        revalidated={"command-paths": "Re-read; the first reading stands beside the second", "contain-handlers": "User kept the decision"})
+        self.assertEqual(session.review_flags(session.load(self.directory)["nodes"]), {})
+        self.expect(page.locator("#review-h")).to_be_hidden()
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), {})
+
+    def test_the_viewer_shows_nothing_flagged_when_a_contradiction_and_its_review_are_published_together(self):
+        nodes = acceptance_nodes() + [self.decision_on("contain-handlers", "command-paths"),
+                                      finding("second-look", {"type": "observation", "scope": "A second read"}, "One handler does sandbox.", ["a.py:50"])]
+        page = self.epistemic_page(nodes, graph=False)
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "second-look":
+                item["contradicts"] = "command-paths"
+        session.publish(self.directory, state, session.load(self.directory)["version"], "Record the contradiction and review it together",
+                        revalidated={"command-paths": "Re-read; the first reading stands beside the second", "contain-handlers": "User kept the decision"})
+        self.assertEqual(session.review_flags(session.load(self.directory)["nodes"]), {})
+        page.wait_for_function("version => LEDGER && LEDGER.version >= version", arg=session.load(self.directory)["version"], timeout=8000)
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), {})
+        self.expect(page.locator("#review-h")).to_be_hidden()
+        self.expect(page.locator("#status-pill")).not_to_have_text("Needs a second look")
+
+    def decision_on(self, node_id, support):
+        return {"id": node_id, "kind": "decision", "status": "settled", "prerequisites": ["goal"], "evidence": [], "owner": "User", "gate": "Choose",
+                "answer": "Wrap the three handlers", "authority": "user", "authority_source": "chat turn 10: user chose it", "supported_by": [support]}
+
+    def test_a_recommendation_is_a_proposal_and_its_rationale_is_split(self):
+        page = self.epistemic_page(graph=False)
+        call = page.locator("#call")
+        self.expect(call).to_contain_text("Recommended by the agent — a proposal, not a decision")
+        self.expect(call).to_contain_text("Why: what the current architecture allows")
+        self.expect(call).to_contain_text("Only three handlers are known today")
+        self.expect(call).to_contain_text("Why: your outcome or threat model")
+        self.expect(call).to_contain_text("Not stated yet. This proposal rests on feasibility alone and stays provisional")
+        self.assertEqual(page.locator("#settled-list").inner_text().count("Safety target"), 0, "an unaccepted proposal is not listed as decided")
+
+    def test_receipts_show_what_was_checked_and_legacy_notes_are_labelled_as_notes(self):
+        page = self.epistemic_page(graph=False)
+        page.locator('#ledger-list details[data-node-id="layout-observed"] summary').click()
+        detail = page.locator('#ledger-list details[data-node-id="layout-observed"]')
+        for expected in ("Checked: Directory listing of the live skills folder", "When: 2026-10-02T09:15:00+00:00", "Observed: 4 entries",
+                         "Exact check (stored, never run by the viewer): ls -l ~/.agents/skills", "Artifact: git:7a045e4"):
+            self.expect(detail).to_contain_text(expected)
+        page.locator('#ledger-list details[data-node-id="mixed-ownership"] summary').click()
+        self.expect(page.locator('#ledger-list details[data-node-id="mixed-ownership"]')).to_contain_text("Unstructured note (no receipt): Inferred from layout-observed")
+
+    def test_the_viewer_refuses_an_invalid_epistemic_snapshot(self):
+        page = self.epistemic_page(graph=False)
+        bad = json.loads(urlopen(self.url + "/ledger.json").read())
+        next(n for n in bad["nodes"] if n["id"] == "mixed-ownership")["claim"] = {"type": "verified", "scope": "x"}
+        bad["version"] += 1
+        page.route("**/ledger.json*", lambda route: route.fulfill(status=200, content_type="application/json", body=json.dumps(bad)))
+        self.expect(page.locator("#connection")).to_contain_text("Invalid finding type", timeout=6000)
+        self.expect(page.locator("#facts-list")).to_contain_text("Mixed live and repository ownership")
 
     def test_long_answers_are_kept_whole_with_a_toggle(self):
         tail = "TAILMARK-end-of-a-long-answer"
@@ -830,11 +1096,13 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
                           {**node("d", parents=["goal"], answer="Reuse the scanner"), "label": "Reuse scanner"}, fact]
         self.publish(state)
         self.page.goto(self.url)
-        self.expect(self.page.locator("#call")).to_contain_text("Needs a second look")
-        self.expect(self.page.locator("#call")).to_contain_text('"Reuse scanner" is contradicted by "Scanner missing"')
+        self.expect(self.page.locator("#call")).to_contain_text("Needs review")
+        self.expect(self.page.locator("#call")).to_contain_text("Evidence behind settled items changed or is contradicted")
         self.expect(self.page.locator("#call")).not_to_contain_text("Your turn")
         self.expect(self.page.locator("#status-pill")).to_have_text("Needs a second look")
-        self.expect(self.page.locator("#settled-list")).to_contain_text("contradicted — needs a second look")
+        self.expect(self.page.locator("#review-list")).to_contain_text("Scanner missing contradicts this")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("needs review")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("Reuse the scanner")
         self.assertEqual(self.errors, [])
 
     def test_simulated_session_is_unmistakable_and_cannot_be_confirmed(self):

@@ -14,14 +14,14 @@
     --bg: #fbfaf7; --surface: #ffffff; --text: #1d1f1c; --muted: #5d625b; --line: #e3e1da;
     --accent: #8a5a00; --accent-bg: #fff4d9; --accent-line: #e0a526;
     --you: #6b21a8; --you-bg: #f3e8ff; --ok: #1c6b48; --ok-bg: #e2f4ea; --amber: #8a5a00; --amber-bg: #fff1cf;
-    --sim-bg: #e0ecff; --sim: #1b4fa8; --warn-bg: #fde8e8; --warn: #a11212; --focus: #2563eb; --err-bg: #7a4300; --err-text: #fff;
+    --infer-bg: #def1f8; --infer: #0b5c7a; --sim-bg: #e0ecff; --sim: #1b4fa8; --warn-bg: #fde8e8; --warn: #a11212; --focus: #2563eb; --err-bg: #7a4300; --err-text: #fff;
     --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --col: 760px;
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 16px; line-height: 1.5;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #131417; --surface: #1b1d21; --text: #e8eaed; --muted: #a0a5af; --line: #2e3138;
       --accent: #f0b73a; --accent-bg: #2a2210; --accent-line: #c8901a;
-      --you: #d8b4fe; --you-bg: #2b1a3f; --ok: #6fd3a0; --ok-bg: #12301f; --amber: #f0b73a; --amber-bg: #2a2210; --sim-bg: #16264a; --sim: #9cc1ff; --warn-bg: #3a1717; --warn: #ff9b9b; --focus: #7aa7ff; }
+      --you: #d8b4fe; --you-bg: #2b1a3f; --ok: #6fd3a0; --ok-bg: #12301f; --amber: #f0b73a; --amber-bg: #2a2210; --infer-bg: #10303d; --infer: #7fd0f0; --sim-bg: #16264a; --sim: #9cc1ff; --warn-bg: #3a1717; --warn: #ff9b9b; --focus: #7aa7ff; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); }
@@ -65,6 +65,10 @@
   .badge.simulated { background: var(--sim-bg); color: var(--sim); }
   #sim-banner { background: var(--sim-bg); color: var(--sim); border-bottom: 2px solid var(--sim); text-align: center; font-weight: 700; font-size: 14px; padding: var(--s3) var(--s4); }
   #status-pill[data-kind="simulated"] { background: var(--sim-bg); color: var(--sim); }
+  .badge.observation { background: var(--ok-bg); color: var(--ok); } .badge.inference { background: var(--infer-bg); color: var(--infer); }
+  .badge.unknown { background: transparent; color: var(--muted); border: 1px dashed var(--muted); } .badge.unclassified { background: var(--line); color: var(--muted); }
+  .badge.review { background: var(--warn-bg); color: var(--warn); }
+  .rationale { margin: 0 0 var(--s3); font-size: 14px; } .rationale b { display: block; font-size: 12px; color: var(--muted); }
   .badge.user { background: var(--you-bg); color: var(--you); } .badge.evidence { background: var(--ok-bg); color: var(--ok); } .badge.delegated { background: var(--amber-bg); color: var(--amber); }
   #connection { font-size: 13px; color: var(--muted); padding-block: var(--s2); display: flex; align-items: center; gap: var(--s2); }
   #connection::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
@@ -186,9 +190,11 @@
   <div id="call"></div>
   <h2 id="open-h" hidden>Still open</h2>
   <ul id="open-list" class="items"></ul>
-  <h2 id="settled-h" hidden>Settled</h2>
+  <h2 id="review-h" hidden>Needs review</h2>
+  <ul id="review-list" class="items"></ul>
+  <h2 id="settled-h" hidden>Decided</h2>
   <ul id="settled-list" class="items"></ul>
-  <h2 id="facts-h" hidden>Facts checked</h2>
+  <h2 id="facts-h" hidden>Findings on record</h2>
   <ul id="facts-list" class="items"></ul>
   <details id="settled-more" hidden><summary id="settled-more-sum"></summary><ul id="settled-more-list" class="items"></ul></details>
   <h2 id="assumed-h" hidden>I'll assume these unless you object</h2>
@@ -202,7 +208,7 @@
 <section id="ledger-list" aria-label="Complete ledger text view"></section>
 <main hidden>
   <div id="graph-wrap">
-    <div id="cy" aria-label="Decision dependency graph"></div>
+    <div id="cy" aria-label="Decision and finding graph: solid arrows are workflow order, dashed arrows are evidence"></div>
     <div id="cards" aria-hidden="true"></div>
     <button id="clear-focus" type="button" hidden>Clear focus</button>
     <span id="pan-hint" hidden>Drag to pan</span>
@@ -211,27 +217,34 @@
 </main>
 <div id="legend" role="group" aria-label="How to read the graph">
   <p class="legend-h">How to read the graph</p>
-  <ul class="legend-row" aria-label="Fill colour is the status">
-    <li><span class="sw" data-legend="settled"></span>Settled: decided</li>
-    <li><span class="sw" data-legend="ready"></span>Ready: can be answered now</li>
+  <ul class="legend-row" aria-label="Fill colour is workflow progress, not truth">
+    <li><span class="sw" data-legend="settled"></span>Done: a decision someone authorized, or a finding whose evidence was recorded (not proof it is true)</li>
+    <li><span class="sw" data-legend="ready"></span>Ready: can be worked on now</li>
     <li><span class="sw" data-legend="parked"></span>Parked: waiting on something earlier</li>
     <li><span class="sw" data-legend="deferred"></span>Deferred: set aside on purpose</li>
     <li><span class="sw" data-legend="superseded"></span>Superseded: replaced (dashed)</li>
   </ul>
   <ul class="legend-row" aria-label="Shape, outline and arrows">
-    <li><span class="sw sw-decision" data-legend="decision"></span>Rounded box: a decision</li>
-    <li><span class="sw sw-fact" data-legend="fact"></span>Pill: a fact that was checked</li>
+    <li><span class="sw sw-decision" data-legend="decision"></span>Rounded box: a decision, settled by who chose it</li>
+    <li><span class="sw sw-fact" data-legend="fact"></span>Pill: a finding, supported by evidence within a stated scope</li>
     <li><span class="sw sw-current" data-legend="current"></span>Purple outline: the question being asked now</li>
-    <li><span class="edge-sample" data-legend="edge" aria-hidden="true">→</span>Arrow A → B: B waits for A</li>
+    <li><span class="edge-sample" data-legend="edge" aria-hidden="true">→</span>Solid arrow A → B: B waits for A (workflow order only; it does not mean A proves B)</li>
+    <li><span class="edge-sample" data-legend="support" aria-hidden="true">⇢</span>Dashed arrow A ⇢ B: A is evidence for B (drawn for the selected node only)</li>
   </ul>
-  <p class="legend-note">The goal is not drawn; every item serves it. Click a node for its answer, source and history.</p>
+  <ul class="legend-row" aria-label="Finding badges">
+    <li><span class="badge observation">Observed</span>seen directly, within its scope</li>
+    <li><span class="badge inference">Inferred</span>concluded from observations, with limits</li>
+    <li><span class="badge unknown">Not established</span>this investigation has not found out; not the same as "does not exist"</li>
+    <li><span class="badge unclassified">Unclassified record</span>recorded before findings were typed</li>
+  </ul>
+  <p class="legend-note">The goal is not drawn; every item serves it. Click a node for its answer, authorization, evidence and history. "Needs review" means evidence behind a node changed; its answer and authorization are untouched.</p>
 </div>
 <div id="meta-foot"><span id="meta"></span></div>
 <script id="ledger-data" type="application/json">
 {"__LEDGER_JSON__":true,"revision":0,"goal":null,"origin":null,"frontier":[],"nodes":[]}
 </script>
 <script>
-let LEDGER = null, cy = null, selectedId = null, clearedFor, lastText = null, polling = false;
+let LEDGER = null, cy = null, workflowLinks = [], selectedId = null, clearedFor, lastText = null, polling = false;
 let timer = null;
 const el = id => document.getElementById(id);
 function element(tag, text) {
@@ -247,17 +260,87 @@ function fields(parent, values) {
   }
   parent.append(list);
 }
-function stateFields(node) {
+// What kind of statement a fact is. A fact recorded before findings were typed stays "unclassified": the viewer never guesses.
+function claimType(node) { return node.kind === 'fact' ? (node.claim ? node.claim.type : 'unclassified') : null; }
+const CLAIM_WORDS = { observation: 'Observed', inference: 'Inferred', unknown: 'Not established', unclassified: 'Unclassified record' };
+const CLAIM_MEANING = {
+  observation: 'seen directly, within its scope',
+  inference: 'concluded from observations; not itself observed',
+  unknown: 'this investigation has not established it; that is not the same as it not existing',
+  unclassified: 'recorded before findings were typed; not known to be an observation or an inference'
+};
+const WHY = { changed: 'changed after this was recorded', withdrawn: 'is no longer on record', contradicted: 'is contradicted by later evidence', contradicting: 'contradicts this' };
+function receiptText(entry) {
+  if (typeof entry === 'string') return 'Unstructured note (no receipt): ' + entry;
+  return ['Checked: ' + entry.checked, 'When: ' + entry.at, 'Observed: ' + entry.observed,
+    entry.check && 'Exact check (stored, never run by the viewer): ' + entry.check, entry.artifact && 'Artifact: ' + entry.artifact].filter(Boolean).join('\n');
+}
+function nameOf(id) { const n = LEDGER.nodes.find(x => x.id === id); return n ? title(n) : id; }
+// Mirrors session.py review_flags: derived, never stored. Settled nodes whose evidence changed, was withdrawn, or was contradicted.
+function reviewFlags() {
+  const byId = new Map(LEDGER.nodes.map(n => [n.id, n]));
+  const contradicted = new Map();
+  for (const f of LEDGER.nodes) if (f.status === 'settled' && f.contradicts) contradicted.set(f.contradicts, [...(contradicted.get(f.contradicts) || []), f]);
+  const chain = id => {
+    const seen = [], queue = [...(byId.get(id).supported_by || [])];
+    while (queue.length) {
+      const source = queue.shift();
+      if (!seen.includes(source) && byId.has(source)) { seen.push(source); queue.push(...(byId.get(source).supported_by || [])); }
+    }
+    return seen;
+  };
+  const flags = new Map();
+  for (const node of LEDGER.nodes) {
+    if (node.status !== 'settled') continue;
+    const reviewed = node.reviewed_version || 0;
+    for (const source of chain(node.id)) {
+      const found = byId.get(source), moved = found.premise_version ?? 1;
+      const factMoved = Math.max(0, ...(contradicted.get(source) || []).map(f => f.premise_version ?? 1));
+      let why = null;
+      if (moved > reviewed) why = found.status !== 'settled' ? 'withdrawn' : 'changed';
+      else if (found.status === 'settled' && moved <= factMoved && factMoved > reviewed) why = 'contradicted';
+      if (why) flags.set(node.id, [...(flags.get(node.id) || []), { because: source, why }]);
+    }
+    for (const fact of contradicted.get(node.id) || []) {
+      if ((node.premise_version ?? 1) <= (fact.premise_version ?? 1) && (fact.premise_version ?? 1) >= reviewed) {
+        flags.set(node.id, [...(flags.get(node.id) || []), { because: fact.id, why: 'contradicting' }]);
+      }
+    }
+  }
+  return flags;
+}
+function reviewText(flag) { return `${nameOf(flag.because)} ${WHY[flag.why]}`; }
+function stateFields(node, current) {
+  const fact = node.kind === 'fact';
+  const type = claimType(node);
+  const flags = current ? (reviewFlags().get(node.id) || []) : [];
+  const supports = current ? LEDGER.nodes.filter(n => (n.supported_by || []).includes(node.id)).map(n => title(n)) : [];
+  const rationale = node.rationale || {};
+  const provisional = node.kind === 'decision' && node.status === 'unresolved' && node.recommendation && !rationale.intent;
   return {
-    Status: node.status, Question: node.question, Gate: node.gate, Recommendation: node.recommendation,
-    Answer: node.answer, Owner: node.owner, Authority: node.authority, 'Authority source': node.authority_source,
-    Prerequisites: node.prerequisites, Evidence: node.evidence,
+    Status: fact && node.status === 'settled' ? 'recorded (workflow step done; not proof the finding is true)' : (node.status === 'settled' ? 'decided' : node.status),
+    'Finding type': type && `${CLAIM_WORDS[type]} — ${CLAIM_MEANING[type]}`,
+    Scope: node.claim && node.claim.scope, Limits: node.claim && node.claim.limits,
+    Question: node.question, Gate: node.gate,
+    Recommendation: node.recommendation && 'A proposal from the agent, not a decision: ' + node.recommendation,
+    'Rationale: what the current architecture allows': rationale.feasibility,
+    'Rationale: your outcome or threat model': rationale.intent || (provisional ? 'Not stated yet. This recommendation rests on feasibility alone and stays provisional until you say what you need protected.' : null),
+    [fact ? 'Finding' : 'Answer']: node.answer,
+    Owner: node.owner,
+    ...(fact
+      ? { Basis: node.authority && 'Evidence within the scope above. Nobody decided this, and accepting it would not make it true.', 'Source inspected': node.authority_source }
+      : { 'Authorized by': node.authority, 'Authorization source': node.authority_source }),
+    'Needs review': flags.length ? flags.map(reviewText).join('\n') + '\nThe answer and authorization below are unchanged; nothing was reopened or replaced.' : null,
+    'Waits for (workflow order)': node.prerequisites,
+    'Relies on as evidence': (node.supported_by || []).map(nameOf),
+    'Evidence for': supports,
+    Evidence: node.evidence && node.evidence.length ? node.evidence.map(receiptText).join('\n\n') : null,
     Predicate: node.predicate === null ? 'Unknown' : node.predicate,
     'Defer reason': node.defer_reason, 'Revisit condition': node.revisit_condition, 'Reopen reason': node.reopen_reason
   };
 }
-function details(parent, node) {
-  fields(parent, stateFields(node));
+function details(parent, node, current = true) {
+  fields(parent, stateFields(node, current));
   const history = node.history || [];
   if (history.length) parent.append(element('h3', `History (${history.length})`));
   else parent.append(Object.assign(element('p', 'No earlier versions.'), { className: 'quiet' }));
@@ -266,7 +349,7 @@ function details(parent, node) {
     section.className = 'history';
     section.append(element('summary', `Superseded state—not an active answer: ${entry.reason}`));
     fields(section, { Reason: entry.reason, When: entry.superseded_at });
-    fields(section, stateFields(entry.state));
+    fields(section, stateFields(entry.state, false));
     parent.append(section);
   }
 }
@@ -289,6 +372,11 @@ function select(id, bring) {
   el('detail').append(element('h2', node.label || node.id), meta);
   details(el('detail'), node);
 }
+// Workflow progress in words that do not claim more than was done: a decision is decided, a finding is recorded.
+function stateWord(node) {
+  if (node.status === 'settled') return node.kind === 'fact' ? (claimType(node) === 'unknown' ? 'not established (recorded)' : `recorded (${CLAIM_WORDS[claimType(node)].toLowerCase()})`) : 'decided';
+  return cls(node);
+}
 function cls(node) {
   if (node.status !== 'unresolved') return node.status;
   return LEDGER.frontier.includes(node.id) ? 'ready' : 'parked';
@@ -306,7 +394,17 @@ function validate(data) {
       throw Error('Invalid ledger node');
     }
     ids.add(node.id);
-    if (!node.evidence.every(entry => nonBlank(entry))) throw Error('Invalid ledger node');
+    const receipt = entry => entry && typeof entry === 'object' && ['checked', 'at', 'observed'].every(k => nonBlank(entry[k])) &&
+      Object.keys(entry).every(k => ['checked', 'at', 'observed', 'check', 'artifact'].includes(k) && nonBlank(entry[k]));
+    if (!node.evidence.every(entry => nonBlank(entry) || receipt(entry))) throw Error('Invalid ledger node');
+    if (node.claim !== undefined) {
+      const c = node.claim;
+      if (node.kind !== 'fact' || !c || !['observation', 'inference', 'unknown'].includes(c.type) || !nonBlank(c.scope) ||
+          (c.limits !== undefined && !nonBlank(c.limits)) || (c.type === 'inference' && (!nonBlank(c.limits) || !(node.supported_by || []).length))) throw Error('Invalid finding type');
+    }
+    if (node.supported_by !== undefined && (!Array.isArray(node.supported_by) || !node.supported_by.every(nonBlank))) throw Error('Invalid evidence support');
+    if (node.rationale !== undefined && (node.kind !== 'decision' || !node.rationale || !Object.keys(node.rationale).length ||
+        !Object.entries(node.rationale).every(([k, v]) => ['feasibility', 'intent'].includes(k) && nonBlank(v)))) throw Error('Invalid rationale');
     if (node.kind === 'decision' && (!nonBlank(node.owner) || !nonBlank(node.gate))) throw Error('Invalid ledger node');
     if (node.status === 'settled') {
       if (!nonBlank(node.answer) || !nonBlank(node.authority_source)) throw Error('Invalid ledger node');
@@ -314,6 +412,7 @@ function validate(data) {
       if ((node.authority === 'evidence' || node.authority === 'delegated') && node.evidence.length === 0) throw Error('Invalid ledger node');
     } else if ((node.answer !== undefined && node.answer !== null) || (node.authority !== undefined && node.authority !== null) || (node.authority_source !== undefined && node.authority_source !== null)) throw Error('Invalid ledger node');
   }
+  if (data.nodes.some(n => (n.supported_by || []).some(p => !ids.has(p) || p === n.id))) throw Error('Invalid evidence reference');
   if (data.nodes.some(n => n.prerequisites.some(p => !ids.has(p))) ||
       data.frontier.some(id => !ids.has(id)) || (data.origin && !ids.has(data.origin))) throw Error('Invalid ledger reference');
   if (data.origin !== null && data.origin !== undefined) {
@@ -340,7 +439,7 @@ function textView() {
     section.dataset.nodeId = node.id;
     section.open = openIds.has(node.id);
     if (node.id === LEDGER.current_question) section.className = 'current';
-    section.append(element('summary', `${node.label || node.id} — ${cls(node)}${node.id === LEDGER.current_question ? ' — current question' : ''}`));
+    section.append(element('summary', `${node.label || node.id} — ${stateWord(node)}${reviewFlags().has(node.id) ? ' — needs review' : ''}${node.id === LEDGER.current_question ? ' — current question' : ''}`));
     const button = element('button', 'Inspect node');
     button.type = 'button';
     button.addEventListener('click', () => select(node.id, true));
@@ -359,10 +458,10 @@ function fallback() {
 const PALETTES = {
   light: { settled: { fill: '#dcf1e5', line: '#287b53' }, ready: { fill: '#fdeccb', line: '#c88200' },
     parked: { fill: '#ececea', line: '#9a9d96' }, deferred: { fill: '#dfe8fb', line: '#3a62c9' },
-    superseded: { fill: '#ffffff', line: '#777777' }, current: '#a34be3', origin: '#111111', ink: '#1d1f1c', edge: '#b9bdb5', hot: '#4f6df5' },
+    superseded: { fill: '#ffffff', line: '#777777' }, support: '#0b7a9a', current: '#a34be3', origin: '#111111', ink: '#1d1f1c', edge: '#b9bdb5', hot: '#4f6df5' },
   dark: { settled: { fill: '#173a2d', line: '#4ea77c' }, ready: { fill: '#3d3017', line: '#c99538' },
     parked: { fill: '#292c33', line: '#747b87' }, deferred: { fill: '#1d3048', line: '#6895d3' },
-    superseded: { fill: '#1b1d21', line: '#a0a5af' }, current: '#c49aff', origin: '#e8eaed', ink: '#e8eaed', edge: '#434852', hot: '#7f9aff' }
+    superseded: { fill: '#1b1d21', line: '#a0a5af' }, support: '#6cc4e4', current: '#c49aff', origin: '#e8eaed', ink: '#e8eaed', edge: '#434852', hot: '#7f9aff' }
 };
 const scheme = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 let PALETTE = (scheme && scheme.matches) ? PALETTES.dark : PALETTES.light;
@@ -375,6 +474,8 @@ function paintLegend() {
   if (superseded) superseded.style.borderStyle = 'dashed';
   const current = document.querySelector('#legend [data-legend="current"]');
   if (current) current.style.borderColor = PALETTE.current;
+  const evidenceSample = document.querySelector('#legend [data-legend="support"]');
+  if (evidenceSample) evidenceSample.style.color = PALETTE.support;
 }
 paintLegend();
 el('clear-focus').addEventListener('click', () => clearFocus());
@@ -455,18 +556,34 @@ function markPicked(id) {
   if (picked && picked.length) picked.addClass('picked');
   syncCards();
 }
+// Workflow chain only: who this waits for and who waits for it. Evidence edges are not part of it.
+function chainIds(id) {
+  const seen = new Set([id]);
+  for (const [from, to] of [[0, 1], [1, 0]]) {
+    const stack = [id];
+    while (stack.length) {
+      const at = stack.pop();
+      for (const link of workflowLinks) if (link[to] === at && !seen.has(link[from]) && (seen.add(link[from]), true)) stack.push(link[from]);
+    }
+  }
+  return seen;
+}
 function focusOn(id) {
   if (!cy) return;
-  cy.elements().removeClass('faded hot');
+  cy.elements().removeClass('faded hot shown');
   const node = id ? cy.getElementById(id) : null;
   if (!node || !node.length) { syncCards(); return; }
-  const chain = node.predecessors().union(node.successors()).union(node);
-  cy.elements().not(chain).addClass('faded');
-  chain.edges().addClass('hot');
+  const chain = chainIds(id), visible = new Set(chain);
+  const evidence = cy.edges('.support').filter(e => e.source().id() === id || e.target().id() === id);
+  evidence.forEach(e => { visible.add(e.source().id()); visible.add(e.target().id()); });
+  const waiting = cy.edges().filter(e => !e.hasClass('support') && chain.has(e.source().id()) && chain.has(e.target().id()));
+  cy.elements().not(cy.nodes().filter(n => visible.has(n.id()))).not(waiting).not(evidence).addClass('faded');
+  waiting.addClass('hot');
+  evidence.addClass('shown');
   syncCards();
 }
 // ---- HTML cards over the drawn nodes: Cytoscape draws fill, border and edges; the card carries the words.
-const SHORT = { user: 'You decided', standing: 'Standing delegation', accepted: 'You accepted', evidence: 'Checked fact', simulated: 'Simulated' };
+const SHORT = { user: 'You decided', standing: 'Standing delegation', accepted: 'You accepted', simulated: 'Simulated' };
 function buildCards() {
   const layer = el('cards');
   layer.replaceChildren();
@@ -503,9 +620,15 @@ function buildCards() {
       card.append(a);
       const waiting = waitingOn(node);
       const key = standing(node) ? 'standing' : (node.authority === 'delegated' ? 'accepted' : node.authority);
-      const bd = element('span', node.status === 'settled' ? (SHORT[key] || '') : (node.status === 'deferred' ? 'Deferred' : (waiting.length ? `Waiting on ${waiting.length}` : 'Ready')));
+      const bd = element('span', node.status === 'settled' ? (node.kind === 'fact' ? CLAIM_WORDS[claimType(node)] : (SHORT[key] || '')) : (node.status === 'deferred' ? 'Deferred' : (waiting.length ? `Waiting on ${waiting.length}` : 'Ready')));
       bd.className = 'bd';
       card.append(bd);
+      if (reviewFlags().has(node.id)) {
+        const flag = element('span', 'Needs review');
+        flag.className = 'bd';
+        flag.style.marginLeft = '6px';
+        card.append(flag);
+      }
     }
     layer.append(card);
   }
@@ -556,14 +679,18 @@ function graph() {
   if (cy) cy.destroy();
   const shown = LEDGER.nodes.filter(n => n.id !== LEDGER.origin);
   const links = shown.flatMap(n => n.prerequisites.filter(p => p !== LEDGER.origin).map(p => [p, n.id]));
+  workflowLinks = links;
+  // Evidence ("A supports B") is separate from workflow order ("B waits for A"): drawn only for the selected node, never in the layout.
+  const support = shown.flatMap(n => (n.supported_by || []).filter(p => p !== LEDGER.origin).map(p => [p, n.id]));
   const sizeOf = id => (id === LEDGER.current_question ? { w: 380, h: 250 } : { w: 232, h: 112 });
   const places = layered(shown.map(n => n.id), links, sizeOf);
   cy = cytoscape({
     container: el('cy'),
     elements: [
       ...shown.map(n => ({ data: { id: n.id, label: n.label || n.id, kind: n.kind, w: sizeOf(n.id).w, h: sizeOf(n.id).h }, position: places[n.id],
-        classes: cls(n) + (n.id === LEDGER.origin ? ' origin' : '') + (n.id === LEDGER.current_question ? ' current' : '') })),
-      ...links.map(([source, target]) => ({ data: { source, target, ...sCurve(places[source], places[target]) } }))
+        classes: cls(n) + (claimType(n) === 'unknown' ? ' unknown' : '') + (n.id === LEDGER.origin ? ' origin' : '') + (n.id === LEDGER.current_question ? ' current' : '') })),
+      ...links.map(([source, target]) => ({ data: { id: `waits:${source}>${target}`, source, target, ...sCurve(places[source], places[target]) } })),
+      ...support.map(([source, target]) => ({ data: { id: `supports:${source}>${target}`, source, target }, classes: 'support' }))
     ],
     layout: { name: 'preset', fit: true, padding: 36 },
     minZoom: 0.3, maxZoom: 2.2,
@@ -571,6 +698,7 @@ function graph() {
       { selector: 'node', style: { shape: 'round-rectangle', 'corner-radius': 14, width: 'data(w)', height: 'data(h)', color: PALETTE.ink,
         'font-size': 13, 'border-width': 1.5, 'transition-property': 'opacity, border-width', 'transition-duration': '0.25s' } },
       { selector: 'node[kind = "fact"]', style: { 'corner-radius': 56 } },
+      { selector: 'node.unknown', style: { 'border-style': 'dotted', 'border-width': 2.5 } },
       ...['settled', 'ready', 'parked', 'deferred'].map(key => ({ selector: '.' + key,
         style: { 'background-color': PALETTE[key].fill, 'border-color': PALETTE[key].line } })),
       { selector: '.superseded', style: { 'background-color': PALETTE.superseded.fill, color: PALETTE.superseded.line,
@@ -578,8 +706,12 @@ function graph() {
       { selector: '.origin', style: { 'border-width': 3, 'border-color': PALETTE.origin } },
       { selector: '.current', style: { 'border-width': 4, 'border-color': PALETTE.current } },
       { selector: 'edge', style: { width: 1.4, 'line-color': PALETTE.edge, 'target-arrow-color': PALETTE.edge,
-        'target-arrow-shape': 'triangle', 'arrow-scale': 0.8, 'curve-style': 'unbundled-bezier',
-        'control-point-distances': 'data(dd)', 'control-point-weights': 'data(ww)', 'edge-distances': 'node-position', 'transition-property': 'opacity, line-color, width', 'transition-duration': '0.25s' } },
+        'target-arrow-shape': 'triangle', 'arrow-scale': 0.8, 'curve-style': 'bezier',
+        'transition-property': 'opacity, line-color, width', 'transition-duration': '0.25s' } },
+      { selector: 'edge[dd]', style: { 'curve-style': 'unbundled-bezier', 'control-point-distances': 'data(dd)', 'control-point-weights': 'data(ww)', 'edge-distances': 'node-position' } },
+      { selector: 'edge.support', style: { display: 'none', 'curve-style': 'bezier', 'line-style': 'dashed', 'line-dash-pattern': [6, 4], width: 2,
+        'line-color': PALETTE.support, 'target-arrow-color': PALETTE.support } },
+      { selector: 'edge.support.shown', style: { display: 'element', 'z-index': 9 } },
       { selector: 'edge.hot', style: { width: 2.4, 'line-color': PALETTE.hot, 'target-arrow-color': PALETTE.hot, 'z-index': 9 } },
       { selector: '.picked', style: { 'outline-width': 2.5, 'outline-color': PALETTE.ink, 'outline-offset': 3, 'outline-opacity': 1 } },
       { selector: '.faded', style: { opacity: 0.14 } }
@@ -614,20 +746,18 @@ function fmtTime(value) {
   const d = value ? new Date(value) : null;
   return d && !isNaN(d) ? d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
 }
-function contradictions() {
-  const byId = new Map(LEDGER.nodes.map(n => [n.id, n]));
-  const found = [];
-  for (const fact of LEDGER.nodes) {
-    const target = byId.get(fact.contradicts);
-    if (fact.status === 'settled' && target && target.status === 'settled' && target.revision <= fact.revision) found.push({ fact, target });
-  }
-  return found;
-}
 function reviewReady() {
-  return LEDGER.status === 'active' && Boolean(LEDGER.origin) && LEDGER.nodes.some(n => n.id !== LEDGER.origin) && !LEDGER.nodes.some(n => n.status === 'unresolved') && !contradictions().length;
+  return LEDGER.status === 'active' && Boolean(LEDGER.origin) && LEDGER.nodes.some(n => n.id !== LEDGER.origin) && !LEDGER.nodes.some(n => n.status === 'unresolved') && !reviewFlags().size;
 }
 function standing(node) { return node.authority === 'delegated' && String(node.authority_source || '').toLowerCase().startsWith('standing delegation'); }
 function who(node) {
+  if (node.kind === 'fact') {
+    const type = claimType(node);
+    const badge = element('span', CLAIM_WORDS[type]);
+    badge.className = 'badge ' + type;
+    badge.title = CLAIM_MEANING[type];
+    return badge;
+  }
   const label = standing(node) ? 'decided under your standing delegation'
     : { user: 'you decided', delegated: 'you accepted the agent\'s suggestion', evidence: 'fact checked', simulated: 'simulated answer (no human)' }[node.authority] || node.authority;
   const badge = element('span', label);
@@ -672,6 +802,15 @@ function renderNow() {
       rec.append(element('b', 'Recommended by the agent — a proposal, not a decision'), element('span', current.recommendation));
       call.append(rec);
     }
+    const rationale = current.rationale || {};
+    if (current.recommendation || current.rationale) {
+      const why = element('div');
+      why.className = 'rationale';
+      why.append(element('b', 'Why: what the current architecture allows'), element('span', rationale.feasibility || 'Not given.'),
+        element('b', 'Why: your outcome or threat model'),
+        element('span', rationale.intent || 'Not stated yet. This proposal rests on feasibility alone and stays provisional until you say what you need protected.'));
+      call.append(why);
+    }
     const meta = element('div');
     meta.className = 'meta-row';
     meta.append(element('span', [current.gate && 'To settle: ' + current.gate, current.owner && 'Owner: ' + current.owner].filter(Boolean).join(' · ')));
@@ -687,15 +826,12 @@ function renderNow() {
       why.append(list);
       call.append(why);
     }
-  } else if (!ended && contradictions().length) {
-    call.append(element('div', 'Needs a second look'), element('div', 'A settled decision is contradicted by evidence'));
+  } else if (!ended && reviewFlags().size) {
+    call.append(element('div', 'Needs review'), element('div', 'Evidence behind settled items changed or is contradicted'),
+      element('p', 'Their answers and who authorized them are unchanged; nothing was reopened or replaced. Ask the agent to walk you through each one and say whether it still holds.'));
     call.children[0].className = 'label';
     call.children[1].className = 'question';
-    for (const { fact, target } of contradictions()) {
-      const line = element('p', `"${title(target)}" is contradicted by "${title(fact)}". Ask the agent to reopen or revise it before you confirm.`);
-      line.className = 'agency';
-      call.append(line);
-    }
+    call.children[2].className = 'agency';
   } else if (!ended && LEDGER.origin && LEDGER.nodes.length === 1) {
     call.append(element('div', 'Goal confirmed'),
       element('div', 'No concerns recorded yet. The agent is investigating; decisions will appear here.'));
@@ -723,15 +859,17 @@ function renderNow() {
   const facts = others.filter(n => n.status === 'settled' && n.kind === 'fact');
   const open = others.filter(n => n.status === 'unresolved' && n.id !== LEDGER.current_question);
   el('settled-h').hidden = !settled.length;
-  el('settled-h').textContent = `Settled (${settled.length})`;
+  el('settled-h').textContent = `Decided (${settled.length})`;
+  const flagged = reviewFlags();
+  const findingText = n => [n.answer, n.claim && 'Scope: ' + n.claim.scope, n.claim && n.claim.limits && 'Limits: ' + n.claim.limits].filter(Boolean).join(' · ');
   const settledRow = n => {
-    const row = itemRow(n, n.answer);
+    const row = itemRow(n, n.kind === 'fact' ? findingText(n) : n.answer);
     (row.querySelector('.detail') || row).append(who(n));
-    const clash = contradictions().find(c => c.target.id === n.id);
-    if (clash) {
-      const warn = element('span', 'contradicted — needs a second look');
-      warn.className = 'badge warn';
-      (row.querySelector('.detail') || row).append(warn);
+    if (flagged.has(n.id)) {
+      const flag = element('span', 'needs review');
+      flag.className = 'badge review';
+      flag.title = flagged.get(n.id).map(reviewText).join('; ') + '. The answer and authorization are unchanged.';
+      (row.querySelector('.detail') || row).append(flag);
     }
     return row;
   };
@@ -740,13 +878,17 @@ function renderNow() {
   const earlier = settled.slice(0, -SHOW).reverse();
   el('settled-list').replaceChildren(...recent.map(settledRow));
   el('settled-more').hidden = !earlier.length;
-  el('settled-more-sum').textContent = `Show ${earlier.length} earlier settled`;
+  el('settled-more-sum').textContent = `Show ${earlier.length} earlier decided`;
   el('settled-more-list').replaceChildren(...earlier.map(settledRow));
   const deferred = others.filter(n => n.status === 'deferred');
   el('deferred-h').hidden = !deferred.length;
   el('deferred-h').textContent = `Deferred (${deferred.length})`;
   el('facts-h').hidden = !facts.length;
-  el('facts-h').textContent = `Facts checked (${facts.length})`;
+  el('facts-h').textContent = `Findings on record (${facts.length})`;
+  const needing = others.filter(n => flagged.has(n.id));
+  el('review-h').hidden = !needing.length;
+  el('review-h').textContent = `Needs review (${needing.length})`;
+  el('review-list').replaceChildren(...needing.map(n => itemRow(n, flagged.get(n.id).map(reviewText).join('; ') + '. Its answer and authorization are unchanged.')));
   el('facts-list').replaceChildren(...facts.map(settledRow));
   el('deferred-list').replaceChildren(...deferred.map(n => itemRow(n, [n.question, n.revisit_condition && 'Revisit: ' + n.revisit_condition].filter(Boolean).join(' · '))));
   const assumed = LEDGER.assumed || [];
@@ -780,8 +922,9 @@ function render() {
   const tally = (amount, noun) => `${amount} ${noun}${amount === 1 ? '' : 's'}`;
   const facts = LEDGER.nodes.filter(n => n.kind === 'fact').length;
   const parts = [[count('ready'), tally(count('ready'), 'decision') + ' ready'], [count('parked'), count('parked') + ' parked'],
-    [count('settled'), count('settled') + ' settled'], [count('deferred'), count('deferred') + ' deferred'],
-    [count('superseded'), count('superseded') + ' superseded'], [facts, tally(facts, 'fact')]].filter(([n]) => n > 0).map(([, t]) => t);
+    [count('settled'), count('settled') + ' decided'], [count('deferred'), count('deferred') + ' deferred'],
+    [count('superseded'), count('superseded') + ' superseded'], [facts, tally(facts, 'finding')],
+    [reviewFlags().size, reviewFlags().size + ' to review']].filter(([n]) => n > 0).map(([, t]) => t);
   el('counts').textContent = parts.length ? parts.join(' · ') : 'Nothing recorded yet';
   const settledDecisions = decisions.filter(n => n.status === 'settled');
   const underStanding = settledDecisions.filter(standing).length;
@@ -797,8 +940,9 @@ function render() {
   const pill = el('status-pill');
   const ended = ['stopped', 'completed'].includes(LEDGER.status);
   el('sim-banner').hidden = !(LEDGER.operator === 'simulated');
-  pill.dataset.kind = ended ? 'ended' : (contradictions().length ? 'warn' : (LEDGER.operator === 'simulated' ? 'simulated' : (reviewReady() ? 'review' : (LEDGER.origin ? 'active' : 'draft'))));
-  pill.textContent = ended ? LEDGER.status : (contradictions().length ? 'Needs a second look' : (LEDGER.operator === 'simulated' ? 'Simulated' : (reviewReady() ? 'Ready for review' : (LEDGER.origin ? 'In progress' : 'Draft'))));
+  const second = reviewFlags().size;
+  pill.dataset.kind = ended ? 'ended' : (second ? 'warn' : (LEDGER.operator === 'simulated' ? 'simulated' : (reviewReady() ? 'review' : (LEDGER.origin ? 'active' : 'draft'))));
+  pill.textContent = ended ? LEDGER.status : (second ? 'Needs a second look' : (LEDGER.operator === 'simulated' ? 'Simulated' : (reviewReady() ? 'Ready for review' : (LEDGER.origin ? 'In progress' : 'Draft'))));
   renderNow();
   textView();
   if (!selectedId && (clearedFor === undefined || LEDGER.current_question !== clearedFor)) selectedId = LEDGER.current_question || null;

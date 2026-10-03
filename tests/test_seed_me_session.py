@@ -106,7 +106,7 @@ class TestSeedSession(unittest.TestCase):
 
     def test_contradicting_fact_blocks_completion_until_the_decision_is_revisited(self):
         self.publish(self.contradicted_state())
-        with self.assertRaisesRegex(ValueError, "contradicts a settled decision.*: d"):
+        with self.assertRaisesRegex(ValueError, "cannot complete: .*contradicted.*: d"):
             session.end(self.directory, "completed", "Confirmed and saved", no_viewer="not under test")
         state = session.editable(session.load(self.directory))
         state["nodes"][1]["answer"] = "Build the scanner as part of this work"
