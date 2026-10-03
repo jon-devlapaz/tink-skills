@@ -218,18 +218,6 @@ def descendants(nodes, starts):
         reached.update(added)
 
 
-def contradiction_blockers(nodes):
-    """Settled decisions that a settled fact contradicts and that were not revisited since."""
-    by_id = {n["id"]: n for n in nodes}
-    blocked = []
-    for fact in nodes:
-        target = by_id.get(fact.get("contradicts"))
-        if fact["status"] == "settled" and target and target["status"] == "settled" \
-                and target["revision"] <= fact["revision"] and target["id"] not in blocked:
-            blocked.append(target["id"])
-    return blocked
-
-
 def evidence_differs(before, after):
     """Whether what a node records as evidence changed. Classifying a legacy entry (no claim yet) only labels it,
     and the order of `supported_by` carries no meaning."""
@@ -282,6 +270,12 @@ def review_flags(nodes):
             else:
                 continue
             flags.setdefault(node["id"], []).append({"because": source, "why": why})
+        # A settled fact that names this node in `contradicts` flags the node itself until it is reviewed or revised
+        # (revising it moves its premise past the fact's). `>=`: a fact recorded together with its target counts.
+        for fact in contradicted.get(node["id"], ()):
+            fact_moved = fact.get("premise_version", 1)
+            if node.get("premise_version", 1) <= fact_moved and fact_moved >= reviewed:
+                flags.setdefault(node["id"], []).append({"because": fact["id"], "why": "contradicting"})
     return flags
 
 
@@ -363,11 +357,9 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
         clashing = [x for x in sources if any(by_before[x].get("premise_version", 1) <= f.get("premise_version", 1) for f in contradicted.get(x, ()))]
         require(not clashing, "cannot rely on evidence that is contradicted and not revisited: " + ", ".join(clashing))
     if state["status"] == "completed":
-        blocked = contradiction_blockers(result["nodes"])
-        require(not blocked, "cannot complete: evidence contradicts a settled decision that was not revisited: " + ", ".join(blocked))
         flagged = sorted(review_flags(result["nodes"]))
         require(not flagged, "cannot complete: evidence behind these settled nodes changed, was withdrawn, or was contradicted "
-                "and they were not reviewed (revalidate each with a reason; answers stay as they are): " + ", ".join(flagged))
+                "and they were not reviewed, revised or resolved (revalidate each with a reason; answers stay as they are): " + ", ".join(flagged))
     return result
 
 

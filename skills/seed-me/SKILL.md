@@ -189,8 +189,9 @@ When evidence a settled node relies on (`supported_by`) changes, is withdrawn, o
 that node for review and blocks completion; the answer and its authorization stay as they were. Show the user the
 changed evidence and revalidate with the real outcome; never reopen, replace, or re-answer on their behalf.
 
-When later evidence contradicts a settled decision, add a fact that names it with `contradicts: <node id>` and
-reopen or revise that decision; completion is blocked until you do. Apply the ledger reference's transitions for explicit answers, conditional choices, scoped delegation, skips, and changed
+When later evidence contradicts a settled node, add a fact that names it with `contradicts: <node id>`; the node, and
+anything that relies on it, is flagged for review and completion is blocked until each is revised, reopened and
+re-settled, or revalidated with the user's real reason, or the fact is superseded. Apply the ledger reference's transitions for explicit answers, conditional choices, scoped delegation, skips, and changed
 prerequisites. Record actual user choices and exclusions faithfully, reassess affected
 descendants, and recompute readiness. Select the next single ready decision to present,
 or proceed to completion review when the frontier is clear.

@@ -971,7 +971,7 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
                 item["contradicts"] = "command-paths"
         self.publish(state, "An older contradiction")
         session.publish(self.directory, session.editable(session.load(self.directory)), session.load(self.directory)["version"], "Reviewed",
-                        revalidated={"contain-handlers": "Kept after the first contradiction"})
+                        revalidated={"command-paths": "Re-read after the first contradiction", "contain-handlers": "Kept after the first contradiction"})
         state = session.editable(session.load(self.directory))
         for item in state["nodes"]:
             if item["id"] == "new-look":
@@ -980,8 +980,32 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.publish(state, "A newer contradiction, listed before the older one")
         helper = session.review_flags(session.load(self.directory)["nodes"])
         self.assertEqual(helper["contain-handlers"], [{"because": "command-paths", "why": "contradicted"}])
-        self.expect(page.locator("#review-h")).to_have_text("Needs review (1)")
+        self.assertEqual(helper["command-paths"], [{"because": "new-look", "why": "contradicting"}])
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (2)")
         self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), helper)
+
+    def test_the_viewer_shows_one_contradiction_rule_and_it_clears_with_the_documented_review(self):
+        nodes = acceptance_nodes() + [self.decision_on("contain-handlers", "command-paths"),
+                                      finding("second-look", {"type": "observation", "scope": "A second read"}, "One handler does sandbox.", ["a.py:50"])]
+        page = self.epistemic_page(nodes, graph=False)
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "second-look":
+                item["contradicts"] = "command-paths"
+        self.publish(state, "The second read contradicts the first")
+        helper = session.review_flags(session.load(self.directory)["nodes"])
+        self.assertEqual(sorted(helper), ["command-paths", "contain-handlers"])
+        self.expect(page.locator("#review-h")).to_have_text("Needs review (2)")
+        self.expect(page.locator("#review-list")).to_contain_text("second-look contradicts this")
+        self.expect(page.locator("#review-list")).to_contain_text("Multiple command execution paths is contradicted by later evidence")
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), helper)
+        self.assertEqual(page.locator("text=contradicted — needs a second look").count(), 0, "the older, separate warning is gone")
+        self.expect(page.locator("#status-pill")).to_have_text("Needs a second look")
+        session.publish(self.directory, session.editable(session.load(self.directory)), session.load(self.directory)["version"], "Reviewed",
+                        revalidated={"command-paths": "Re-read; the first reading stands beside the second", "contain-handlers": "User kept the decision"})
+        self.assertEqual(session.review_flags(session.load(self.directory)["nodes"]), {})
+        self.expect(page.locator("#review-h")).to_be_hidden()
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), {})
 
     def decision_on(self, node_id, support):
         return {"id": node_id, "kind": "decision", "status": "settled", "prerequisites": ["goal"], "evidence": [], "owner": "User", "gate": "Choose",
@@ -1056,11 +1080,13 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
                           {**node("d", parents=["goal"], answer="Reuse the scanner"), "label": "Reuse scanner"}, fact]
         self.publish(state)
         self.page.goto(self.url)
-        self.expect(self.page.locator("#call")).to_contain_text("Needs a second look")
-        self.expect(self.page.locator("#call")).to_contain_text('"Reuse scanner" is contradicted by "Scanner missing"')
+        self.expect(self.page.locator("#call")).to_contain_text("Needs review")
+        self.expect(self.page.locator("#call")).to_contain_text("Evidence behind settled items changed or is contradicted")
         self.expect(self.page.locator("#call")).not_to_contain_text("Your turn")
         self.expect(self.page.locator("#status-pill")).to_have_text("Needs a second look")
-        self.expect(self.page.locator("#settled-list")).to_contain_text("contradicted — needs a second look")
+        self.expect(self.page.locator("#review-list")).to_contain_text("Scanner missing contradicts this")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("needs review")
+        self.expect(self.page.locator("#settled-list")).to_contain_text("Reuse the scanner")
         self.assertEqual(self.errors, [])
 
     def test_simulated_session_is_unmistakable_and_cannot_be_confirmed(self):

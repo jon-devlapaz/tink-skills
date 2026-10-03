@@ -40,7 +40,7 @@ requiredness depends on kind and status, not every field is mandatory.
 | `answer` | string or null | Required, nonempty when settled: actual user choice, the recorded finding, or delegated choice. Otherwise omit or use `null`. |
 | `authority` | string or null | Required when settled: `evidence` for facts; `user` or `delegated` for decisions. Otherwise omit or use `null`. |
 | `authority_source` | string or null | Required, nonempty when settled: actual user-answer/delegation reference or inspected fact source. Otherwise omit or use `null`. |
-| `contradicts` | string | Optional, facts only: the ID of a settled decision that this fact's evidence contradicts. Completion is blocked while that decision is still settled and unchanged since the fact was recorded; reopen or revise it, or supersede the fact with a reason. |
+| `contradicts` | string | Optional, facts only: the ID of a settled node that this fact's evidence contradicts (usually a decision, or an observation others rely on). The contradicted node is flagged for review (§7.3) until you revise it, reopen and re-settle it, revalidate it with a reason, or supersede the fact; completion is blocked meanwhile. |
 | `reopen_reason` | string | Nonempty whenever present; required when a settled node becomes unresolved. Retained in history on subsequent changes. |
 | `defer_reason` | string | Required, nonempty when deferred: why this non-blocking concern was postponed. |
 | `revisit_condition` | string | Required, nonempty when deferred: concrete trigger for revisiting it. |
@@ -391,7 +391,10 @@ A settled node is flagged for review when anything it relies on, directly or
 through other nodes in `supported_by`, has (a) **changed** after the node was last
 reviewed, (b) been **withdrawn** (no longer settled), or (c) been **contradicted**
 by a settled fact naming it in `contradicts` and not revisited. The flag names
-that evidence, not the claim in between. Flags are derived, never stored. They
+that evidence, not the claim in between. A node that a settled fact contradicts is
+flagged itself, until it is revised, reopened and re-settled, or revalidated, or
+the fact is superseded; this is the one rule behind the completion block for
+contradictions. Flags are derived, never stored. They
 never reopen a node, change its `answer`, `authority` or `authority_source`, or
 choose a replacement.
 

@@ -416,7 +416,9 @@ class TestEveryFlaggedNodeNeedsItsOwnReview(EpistemicCase):
                                               ["ls -l again"], contradicts="layout-observed")]
         result = self.publish(self.state_with(nodes, "safety-target"), "A later check contradicts the first listing")
         self.assertEqual(session.review_flags(result["nodes"])["mixed-ownership"], [{"because": "layout-observed", "why": "contradicted"}])
-        result = self.review(**{"mixed-ownership": "Reviewed against the second listing", "ownership-policy": "User kept the decision"})
+        self.assertEqual(session.review_flags(result["nodes"])["layout-observed"], [{"because": "listing-was-stale", "why": "contradicting"}])
+        result = self.review(**{"layout-observed": "Re-listed; the first listing stands beside the stale one",
+                                "mixed-ownership": "Reviewed against the second listing", "ownership-policy": "User kept the decision"})
         self.assertEqual(session.review_flags(result["nodes"]), {})
 
 
@@ -595,6 +597,11 @@ class TestFlagsAgreeWithAnIndependentModelOfTheLog(EpistemicCase):
                         m["status"][source] == "settled" and m["changed"][source] <= fact_moved and fact_moved > m["reviewed"][node_id]):
                     result.append(node_id)
                     break
+            else:
+                # contradicted itself: a settled fact names it, and it has neither been revised nor reviewed since
+                if any(target == node_id and m["changed"][node_id] <= m["changed"][k] and m["changed"][k] >= m["reviewed"][node_id]
+                       for k, target in m["contra"].items()):
+                    result.append(node_id)
         return sorted(result)
 
     def contradicted_unrevisited(self, m, source):
@@ -688,6 +695,69 @@ class TestFlagsAgreeWithAnIndependentModelOfTheLog(EpistemicCase):
             with self.subTest(seed=seed):
                 self.setUp()
                 self.run_sequence(seed)
+
+
+class TestOneRuleForContradictions(EpistemicCase):
+    """The completion check and the review flags are one rule: a contradicted node is flagged until reviewed, revised or the contradicting fact is withdrawn."""
+
+    def setup_contradiction(self):
+        nodes = acceptance_nodes() + [decision("contain-handlers", answer="Wrap the three handlers", supported_by=["command-paths"]),
+                                      finding("second-look", {"type": "observation", "scope": "A second read"}, "One handler does sandbox.", ["a.py:50"])]
+        self.seed(nodes)
+        return self.publish(self.edit(**{"second-look": {"contradicts": "command-paths"}}), "The second read contradicts the first")
+
+    def finish(self):
+        state = self.edit(**{"safety-target": {"status": "deferred", "defer_reason": "later", "revisit_condition": "after review"}})
+        state["current_question"] = None
+        try:
+            self.publish(state, "Defer the open choice")
+        except ValueError:
+            pass
+        return session.end(self.directory, "completed", "Done", no_viewer="not under test")
+
+    def review(self, **reasons):
+        return self.publish(session.editable(session.load(self.directory)), "Review", revalidated=reasons)
+
+    def test_the_contradicted_observation_and_the_decision_that_relies_on_it_are_both_flagged(self):
+        result = self.setup_contradiction()
+        flags = session.review_flags(result["nodes"])
+        self.assertEqual(flags["command-paths"], [{"because": "second-look", "why": "contradicting"}])
+        self.assertEqual(flags["contain-handlers"], [{"because": "command-paths", "why": "contradicted"}])
+
+    def test_completion_succeeds_after_the_documented_review_of_every_flagged_node(self):
+        self.setup_contradiction()
+        self.review(**{"command-paths": "Re-read; the first reading stands alongside the second",
+                       "contain-handlers": "User saw both readings and kept the decision"})
+        self.assertEqual(session.review_flags(session.load(self.directory)["nodes"]), {})
+        self.assertEqual(self.finish()["status"], "completed")
+
+    def test_completion_stays_blocked_until_the_contradicted_observation_itself_is_reviewed(self):
+        self.setup_contradiction()
+        self.review(**{"contain-handlers": "User kept the decision"})
+        flags = session.review_flags(session.load(self.directory)["nodes"])
+        self.assertEqual(sorted(flags), ["command-paths"])
+        with self.assertRaisesRegex(ValueError, "cannot complete: .*contradicted.*: command-paths"):
+            self.finish()
+
+    def test_a_label_edit_never_clears_a_contradiction(self):
+        self.setup_contradiction()
+        result = self.publish(self.edit(**{"command-paths": {"label": "Renamed"}, "contain-handlers": {"label": "Renamed too"}}), "Rename only")
+        self.assertEqual(sorted(session.review_flags(result["nodes"])), ["command-paths", "contain-handlers"])
+
+    def test_revising_the_contradicted_node_or_withdrawing_the_contradicting_fact_resolves_it(self):
+        self.setup_contradiction()
+        revised = self.publish(self.edit(**{"command-paths": {"answer": "Each handler runs commands; one also calls sandbox."}}), "Revised after the second read")
+        self.assertNotIn("command-paths", session.review_flags(revised["nodes"]))
+        self.setUp()
+        self.setup_contradiction()
+        withdrawn = self.publish(self.edit(**{"second-look": {"status": "superseded", "answer": None, "authority": None, "authority_source": None}}),
+                                 "The second read was of the wrong folder")
+        self.assertEqual(session.review_flags(withdrawn["nodes"]).get("command-paths"), None)
+
+    def test_a_decision_recorded_together_with_the_fact_that_contradicts_it_is_blocked_until_handled(self):
+        nodes = acceptance_nodes() + [{**finding("second-look", {"type": "observation", "scope": "x"}, "The scanner does not exist", ["n"]), "contradicts": "ownership-policy"}]
+        result = self.seed(nodes)
+        self.assertEqual(session.review_flags(result["nodes"])["ownership-policy"], [{"because": "second-look", "why": "contradicting"}])
 
 
 class TestLegacyDataAndHistory(EpistemicCase):

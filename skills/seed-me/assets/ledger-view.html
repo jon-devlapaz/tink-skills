@@ -269,7 +269,7 @@ const CLAIM_MEANING = {
   unknown: 'this investigation has not established it; that is not the same as it not existing',
   unclassified: 'recorded before findings were typed; not known to be an observation or an inference'
 };
-const WHY = { changed: 'changed after this was recorded', withdrawn: 'is no longer on record', contradicted: 'is contradicted by later evidence' };
+const WHY = { changed: 'changed after this was recorded', withdrawn: 'is no longer on record', contradicted: 'is contradicted by later evidence', contradicting: 'contradicts this' };
 function receiptText(entry) {
   if (typeof entry === 'string') return 'Unstructured note (no receipt): ' + entry;
   return ['Checked: ' + entry.checked, 'When: ' + entry.at, 'Observed: ' + entry.observed,
@@ -300,6 +300,11 @@ function reviewFlags() {
       if (moved > reviewed) why = found.status !== 'settled' ? 'withdrawn' : 'changed';
       else if (found.status === 'settled' && moved <= factMoved && factMoved > reviewed) why = 'contradicted';
       if (why) flags.set(node.id, [...(flags.get(node.id) || []), { because: source, why }]);
+    }
+    for (const fact of contradicted.get(node.id) || []) {
+      if ((node.premise_version ?? 1) <= (fact.premise_version ?? 1) && (fact.premise_version ?? 1) >= reviewed) {
+        flags.set(node.id, [...(flags.get(node.id) || []), { because: fact.id, why: 'contradicting' }]);
+      }
     }
   }
   return flags;
@@ -741,17 +746,8 @@ function fmtTime(value) {
   const d = value ? new Date(value) : null;
   return d && !isNaN(d) ? d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
 }
-function contradictions() {
-  const byId = new Map(LEDGER.nodes.map(n => [n.id, n]));
-  const found = [];
-  for (const fact of LEDGER.nodes) {
-    const target = byId.get(fact.contradicts);
-    if (fact.status === 'settled' && target && target.status === 'settled' && target.revision <= fact.revision) found.push({ fact, target });
-  }
-  return found;
-}
 function reviewReady() {
-  return LEDGER.status === 'active' && Boolean(LEDGER.origin) && LEDGER.nodes.some(n => n.id !== LEDGER.origin) && !LEDGER.nodes.some(n => n.status === 'unresolved') && !contradictions().length && !reviewFlags().size;
+  return LEDGER.status === 'active' && Boolean(LEDGER.origin) && LEDGER.nodes.some(n => n.id !== LEDGER.origin) && !LEDGER.nodes.some(n => n.status === 'unresolved') && !reviewFlags().size;
 }
 function standing(node) { return node.authority === 'delegated' && String(node.authority_source || '').toLowerCase().startsWith('standing delegation'); }
 function who(node) {
@@ -830,21 +826,12 @@ function renderNow() {
       why.append(list);
       call.append(why);
     }
-  } else if (!ended && !contradictions().length && reviewFlags().size) {
-    call.append(element('div', 'Needs review'), element('div', 'Evidence behind settled items changed'),
+  } else if (!ended && reviewFlags().size) {
+    call.append(element('div', 'Needs review'), element('div', 'Evidence behind settled items changed or is contradicted'),
       element('p', 'Their answers and who authorized them are unchanged; nothing was reopened or replaced. Ask the agent to walk you through each one and say whether it still holds.'));
     call.children[0].className = 'label';
     call.children[1].className = 'question';
     call.children[2].className = 'agency';
-  } else if (!ended && contradictions().length) {
-    call.append(element('div', 'Needs a second look'), element('div', 'A settled decision is contradicted by evidence'));
-    call.children[0].className = 'label';
-    call.children[1].className = 'question';
-    for (const { fact, target } of contradictions()) {
-      const line = element('p', `"${title(target)}" is contradicted by "${title(fact)}". Ask the agent to reopen or revise it before you confirm.`);
-      line.className = 'agency';
-      call.append(line);
-    }
   } else if (!ended && LEDGER.origin && LEDGER.nodes.length === 1) {
     call.append(element('div', 'Goal confirmed'),
       element('div', 'No concerns recorded yet. The agent is investigating; decisions will appear here.'));
@@ -883,12 +870,6 @@ function renderNow() {
       flag.className = 'badge review';
       flag.title = flagged.get(n.id).map(reviewText).join('; ') + '. The answer and authorization are unchanged.';
       (row.querySelector('.detail') || row).append(flag);
-    }
-    const clash = contradictions().find(c => c.target.id === n.id);
-    if (clash) {
-      const warn = element('span', 'contradicted — needs a second look');
-      warn.className = 'badge warn';
-      (row.querySelector('.detail') || row).append(warn);
     }
     return row;
   };
@@ -959,7 +940,7 @@ function render() {
   const pill = el('status-pill');
   const ended = ['stopped', 'completed'].includes(LEDGER.status);
   el('sim-banner').hidden = !(LEDGER.operator === 'simulated');
-  const second = contradictions().length || reviewFlags().size;
+  const second = reviewFlags().size;
   pill.dataset.kind = ended ? 'ended' : (second ? 'warn' : (LEDGER.operator === 'simulated' ? 'simulated' : (reviewReady() ? 'review' : (LEDGER.origin ? 'active' : 'draft'))));
   pill.textContent = ended ? LEDGER.status : (second ? 'Needs a second look' : (LEDGER.operator === 'simulated' ? 'Simulated' : (reviewReady() ? 'Ready for review' : (LEDGER.origin ? 'In progress' : 'Draft'))));
   renderNow();
