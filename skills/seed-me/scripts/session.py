@@ -352,9 +352,10 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
     # What a review may target is exactly what the flag rule flags on this publication's state, before the reviews are applied.
     before = [{**n, "reviewed_version": unreviewed[n["id"]]} for n in result["nodes"]]
     require(set(revalidated) <= affected | set(review_flags(before)), "invalid revalidation targets")
-    contradicted, by_before = contradictions(before), {n["id"]: n for n in before}
+    # Newly relied-on evidence must not be contradicted in force: the flag rule's own answer, with this publication's reviews applied.
+    after = review_flags(result["nodes"])
     for sources in added.values():
-        clashing = [x for x in sources if any(by_before[x].get("premise_version", 1) <= f.get("premise_version", 1) for f in contradicted.get(x, ()))]
+        clashing = [x for x in sources if any(f["why"] == "contradicting" for f in after.get(x, ()))]
         require(not clashing, "cannot rely on evidence that is contradicted and not revisited: " + ", ".join(clashing))
     if state["status"] == "completed":
         flagged = sorted(review_flags(result["nodes"]))

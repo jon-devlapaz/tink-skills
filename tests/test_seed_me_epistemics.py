@@ -604,8 +604,9 @@ class TestFlagsAgreeWithAnIndependentModelOfTheLog(EpistemicCase):
                     result.append(node_id)
         return sorted(result)
 
-    def contradicted_unrevisited(self, m, source):
-        return any(target == source and m["changed"][source] <= m["changed"][k] for k, target in m["contra"].items())
+    def contradicted_in_force(self, m, source):
+        return any(target == source and m["changed"][source] <= m["changed"][k] and m["changed"][k] >= m["reviewed"][source]
+                   for k, target in m["contra"].items())
 
     def run_sequence(self, seed):
         import random
@@ -671,17 +672,17 @@ class TestFlagsAgreeWithAnIndependentModelOfTheLog(EpistemicCase):
                 t["reviewed"][node_id] = version
             # reliance newly taken on by a settled node must be recorded and not contradicted
             added = [x for x in self.chain(t["supports"], "d4") if x not in self.chain(m["supports"], "d4")]
-            refused = any(t["status"][x] != "settled" or self.contradicted_unrevisited(t, x) for x in added)
             if state == session.editable(session.load(self.directory)):
                 continue
-            if refused:
-                with self.assertRaises(ValueError, msg="seed %d step %d" % (seed, step)):
-                    session.publish(self.directory, state, version - 1, "step %d" % step)
-                continue
             review = {i: "reviewed at %d" % version for i in self.flagged(t) if rng.random() < 0.5}
-            published = session.publish(self.directory, state, version - 1, "step %d" % step, revalidated=review)
             for node_id in review:
                 t["reviewed"][node_id] = version
+            refused = any(t["status"][x] != "settled" or self.contradicted_in_force(t, x) for x in added)
+            if refused:
+                with self.assertRaises(ValueError, msg="seed %d step %d" % (seed, step)):
+                    session.publish(self.directory, state, version - 1, "step %d" % step, revalidated=review)
+                continue
+            published = session.publish(self.directory, state, version - 1, "step %d" % step, revalidated=review)
             m = t
             self.assertEqual(sorted(session.review_flags(published["nodes"])), self.flagged(m), "seed %d step %d" % (seed, step))
 
@@ -753,6 +754,33 @@ class TestOneRuleForContradictions(EpistemicCase):
         withdrawn = self.publish(self.edit(**{"second-look": {"status": "superseded", "answer": None, "authority": None, "authority_source": None}}),
                                  "The second read was of the wrong folder")
         self.assertEqual(session.review_flags(withdrawn["nodes"]).get("command-paths"), None)
+
+    def test_reviewed_evidence_can_support_a_new_decision(self):
+        self.setup_contradiction()
+        with self.assertRaisesRegex(ValueError, "cannot rely on evidence that is contradicted"):
+            self.publish(self.add_decision(), "Rely on contradicted, unreviewed evidence")
+        self.review(**{"command-paths": "Re-read; the first reading stands beside the second", "contain-handlers": "User kept the decision"})
+        result = self.publish(self.add_decision(), "A new decision may rest on evidence whose contradiction was reviewed")
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+
+    def test_evidence_can_be_reviewed_and_relied_on_in_the_same_publication(self):
+        self.setup_contradiction()
+        state = self.add_decision()
+        result = self.publish(state, "Review the contradicted observation and rely on it together",
+                              revalidated={"command-paths": "Re-read; the first reading stands", "contain-handlers": "User kept the decision"})
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+
+    def test_a_newer_contradiction_makes_the_evidence_unfit_again(self):
+        self.setup_contradiction()
+        self.review(**{"command-paths": "Re-read", "contain-handlers": "Kept"})
+        self.publish(self.edit(**{"sdk-version": {"contradicts": "command-paths"}}), "Another contradiction")
+        with self.assertRaisesRegex(ValueError, "cannot rely on evidence that is contradicted"):
+            self.publish(self.add_decision(), "Rely on newly contradicted evidence")
+
+    def add_decision(self):
+        state = session.editable(session.load(self.directory))
+        state["nodes"].append(decision("second-decision", answer="Also wrap the handlers", supported_by=["command-paths"]))
+        return state
 
     def test_a_decision_recorded_together_with_the_fact_that_contradicts_it_is_blocked_until_handled(self):
         nodes = acceptance_nodes() + [{**finding("second-look", {"type": "observation", "scope": "x"}, "The scanner does not exist", ["n"]), "contradicts": "ownership-policy"}]

@@ -412,7 +412,8 @@ changing evidence while reviewing only the inference in the same publication
 still leaves the decision flagged. Every settled fact naming a piece of evidence in
 `contradicts` counts, in any node order. A settled node cannot take on evidence,
 when it is first settled or when its `supported_by` grows, that is not yet settled,
-or that a settled fact contradicts and nobody has revisited. A review may target
+or that a settled fact still contradicts (the evidence has been neither revised nor
+reviewed since; reviewing it first, or in the same publication, makes it usable). A review may target
 exactly the nodes this rule flags on the state being published. Omit both counters
 from publication payloads.
 
