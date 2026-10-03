@@ -1007,6 +1007,22 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(page.locator("#review-h")).to_be_hidden()
         self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), {})
 
+    def test_the_viewer_shows_nothing_flagged_when_a_contradiction_and_its_review_are_published_together(self):
+        nodes = acceptance_nodes() + [self.decision_on("contain-handlers", "command-paths"),
+                                      finding("second-look", {"type": "observation", "scope": "A second read"}, "One handler does sandbox.", ["a.py:50"])]
+        page = self.epistemic_page(nodes, graph=False)
+        state = session.editable(session.load(self.directory))
+        for item in state["nodes"]:
+            if item["id"] == "second-look":
+                item["contradicts"] = "command-paths"
+        session.publish(self.directory, state, session.load(self.directory)["version"], "Record the contradiction and review it together",
+                        revalidated={"command-paths": "Re-read; the first reading stands beside the second", "contain-handlers": "User kept the decision"})
+        self.assertEqual(session.review_flags(session.load(self.directory)["nodes"]), {})
+        page.wait_for_function("version => LEDGER && LEDGER.version >= version", arg=session.load(self.directory)["version"], timeout=8000)
+        self.assertEqual(page.evaluate("Object.fromEntries(reviewFlags())"), {})
+        self.expect(page.locator("#review-h")).to_be_hidden()
+        self.expect(page.locator("#status-pill")).not_to_have_text("Needs a second look")
+
     def decision_on(self, node_id, support):
         return {"id": node_id, "kind": "decision", "status": "settled", "prerequisites": ["goal"], "evidence": [], "owner": "User", "gate": "Choose",
                 "answer": "Wrap the three handlers", "authority": "user", "authority_source": "chat turn 10: user chose it", "supported_by": [support]}

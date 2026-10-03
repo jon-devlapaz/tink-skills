@@ -23,8 +23,10 @@ CLAIM_TYPES = ("observation", "inference", "unknown")
 CLAIM_FIELDS = {"type", "scope", "limits"}
 RATIONALE_FIELDS = {"feasibility", "intent"}
 RECEIPT_FIELDS = {"checked", "at", "observed", "check", "artifact"}
-# Helper-owned, never published. premise_version: the publication that last changed what a node records as evidence.
-# reviewed_version: the publication that last reviewed what the node relies on. Labels, questions and owners move neither.
+# Helper-owned, never published. premise_version: where in publication order a node's recorded evidence last changed.
+# reviewed_version: where its reliance was last reviewed. Labels, questions and owners move neither.
+# Positions are 2 * publication version, and an explicit review is one past that: a review given in a publication counts
+# as after everything recorded in the same publication, while creating or first settling a node is not a review.
 HELPER_NODE_FIELDS = ("revision", "premise_version", "reviewed_version")
 EVIDENCE_FIELDS = ("status", "answer", "evidence", "claim", "supported_by", "contradicts")
 # A best-effort backstop for the rule "no secrets in receipts"; the rule itself is the host's to keep.
@@ -342,12 +344,13 @@ def transition(ledger, state, expected_version, reason, revalidated=None):
         missing = [x for x in added[node["id"]] if new[x]["status"] != "settled"]
         require(not missing, "cannot settle on evidence that is not recorded: " + ", ".join(missing))
         implicit = previous is None or first_settled
+        position = 2 * result["version"]
         if moved:
-            node["premise_version"] = result["version"]
+            node["premise_version"] = position
         elif "premise_version" in previous:
             node["premise_version"] = previous["premise_version"]
-        before_review = result["version"] if implicit else (previous or {}).get("reviewed_version", 0)
-        node["reviewed_version"] = result["version"] if node["id"] in revalidated else before_review
+        before_review = position if implicit else (previous or {}).get("reviewed_version", 0)
+        node["reviewed_version"] = position + 1 if node["id"] in revalidated else before_review
         unreviewed[node["id"]] = before_review
     # What a review may target is exactly what the flag rule flags on this publication's state, before the reviews are applied.
     before = [{**n, "reviewed_version": unreviewed[n["id"]]} for n in result["nodes"]]
@@ -481,7 +484,7 @@ def load(directory):
         require(isinstance(node, dict) and isinstance(node.get("history"), list), "missing node history")
         require(type(node.get("revision")) is int and 0 <= node["revision"] <= ledger["revision"], "invalid node revision")
         for field in HELPER_NODE_FIELDS[1:]:
-            require(field not in node or (type(node[field]) is int and 0 <= node[field] <= ledger["version"]), "invalid node " + field)
+            require(field not in node or (type(node[field]) is int and 0 <= node[field] <= 2 * ledger["version"] + 1), "invalid node " + field)
         for entry in node["history"]:
             require(isinstance(entry, dict) and set(entry) == {"state", "superseded_at", "reason"}
                     and text(entry["reason"]) and text(entry["superseded_at"]), "invalid history entry")

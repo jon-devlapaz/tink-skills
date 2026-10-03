@@ -676,7 +676,7 @@ class TestFlagsAgreeWithAnIndependentModelOfTheLog(EpistemicCase):
                 continue
             review = {i: "reviewed at %d" % version for i in self.flagged(t) if rng.random() < 0.5}
             for node_id in review:
-                t["reviewed"][node_id] = version
+                t["reviewed"][node_id] = version + 0.5
             refused = any(t["status"][x] != "settled" or self.contradicted_in_force(t, x) for x in added)
             if refused:
                 with self.assertRaises(ValueError, msg="seed %d step %d" % (seed, step)):
@@ -769,6 +769,27 @@ class TestOneRuleForContradictions(EpistemicCase):
         result = self.publish(state, "Review the contradicted observation and rely on it together",
                               revalidated={"command-paths": "Re-read; the first reading stands", "contain-handlers": "User kept the decision"})
         self.assertEqual(session.review_flags(result["nodes"]), {})
+
+    def test_a_contradiction_and_its_explicit_review_in_the_same_publication_leave_nothing_flagged(self):
+        nodes = acceptance_nodes() + [decision("contain-handlers", answer="Wrap the three handlers", supported_by=["command-paths"]),
+                                      finding("second-look", {"type": "observation", "scope": "A second read"}, "One handler does sandbox.", ["a.py:50"])]
+        self.seed(nodes)
+        result = self.publish(self.edit(**{"second-look": {"contradicts": "command-paths"}}), "Record the contradiction and review it together",
+                              revalidated={"command-paths": "Re-read; the first reading stands beside the second",
+                                           "contain-handlers": "User saw both readings and kept the decision"})
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+        self.assertEqual(self.finish()["status"], "completed")
+
+    def test_a_contradiction_and_its_review_together_let_a_new_decision_rely_on_the_evidence(self):
+        self.setup_contradiction()
+        state = self.add_decision()
+        result = self.publish(state, "Rely on it, review it, and record a further contradiction together",
+                              revalidated={"command-paths": "Re-read", "contain-handlers": "Kept"})
+        self.assertEqual(session.review_flags(result["nodes"]), {})
+
+    def test_a_node_recorded_with_its_contradicting_fact_but_not_reviewed_is_still_flagged(self):
+        nodes = acceptance_nodes() + [{**finding("second-look", {"type": "observation", "scope": "x"}, "The scanner does not exist", ["n"]), "contradicts": "ownership-policy"}]
+        self.assertEqual(session.review_flags(self.seed(nodes)["nodes"])["ownership-policy"], [{"because": "second-look", "why": "contradicting"}])
 
     def test_a_newer_contradiction_makes_the_evidence_unfit_again(self):
         self.setup_contradiction()

@@ -403,7 +403,10 @@ decide it: `premise_version` (the publication that last changed a node's `status
 `answer`, `evidence`, `claim`, the set of IDs in `supported_by`, or, on a fact, its
 `contradicts`) and
 `reviewed_version` (the publication that created the node, first settled it, or
-revalidated it). Editing a label, question, owner, or gate, or reordering
+revalidated it). An explicit review counts as later than everything recorded in the
+same publication, so a contradiction and the review of what it contradicts can be
+published together; creating or first settling a node is not a review, so a node
+recorded together with the fact that contradicts it stays flagged. Editing a label, question, owner, or gate, or reordering
 `supported_by`, moves neither, so such an edit never clears a flag and never raises
 one. Only explicit revalidation clears a flag, including one for withdrawn or
 contradicted evidence: the user may keep a decision after seeing that its evidence
