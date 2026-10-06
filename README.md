@@ -43,7 +43,7 @@ Refresh an installed skill with `tink skill refresh NAME`.
 ### How it works
 - **Investigates facts first:** Checks repository code, configs, and schemas before asking you anything. If a fact is discoverable, it won't interrupt you for it.
 - **One decision at a time:** Paces questions one by one with a clear recommendation grounded in workspace evidence, keeping cognitive load low.
-- **Durable discovery artifact:** Once all blockers are resolved and confirmed, writes the accepted plan to `seed-contract.md` as intake for downstream implementation.
+- **Durable discovery artifact:** Once all blockers are resolved and confirmed, saves the accepted plan as `<session>/seed-contract.md`, beside the interview's `ledger.json`, as intake for downstream implementation. The folder is the handoff, and line 1 of the seed is `status: draft`, `status: confirmed for intake` or `status: simulated`.
 
 ### Interview format
 

@@ -4,7 +4,7 @@
 Three groups:
   turns      interviewer turns pulled from a Claude Code transcript (.jsonl)
   ledgers    saved seed-me sessions (ledger.json)
-  contracts  seed contract markdown files
+  contracts  seed contract markdown files (line 1 must be a valid status line)
 
 Every check is code: regex, counting, or the session validator. Fuzzy judgments belong to a later layer.
 """
@@ -111,9 +111,16 @@ def cites_user_words(source, authority):
     return authority == "user" and bool(TURN.search(source))
 
 
+def load_session():
+    """The skill's own session module: the real validator and the one home of the line 1 values."""
+    if str(SKILL_SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SKILL_SCRIPTS))
+    import session
+    return session
+
+
 def ledger_findings(directory):
-    sys.path.insert(0, str(SKILL_SCRIPTS))
-    import session  # the real validator
+    session = load_session()
     out = {}
     try:
         ledger = session.load(directory)
@@ -164,9 +171,16 @@ def contract_findings(path):
     path = Path(path)
     text = path.read_text(encoding="utf-8")
     out = {}
-    simulated = ".simulated." in path.name
-    has_status = "simulated — not confirmed by a human" in text
-    out["simulated-labelled"] = ("pass", "") if simulated == has_status else ("fail", "file name and status disagree about being simulated")
+    session = load_session()
+    first = text.split("\n", 1)[0].rstrip("\r")
+    valid = (session.STATUS_DRAFT, session.STATUS_CONFIRMED, session.STATUS_SIMULATED)
+    out["status-line"] = ("pass", "") if first in valid else ("fail", f"line 1 is {first[:60]!r}, not one of: " + "; ".join(valid))
+    if first in (session.STATUS_CONFIRMED, session.STATUS_SIMULATED):
+        has_confirmer = bool(re.search(r"(?m)^Confirmed by:", text))
+        if first == session.STATUS_SIMULATED:  # decided from line 1 alone, never from the file name
+            out["confirmed-by"] = ("fail", "a simulated seed carries a 'Confirmed by:' line") if has_confirmer else ("pass", "")
+        else:
+            out["confirmed-by"] = ("pass", "") if has_confirmer else ("fail", "a confirmed seed has no 'Confirmed by:' line")
     out["confirming-box"] = ("pass", "") if "You are confirming" in text else ("fail", "no 'You are confirming' box")
     out["knowledge-map"] = knowledge_map_finding(text)
     m = re.search(r"(?ms)^## Acceptance checks[^\n]*\n(.*?)(?=^## |\Z)", text)

@@ -1,7 +1,7 @@
 # Lean path
 
-For a small, easily reversed idea, keep one markdown file, `seed-contract.md`, that the user
-and the agent both edit. Once the goal is confirmed, start the session and viewer using
+For a small, easily reversed idea, keep one markdown file, `<session>/seed-contract.md` (beside the
+session's `ledger.json`), that the user and the agent both edit. Once the goal is confirmed, start the session and viewer using
 **Session lifecycle** in SKILL.md, exactly as on Full. Keep the interview short: the viewer
 does not add questions, dependencies, or implementation permission. Scripts validate the
 ledger; the agent remains responsible for the meaning of the Markdown and its agreement with the ledger.
@@ -42,12 +42,20 @@ any time. Switching to full continues the same session without discarding this f
    leave both standing.
 7. Before confirming, ask the open probes before showing any finding, and for any deletion ask the recoverability probe. Run three probes (a pre-mortem, a counter-example, an outside view), put at least one to the
    user, and fill the Knowledge map honestly; ask for a one-sentence teach-back.
-8. Accepting wording is not approval to implement. Confirmation is the user setting `status: confirmed`.
+8. Accepting wording is not approval to implement. Line 1 is exactly one of `status: draft` (every
+   revision not yet confirmed), `status: confirmed for intake` (only after the user affirms the displayed
+   revision label) and `status: simulated` (agent-mode sessions); nothing else goes on line 1. Never
+   type the confirmed line: when the user affirms, run
+   `python3 "<skill>/scripts/session.py" seed confirm "<session>" --revision "<the label>" --source "<the user's words>"`.
+   It rewrites line 1, adds a `Confirmed by:` line after the `revision:` line, and refuses (writing
+   nothing) when the seed is missing, line 1 is not `status: draft`, the label does not match the
+   file's `revision:` line, the source is empty, a ledger node is unresolved or flagged for review,
+   the session is simulated or not active, or the seed is already confirmed.
 
 ## Keep the ledger and editable file in agreement
 
 Use the existing `session.py read` and `publish` commands in **Session lifecycle**. There is
-no automatic Markdown import and no new helper is required. After each actual answer or inspected fact,
+no automatic Markdown import. After each actual answer or inspected fact,
 publish its corresponding node and update only agent-owned Markdown. Reread the file before
 editing or publishing so human edits are never overwritten. If a human edit conflicts with the
 ledger, preserve the edit and ask about the conflict in chat; do not silently treat it as a new
@@ -73,14 +81,18 @@ The helper validates the state and retains history; report rejected or stale pub
 The Markdown contract revision and confirmation are separate from the ledger's helper-owned
 premise revision and publication version. Publishing or opening the viewer does not confirm
 the contract. End as `completed` only after actual contract confirmation and a successful save;
-stop preserves unanswered questions. `seed-contract.md` is the sole downstream handoff;
-the ledger and viewer are interview records, not extra required downstream artifacts.
+stop preserves unanswered questions. `end --status completed` refuses unless line 1 of
+`<session>/seed-contract.md` is `status: confirmed for intake` (`status: simulated` in a simulated
+session). The folder is the handoff: `<session>/seed-contract.md` and `ledger.json` together; the
+viewer page is not a required downstream artifact.
 
 ## Template
 
 ```markdown
+status: draft
 # Seed contract: <title>
-status: draft | confirmed        revision: 1        date: YYYY-MM-DD
+revision: r1        date: YYYY-MM-DD
+Session ledger: ledger.json
 
 ## You are confirming
 - Goal: ...
@@ -128,5 +140,6 @@ Q1 NEXT [agent] <title> — owner: <who decides> — why it matters: ...
 E1 [evidence] "<quoted line>" (<path>:<line>) — observed YYYY-MM-DD; re-check if <trigger>
 ```
 
-The file must still open with **You are confirming** and carry executable acceptance checks: the
-lean path drops the extended interview structure, not the viewer or the honesty.
+Line 1 is `status: draft` until `seed confirm` rewrites it. Below the revision line the file must
+still open with **You are confirming** and carry executable acceptance checks: the lean path drops
+the extended interview structure, not the viewer or the honesty.

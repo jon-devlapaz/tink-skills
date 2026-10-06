@@ -12,6 +12,7 @@ import tempfile
 import time
 import unittest
 
+import seed_fixture
 from test_seed_me_session import node, session
 
 
@@ -53,6 +54,7 @@ class TestViewerEnforced(unittest.TestCase):
         payload.write_text(json.dumps({"state": state, "expected_version": ledger["version"],
                                        "reason": "User chose JSON"}))
         self.assertEqual(run(SESSION, "publish", self.directory, payload).returncode, 0)
+        seed_fixture.save_seed(session, self.directory)
 
     def snapshot_is_current(self):
         page = (self.directory / "ledger-view.html").read_text()
@@ -166,7 +168,7 @@ class TestSkillTextMatchesTheEnforcement(unittest.TestCase):
         self.assertIn("Human edits are never overwritten", self.lean)
         self.assertIn("not approval to implement", self.lean)
         self.assertIn("no automatic Markdown import", self.lean)
-        self.assertIn("seed-contract.md` is the sole downstream handoff", self.lean)
+        self.assertIn("The folder is the handoff", self.lean)
         self.assertIn("contract revision", self.lean)
         self.assertIn("do not bypass", self.skill)
         mode = (SKILL / "references/agent-mode.md").read_text()

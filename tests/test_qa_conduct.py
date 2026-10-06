@@ -151,7 +151,8 @@ class TestContractRules(unittest.TestCase):
             path.write_text(text)
             return {r: s for r, (s, _) in conduct.contract_findings(path).items()}
 
-    BODY = """# Seed contract
+    BODY = """status: draft
+# Seed contract
 ## You are confirming
 - Goal: x
 ## Knowledge map
@@ -177,10 +178,35 @@ class TestContractRules(unittest.TestCase):
         self.assertEqual(self.check(self.BODY.replace("cmd: `ls`", "`ls`"))["check-lines"], "fail")
         self.assertEqual(self.check(self.BODY.replace(" | cwd: any", ""))["check-lines"], "fail")
         self.assertEqual(self.check(self.BODY.replace("## You are confirming", "## Summary"))["confirming-box"], "fail")
-        self.assertEqual(self.check(self.BODY, "seed-contract.simulated.md")["simulated-labelled"], "fail")
-        simulated = self.BODY + "Status: simulated — not confirmed by a human\n"
-        self.assertEqual(self.check(simulated, "seed-contract.simulated.md")["simulated-labelled"], "pass")
-        self.assertEqual(self.check(simulated)["simulated-labelled"], "fail")
+
+    def with_line_one(self, first, extra=""):
+        return first + "\n" + self.BODY.split("\n", 1)[1] + extra
+
+    def test_line_one_must_be_one_of_the_three_status_lines(self):
+        for first in ("status: draft", "status: confirmed for intake", "status: simulated"):
+            with self.subTest(first=first):
+                self.assertEqual(self.check(self.with_line_one(first))["status-line"], "pass")
+        for first in ("# Seed contract", "Status: draft", "status: draft ", "status: confirmed", "status: confirmed for intake; not approved",
+                      "unconfirmed \u2014 awaiting affirmation", "simulated \u2014 not confirmed by a human", ""):
+            with self.subTest(first=first):
+                self.assertEqual(self.check(self.with_line_one(first))["status-line"], "fail")
+        self.assertEqual(self.check(self.BODY.split("\n", 1)[1])["status-line"], "fail")  # no line 1 at all
+
+    def test_simulated_is_decided_from_line_one_and_never_from_the_file_name(self):
+        simulated = self.with_line_one("status: simulated")
+        self.assertEqual(self.check(simulated)["confirmed-by"], "pass")
+        self.assertEqual(self.check(simulated, "seed-contract.simulated.md")["confirmed-by"], "pass")
+        self.assertEqual(self.check(simulated + "Confirmed by: operator\n")["confirmed-by"], "fail")
+        draft_in_a_dot_simulated_name = self.check(self.BODY, "seed-contract.simulated.md")
+        self.assertEqual(draft_in_a_dot_simulated_name["status-line"], "pass")
+        self.assertNotIn("confirmed-by", draft_in_a_dot_simulated_name)
+        self.assertNotIn("simulated-labelled", draft_in_a_dot_simulated_name)
+
+    def test_a_confirmed_seed_must_carry_the_confirmed_by_line(self):
+        confirmed = self.with_line_one("status: confirmed for intake")
+        self.assertEqual(self.check(confirmed)["confirmed-by"], "fail")
+        with_line = confirmed.replace("# Seed contract\n", '# Seed contract\nConfirmed by: "yes" (revision r1, 2026-10-06). Not approved for implementation.\n', 1)
+        self.assertEqual(set(self.check(with_line).values()), {"pass"})
 
     def test_the_knowledge_map_must_show_real_probes_and_limits(self):
         self.assertEqual(self.check(self.BODY)["knowledge-map"], "pass")
