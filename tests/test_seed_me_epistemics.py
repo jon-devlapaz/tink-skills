@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
+import seed_fixture
 from test_seed_me_session import node, session
 
 
@@ -258,6 +259,7 @@ class TestEvidenceChangesFlagReviewWithoutRewritingDecisions(EpistemicCase):
         self.assertEqual((policy["answer"], policy["authority"]), (answer, "user"))
         self.assertEqual(session.review_flags(result["nodes"]), {})
         self.assertEqual(policy["history"][-1]["reason"], "User kept the decision after review")
+        seed_fixture.save_seed(session, self.directory)
         self.assertEqual(session.end(self.directory, "completed", "Done", no_viewer="not under test")["status"], "completed")
 
     def test_review_flags_are_derived_not_stored(self):
@@ -293,6 +295,7 @@ class TestReviewFlagsOnlyClearByExplicitReview(EpistemicCase):
             self.publish(state, "Defer the open choice")
         except ValueError:
             pass
+        seed_fixture.save_seed(session, self.directory)
         return session.end(self.directory, "completed", "Done", no_viewer="not under test")
 
     def test_editing_the_dependents_label_does_not_clear_the_flag(self):
@@ -353,6 +356,7 @@ class TestEveryFlaggedNodeNeedsItsOwnReview(EpistemicCase):
             self.publish(state, "Defer the open choice")
         except ValueError:
             pass
+        seed_fixture.save_seed(session, self.directory)
         return session.end(self.directory, "completed", "Done", no_viewer="not under test")
 
     def review(self, **reasons):
@@ -438,6 +442,7 @@ class TestFlagsFollowTheWholeSupportChain(EpistemicCase):
             self.publish(state, "Defer the open choice")
         except ValueError:
             pass
+        seed_fixture.save_seed(session, self.directory)
         return session.end(self.directory, "completed", "Done", no_viewer="not under test")
 
     def test_changing_evidence_and_reviewing_only_the_inference_in_one_publication_still_flags_the_decision(self):
@@ -485,6 +490,7 @@ class TestFlagsFollowTheWholeSupportChain(EpistemicCase):
             self.publish(state, "Defer the open choice")
         except ValueError:
             pass
+        seed_fixture.save_seed(session, self.directory)
         return session.end(self.directory, "completed", "Done", no_viewer="not under test")
 
     def test_adding_contradicts_to_an_existing_settled_fact_flags_what_relies_on_the_contradicted_claim(self):
@@ -714,6 +720,7 @@ class TestOneRuleForContradictions(EpistemicCase):
             self.publish(state, "Defer the open choice")
         except ValueError:
             pass
+        seed_fixture.save_seed(session, self.directory)
         return session.end(self.directory, "completed", "Done", no_viewer="not under test")
 
     def review(self, **reasons):
@@ -861,6 +868,7 @@ class TestLegacyDataAndHistory(EpistemicCase):
         self.legacy()
         state = session.editable(session.load(self.directory))
         self.publish(state, "No-op republish")
+        seed_fixture.save_seed(session, self.directory)
         self.assertEqual(session.end(self.directory, "completed", "Done", no_viewer="not under test")["status"], "completed")
 
 

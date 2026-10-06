@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import seed_fixture
+
 
 SCRIPT = Path(__file__).resolve().parents[1] / "skills/seed-me/scripts/session.py"
 SPEC = importlib.util.spec_from_file_location("seed_session", SCRIPT)
@@ -111,6 +113,7 @@ class TestSeedSession(unittest.TestCase):
         state = session.editable(session.load(self.directory))
         state["nodes"][1]["answer"] = "Build the scanner as part of this work"
         self.publish(state, "Revise the decision after the contradicting evidence")
+        seed_fixture.save_seed(session, self.directory)
         self.assertEqual(session.end(self.directory, "completed", "Confirmed and saved", no_viewer="not under test")["status"], "completed")
 
     def test_superseding_the_contradicting_fact_also_unblocks_completion(self):
@@ -118,6 +121,7 @@ class TestSeedSession(unittest.TestCase):
         state = session.editable(session.load(self.directory))
         state["nodes"][2] = {**node("f", "fact"), "status": "superseded", "contradicts": "d"}
         self.publish(state, "The fact was wrong; superseded with a reason")
+        seed_fixture.save_seed(session, self.directory)
         self.assertEqual(session.end(self.directory, "completed", "Confirmed and saved", no_viewer="not under test")["status"], "completed")
 
     def test_contradicts_shape_is_validated(self):
@@ -372,6 +376,7 @@ class TestSeedSession(unittest.TestCase):
 
     def test_end_cli_completes_without_changing_answers(self):
         before = self.confirmed()
+        seed_fixture.save_seed(session, self.directory)
         result = subprocess.run([sys.executable, str(SCRIPT), "end", str(self.directory),
                                  "--status", "completed", "--reason", "Confirmed pre-intent saved", "--no-viewer", "not under test"],
                                 capture_output=True, text=True)

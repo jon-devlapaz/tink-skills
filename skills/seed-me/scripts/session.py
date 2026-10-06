@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import tempfile
 import uuid
 from urllib.request import urlopen
@@ -15,6 +16,11 @@ from urllib.request import urlopen
 STATE_FIELDS = {"status", "draft", "goal", "origin", "current_question", "nodes"}
 OPTIONAL_STATE_FIELDS = {"assumed", "operator"}
 OPERATORS = ("human", "simulated")
+# The saved seed is `<session>/seed-contract.md`; line 1 is exactly one of these. Only `seed confirm` writes the confirmed line.
+SEED_FILE = "seed-contract.md"
+STATUS_DRAFT = "status: draft"
+STATUS_CONFIRMED = "status: confirmed for intake"
+STATUS_SIMULATED = "status: simulated"
 NODE_FIELDS = {"id", "kind", "status", "prerequisites", "predicate", "evidence",
                "answer", "authority", "authority_source", "label", "question",
                "owner", "gate", "recommendation", "defer_reason", "revisit_condition", "reopen_reason", "contradicts",
@@ -371,13 +377,15 @@ def atomic_write(path, ledger):
     atomic_write_text(path, json.dumps(ledger, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
 
 
-def atomic_write_text(path, content):
+def atomic_write_text(path, content, mode=None):
     descriptor, temporary = tempfile.mkstemp(prefix=".ledger-", suffix=".tmp", dir=path.parent)
     try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="") as handle:
             handle.write(content)
             handle.flush()
             os.fsync(handle.fileno())
+        if mode is not None:
+            os.chmod(temporary, mode)
         os.replace(temporary, path)
     finally:
         if os.path.exists(temporary):
@@ -520,6 +528,75 @@ def publish(directory, state, expected_version, reason, revalidated=None):
         return result
 
 
+def seed_lines(directory):
+    """The saved seed as its lines, each with its own terminator, so a rewrite can leave every other byte alone."""
+    path = Path(directory) / SEED_FILE
+    require(path.is_file(), "no seed to use: %s is missing; save the seed there first" % path)
+    with path.open(encoding="utf-8", newline="") as handle:
+        return re.findall(r"[^\n]*\n|[^\n]+", handle.read())
+
+
+def split_terminator(line):
+    body = line[:-1] if line.endswith("\n") else line
+    body = body[:-1] if body.endswith("\r") and line.endswith("\n") else body
+    return body, line[len(body):]
+
+
+def seed_line_one(lines):
+    return split_terminator(lines[0])[0] if lines else ""
+
+
+def require_seed_line(directory, expected):
+    require((Path(directory) / SEED_FILE).is_file(), "cannot complete: %s is missing; save the seed there with line 1 %r"
+            % (Path(directory) / SEED_FILE, expected))
+    found = seed_line_one(seed_lines(directory))
+    require(found == expected, "cannot complete: line 1 of %s must be exactly %r for this session, found %r"
+            % (Path(directory) / SEED_FILE, expected, found))
+
+
+def confirm_seed(directory, revision, source):
+    """Rewrite line 1 of a draft seed to the confirmed line and add `Confirmed by:`. Refuses before writing anything.
+
+    The helper cannot know that a human affirmed; it makes the caller name the revision and quote the human's words.
+    """
+    directory = Path(directory)
+    require(text(revision), "--revision is required: the label shown to the human")
+    require(text(source), "--source is required: quote the human's words that confirmed this revision")
+    require("\n" not in source and "\r" not in source, "--source must be one line")
+    with writer(directory):
+        ledger = load(directory)
+        require(ledger.get("operator", "human") == "human", "a simulated session cannot be confirmed: its seed stays %r" % STATUS_SIMULATED)
+        require(ledger["status"] == "active", "session is not active (%s): confirm before ending it" % ledger["status"])
+        require(ledger["origin"] is not None, "the goal is not confirmed yet")
+        unresolved = [n["id"] for n in ledger["nodes"] if n["status"] == "unresolved"]
+        require(not unresolved, "unresolved nodes remain: " + ", ".join(unresolved))
+        flagged = sorted(review_flags(ledger["nodes"]))
+        require(not flagged, "nodes flagged for review remain: " + ", ".join(flagged))
+        lines = seed_lines(directory)
+        first = seed_line_one(lines)
+        require(first != STATUS_CONFIRMED, "the seed is already confirmed (line 1 is %r)" % first)
+        require(first == STATUS_DRAFT, "line 1 of %s must be exactly %r to confirm it, found %r" % (SEED_FILE, STATUS_DRAFT, first))
+        found = [(i, re.match(r"revision:[ \t]*(\S+)", line)) for i, line in enumerate(lines) if i > 0]
+        found = [(i, m.group(1)) for i, m in found if m]
+        require(found, "%s has no 'revision:' line, so the revision cannot be matched" % SEED_FILE)
+        index, label = found[0]
+        require(label == revision.strip(), "revision %r does not match the file's revision line (%r)" % (revision.strip(), label))
+        first_end = split_terminator(lines[0])[1] or "\n"
+        body, terminator = split_terminator(lines[index])
+        note = 'Confirmed by: "%s" (revision %s, %s). Not approved for implementation.' % (
+            source.strip(), label, datetime.now(timezone.utc).date().isoformat())
+        out = list(lines)
+        out[0] = STATUS_CONFIRMED + first_end
+        if terminator:
+            out.insert(index + 1, note + terminator)
+        else:
+            out[index] = body + first_end
+            out.insert(index + 1, note)
+        path = directory / SEED_FILE
+        atomic_write_text(path, "".join(out), stat.S_IMODE(path.stat().st_mode))
+        return {"seed": str(path), "line_1": STATUS_CONFIRMED, "revision": label}
+
+
 def end(directory, status, reason, no_viewer=None):
     """Completing an active session needs the viewer: viewer.py was started, or no_viewer says why it could not be."""
     require(status in ("stopped", "completed"), "invalid end status")
@@ -538,6 +615,8 @@ def end(directory, status, reason, no_viewer=None):
         state = editable(ledger)
         state.update(status=status, current_question=None)
         result = transition(ledger, state, ledger["version"], reason)
+        if status == "completed":
+            require_seed_line(directory, STATUS_SIMULATED if ledger.get("operator", "human") == "simulated" else STATUS_CONFIRMED)
         if result is not ledger:
             atomic_write(directory / "ledger.json", result)
         if needs_viewer and no_viewer is not None:
@@ -562,6 +641,11 @@ def main():
     finish.add_argument("--reason", required=True)
     finish.add_argument("--no-viewer", metavar="REASON", help="complete without a running viewer, stating why")
     commands.add_parser("status").add_argument("session", type=Path)
+    seed = commands.add_parser("seed").add_subparsers(dest="seed_command", required=True)
+    confirm = seed.add_parser("confirm", help="rewrite line 1 of a draft seed to the confirmed line")
+    confirm.add_argument("session", type=Path)
+    confirm.add_argument("--revision", required=True, help="the revision label the human confirmed, as in the seed's revision line")
+    confirm.add_argument("--source", required=True, help="the human's words that confirmed it")
     args = parser.parse_args()
     try:
         if args.command == "init":
@@ -572,6 +656,8 @@ def main():
             result = end(args.session, args.status, args.reason, args.no_viewer)
         elif args.command == "status":
             result = status(args.session)
+        elif args.command == "seed":
+            result = confirm_seed(args.session, args.revision, args.source)
         else:
             payload = json.loads(args.input.read_text())
             result = publish(args.session, **payload)

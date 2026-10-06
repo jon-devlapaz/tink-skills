@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract by checking facts and asking the user about choices that matter. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "1.19.0"
+  version: "2.0.0"
 ---
 
 # Seed Me
@@ -71,7 +71,7 @@ record only explicit choices as accepted answers. Only then does the frontier lo
 After the user reacts to the draft, propose a path in one line with your reason: **Lean**
 or **Full**. Take Lean only if the idea is small and easy to undo — the criteria are in
 [lean-path.md](references/lean-path.md), which also holds the whole lean procedure. Lean
-keeps one editable `seed-contract.md` and a short interview, with the same session and viewer
+keeps one editable `<session>/seed-contract.md` and a short interview, with the same session and viewer
 startup as Full (see **Session lifecycle**). Neither startup nor graph availability depends on
 dependency edges. Full means everything below. On Full, read [ledger-transitions.md](references/ledger-transitions.md) now for ledger
 setup, frontier transitions, and ranking; Lean never reads it. The user can say "lean" or "full"
@@ -82,8 +82,8 @@ at any time; switching to Full continues the existing session and preserves the 
 If the user asks to run seed-me with an agent standing in for the human, follow
 [agent-mode.md](references/agent-mode.md). Three rules hold regardless of harness: the session is started
 with `--operator simulated` and every operator answer is recorded as `simulated`, never `user` or
-`delegated`; the result is saved as `seed-contract.simulated.md` with the status
-`simulated — not confirmed by a human`; and a simulated run never authorizes implementation. Describe the operator in a short brief (role, goal, what it knows, decision style) and record it as a simulation, never as a real person.
+`delegated`; the result is saved as `<session>/seed-contract.md` with line 1 `status: simulated`;
+and a simulated run never authorizes implementation. Describe the operator in a short brief (role, goal, what it knows, decision style) and record it as a simulation, never as a real person.
 
 ## 2. Investigate facts before asking
 
@@ -250,8 +250,9 @@ authorize product edits. The host runs the commands and owns the viewer process.
    concerns may remain unconnected. The goal is implicit: do not make `origin` a
    prerequisite of every concern, only of one whose wording truly depends on it. Publish answers and reopened nodes before
    advancing the current question. Answers stay in chat; the viewer is read-only.
-5. On explicit stop, end as `stopped`. End as `completed` only after the confirmed
-   `seed-contract.md` is successfully saved in Step 5:
+5. On explicit stop, end as `stopped`. End as `completed` only after the seed is confirmed with
+   `seed confirm` and saved as `<session>/seed-contract.md` in Step 5. `end --status completed`
+   refuses unless line 1 of that file is `status: confirmed for intake` (`status: simulated` in a simulated session):
    ```sh
    python3 "<skill>/scripts/session.py" end "<session>" --status stopped --reason "User stopped the interview"
    python3 "<skill>/scripts/viewer.py" "<session>" --snapshot
@@ -327,9 +328,9 @@ If the user skips a probe, record "skipped by the user". Never fill this section
 Once the local review and close checklist are resolved:
 
 1. Present the revision-labeled seed contract, opening with the **You are confirming** box, using the structure below (on the lean path the file itself is the seed contract and uses the lean template), including
-   actual accepted choices and their authority, with status
-   `unconfirmed — awaiting affirmation`; flip to `confirmed for intake` only
-   when the user affirms the displayed revision label. Describe the review as “I checked this draft for missing decisions and contradictions.”
+   actual accepted choices and their authority, with line 1
+   `status: draft`. Line 1 becomes `status: confirmed for intake` only when the user affirms
+   the displayed revision label, and only the helper in step 3 writes it. Describe the review as “I checked this draft for missing decisions and contradictions.”
    State its limits; this review does not verify implementation.
 2. Ask for a **teach-back**: the user says in a sentence or two what will be built and what will not, and
    you list any mismatch with the seed contract (record "teach-back skipped" if they decline). Then ask the
@@ -342,15 +343,23 @@ Once the local review and close checklist are resolved:
    confirmation by naming the three riskiest items — figures you invented, earlier
    decisions this reverses, placeholder names, or choices accepted without change —
    and say how many decisions were accepted as suggested versus chosen by the user.
-3. On confirmation, save that revision to repository-root `seed-contract.md`. Inspect
-   an existing file first: update only the known session artifact, preserving
-   unrelated content. If an existing file belongs to other work, keep it intact and
-   resolve an alternate destination with the user. Ensure the write succeeds before
-   treating the seed contract as saved.
+3. Save every revision you display to `<session>/seed-contract.md`, beside `ledger.json`, with
+   line 1 `status: draft`. The folder is the handoff: the seed and its ledger are saved together.
+   Do not save a seed at the repository or workspace root. Overwrite only this session's own
+   file. When the user affirms the displayed revision label, run
+   ```sh
+   python3 "<skill>/scripts/session.py" seed confirm "<session>" --revision "<the label>" --source "<the user's words>"
+   ```
+   The helper rewrites line 1 to `status: confirmed for intake`, adds a `Confirmed by:` line
+   after the `revision:` line, and leaves every other line unchanged. It refuses, and writes
+   nothing, when the seed is missing, line 1 is not `status: draft`, the label does not match the
+   file's `revision:` line, the source is empty, any ledger node is unresolved or flagged for
+   review, the session is simulated or not active, or the seed is already confirmed. Never type
+   the confirmed line by hand, and never run the helper before the user has affirmed that revision.
 4. End the session as `completed`, save its final viewer snapshot, and stop the
-   viewer process using **Session lifecycle**. Report the saved `seed-contract.md`
-   path as discovery input for downstream planning or implementation workflows,
-   and stop. Leave commits to the user, and reserve
+   viewer process using **Session lifecycle**. Report the session folder, which holds
+   `seed-contract.md` and `ledger.json`, as discovery input for downstream planning or
+   implementation workflows, and stop. Leave commits to the user, and reserve
    downstream initialization, stage advancement, or implementation approval
    for subsequent workflows.
 
@@ -358,11 +367,14 @@ Once the local review and close checklist are resolved:
 
 The displayed and saved revision must contain:
 
-- Title and provenance: originator when known, date, revision, and status
-  `unconfirmed — awaiting affirmation` while the revision is displayed, and
-  `seed contract — confirmed for intake; not approved for implementation` on the saved file. In agent
-  mode the status is `simulated — not confirmed by a human` and the file is `seed-contract.simulated.md`.
-- **You are confirming** box at the very top, five short lines: the goal; what gets built;
+- Line 1, exactly one of three values and nothing else on that line: `status: draft` for every
+  revision not yet confirmed, `status: confirmed for intake` only after the human affirms and the
+  helper writes it, and `status: simulated` for an agent-mode session. The file is
+  `<session>/seed-contract.md` in every case, saved beside `ledger.json`.
+- Then the title and provenance: originator when known, a `revision:` line with the revision label and
+  the date, and, once confirmed, the helper's `Confirmed by:` line, which says the seed is
+  not approved for implementation.
+- **You are confirming** box directly after the title and provenance lines, five short lines: the goal; what gets built;
   what does not; what the user accepted unchanged (with the accepted-versus-chosen count);
   what is still unknown — plus any earlier decision this reverses.
 - Problem statement: current behavior, evidence, and why it matters.
@@ -407,8 +419,9 @@ The displayed and saved revision must contain:
   item to be read later, who will read it; for each repeat surprise, its guardrail.
   Map each to ledger status: known → settled (evidence), needs a decision →
   unresolved (blocker), watch → parked or risk, repeat surprise → risk with guardrail.
-- Downstream handoff: `seed-contract.md` is the handoff; the ledger and viewer are
-  interview records, not additional required downstream artifacts. This artifact
+- Downstream handoff: the session folder is the handoff: `<session>/seed-contract.md` together with
+  `ledger.json`, which a consumer needs to see that the session completed with a human. The viewer
+  page is not required. This artifact
   is discovery input, not an implementation plan,
   approved specification, or review receipt. Preserve accepted constraints when
   deriving downstream plans or specifications; follow the selected workflow's
@@ -426,5 +439,5 @@ explicit user instruction after the artifact is saved. Treat earlier implementat
 requests as superseded by the discovery phase. Any change to settled decisions,
 constraints, or cited evidence invalidates that revision's confirmation and handoff.
 
-**Complete when:** The confirmed revision is saved and its path reported. A
+**Complete when:** The confirmed revision is saved in the session folder and the folder's path reported. A
 user-requested stop is a valid termination, but an incomplete seed contract is not completion.

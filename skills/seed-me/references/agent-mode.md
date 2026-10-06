@@ -18,7 +18,7 @@ human session cannot hold `simulated` ones.
   a "Simulated operator — no human decided this" banner and a "Simulated" pill. Start the viewer
   as usual; in a sandbox with no loopback or background processes, complete with
   `end ... --no-viewer "<why>"` instead, and say so in the report.
-- Lean also: put `operator: simulated` in the file header and tag operator answers `[simulated]`.
+- Lean also: put `operator: simulated` in the file header, below line 1, and tag operator answers `[simulated]`.
 
 ## The operator agent
 
@@ -78,9 +78,10 @@ nothing.
   never `delegated`.
 - Follow the same question format and rules as with a person, including instinct first for
   hard-to-undo questions.
-- Save the result as `seed-contract.simulated.md`, never `seed-contract.md`, with the status
-  `simulated — not confirmed by a human`. The operator's "confirm" is recorded as a simulated
-  answer, not as confirmation, and never authorizes implementation.
+- Save the result as `<session>/seed-contract.md`, beside `ledger.json`, with line 1 `status: simulated`
+  and nothing else on that line. The operator's "confirm" is recorded as a simulated answer, not as
+  confirmation, and never authorizes implementation. `session.py seed confirm` refuses a simulated
+  session, and `end --status completed` on one needs that line 1.
 - To adopt a simulated contract, a person reads it and starts a normal session (with a lean file when appropriate)
   with their own confirmation. The simulated session's operator cannot be changed afterwards.
 

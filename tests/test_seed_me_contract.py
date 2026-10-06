@@ -24,7 +24,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
 
     def test_pre_intent_handoff_contract(self):
         content = (SKILL_DIR / "SKILL.md").read_text()
-        self.assertIn("repository-root `seed-contract.md`", content)
+        self.assertIn("`<session>/seed-contract.md`", content)
         self.assertNotIn("grill-plan.md", content)
         for required in (
             "confirmed for intake",
@@ -114,7 +114,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
             with self.subTest(required=required):
                 self.assertIn(required, skill)
         text = lean.read_text()
-        for required in ("You are confirming", "status: draft | confirmed", "[evidence]",
+        for required in ("You are confirming", "status: draft", "[evidence]",
                          "cmd: `<exact command>`", "start the session and viewer",
                          "print its absolute path as a `file://` link"):
             with self.subTest(lean=required):
@@ -125,8 +125,8 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         mode = SKILL_DIR / "references" / "agent-mode.md"
         self.assertTrue(mode.is_file())
         for required in ("### Agent mode (simulated operator)", "references/agent-mode.md",
-                         "--operator simulated", "seed-contract.simulated.md",
-                         "simulated \u2014 not confirmed by a human", "never `user` or `delegated`"):
+                         "--operator simulated", "`<session>/seed-contract.md`",
+                         "line 1 `status: simulated`", "never `user` or `delegated`"):
             with self.subTest(required=required):
                 self.assertIn(required, " ".join(skill.split()))
         text = mode.read_text()
@@ -202,7 +202,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                          'scripts/session.py" publish', 'scripts/session.py" end',
                          'scripts/viewer.py"', "--snapshot", "process handle",
                          "stop only the recorded viewer", "outside the repository",
-                         "`seed-contract.md` is the handoff"):
+                         "the session folder is the handoff"):
             with self.subTest(required=required):
                 self.assertIn(required, skill)
         for required in ("expected_version", "authority_source", "reopen_reason",
