@@ -278,7 +278,6 @@ or “Use Redis only if cluster mode is supported”) are **conditional answers*
 - Settle the node using the currently valid recommendation within that scope; record `authority: delegated`. Nodes marked `⚠️ ungrounded` cannot settle by delegation: retain as unresolved blockers.
 - If no valid recommendation exists, investigate workspace facts or retain the node as an unresolved blocker.
 - Ambiguous delegation covers only the clearly referenced node, never all future decisions.
-- A **standing delegation** is different from an ambiguous phrase such as "whatever you think": the human states it explicitly, with its scope, as part of opting in to the engram council (see [engram-council.md](engram-council.md)), and it is recorded once in the ledger. Only such an explicit, recorded scope may cover several nodes, and never hard-to-undo or `⚠️ ungrounded` ones.
 - “Use your arrows” accepts currently displayed valid recommendation arrows (`➡️`) only.
 - Worked example: “you decide” on a node with 📜 lines and a ➡️ settles it as `delegated`; the same words on a `⚠️ ungrounded` node settle nothing — it stays an unresolved blocker.
 - Acceptance of an earlier recommendation does not authorize a replacement if the premise is subsequently invalidated; only continuing explicit delegation covers a revised choice.

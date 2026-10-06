@@ -583,7 +583,7 @@ function focusOn(id) {
   syncCards();
 }
 // ---- HTML cards over the drawn nodes: Cytoscape draws fill, border and edges; the card carries the words.
-const SHORT = { user: 'You decided', standing: 'Standing delegation', accepted: 'You accepted', simulated: 'Simulated' };
+const SHORT = { user: 'You decided', accepted: 'You accepted', simulated: 'Simulated' };
 function buildCards() {
   const layer = el('cards');
   layer.replaceChildren();
@@ -619,7 +619,7 @@ function buildCards() {
       a.className = 'a';
       card.append(a);
       const waiting = waitingOn(node);
-      const key = standing(node) ? 'standing' : (node.authority === 'delegated' ? 'accepted' : node.authority);
+      const key = node.authority === 'delegated' ? 'accepted' : node.authority;
       const bd = element('span', node.status === 'settled' ? (node.kind === 'fact' ? CLAIM_WORDS[claimType(node)] : (SHORT[key] || '')) : (node.status === 'deferred' ? 'Deferred' : (waiting.length ? `Waiting on ${waiting.length}` : 'Ready')));
       bd.className = 'bd';
       card.append(bd);
@@ -749,7 +749,6 @@ function fmtTime(value) {
 function reviewReady() {
   return LEDGER.status === 'active' && Boolean(LEDGER.origin) && LEDGER.nodes.some(n => n.id !== LEDGER.origin) && !LEDGER.nodes.some(n => n.status === 'unresolved') && !reviewFlags().size;
 }
-function standing(node) { return node.authority === 'delegated' && String(node.authority_source || '').toLowerCase().startsWith('standing delegation'); }
 function who(node) {
   if (node.kind === 'fact') {
     const type = claimType(node);
@@ -758,8 +757,7 @@ function who(node) {
     badge.title = CLAIM_MEANING[type];
     return badge;
   }
-  const label = standing(node) ? 'decided under your standing delegation'
-    : { user: 'you decided', delegated: 'you accepted the agent\'s suggestion', evidence: 'fact checked', simulated: 'simulated answer (no human)' }[node.authority] || node.authority;
+  const label = { user: 'you decided', delegated: 'you accepted the agent\'s suggestion', evidence: 'fact checked', simulated: 'simulated answer (no human)' }[node.authority] || node.authority;
   const badge = element('span', label);
   badge.className = 'badge ' + node.authority;
   return badge;
@@ -927,14 +925,13 @@ function render() {
     [reviewFlags().size, reviewFlags().size + ' to review']].filter(([n]) => n > 0).map(([, t]) => t);
   el('counts').textContent = parts.length ? parts.join(' · ') : 'Nothing recorded yet';
   const settledDecisions = decisions.filter(n => n.status === 'settled');
-  const underStanding = settledDecisions.filter(standing).length;
-  const accepted = settledDecisions.filter(n => n.authority === 'delegated' && !standing(n)).length;
+  const accepted = settledDecisions.filter(n => n.authority === 'delegated').length;
   const chosen = settledDecisions.filter(n => n.authority === 'user').length;
   el('accept-summary').hidden = !settledDecisions.length;
   const simulatedCount = settledDecisions.filter(n => n.authority === 'simulated').length;
   el('accept-summary').textContent = LEDGER.operator === 'simulated'
     ? `Simulated answers: ${simulatedCount} · Human answers: 0`
-    : `Accepted as suggested: ${accepted} · Chosen by you: ${chosen}` + (underStanding ? ` · Under standing delegation: ${underStanding}` : '');
+    : `Accepted as suggested: ${accepted} · Chosen by you: ${chosen}`;
   const current = LEDGER.nodes.find(n => n.id === LEDGER.current_question);
   el('current').textContent = current ? `Current question: ${current.question || current.label || current.id}` : 'No question currently presented.';
   const pill = el('status-pill');

@@ -126,14 +126,12 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         self.assertTrue(mode.is_file())
         for required in ("### Agent mode (simulated operator)", "references/agent-mode.md",
                          "--operator simulated", "seed-contract.simulated.md",
-                         "simulated \u2014 not confirmed by a human", "never `user` or `delegated`",
-                         "scripts/engram_brief.py"):
+                         "simulated \u2014 not confirmed by a human", "never `user` or `delegated`"):
             with self.subTest(required=required):
                 self.assertIn(required, " ".join(skill.split()))
         text = mode.read_text()
         for required in ("Operator brief", "must not see", "authority: simulated",
                          "Decision style", "never authorizes implementation",
-                         "engram_brief.py", "simulation, not the person", "leaves out the engram's `SKILL.md`",
                          "Large briefs.", "The operator decides; it does not build."):
             with self.subTest(mode=required):
                 self.assertIn(required, text)
@@ -151,7 +149,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
             with self.subTest(lean=required):
                 self.assertIn(required, lean)
 
-    def test_lessons_from_the_engram_runs_are_in_the_skill(self):
+    def test_lessons_from_the_simulated_runs_are_in_the_skill(self):
         skill = " ".join((SKILL_DIR / "SKILL.md").read_text().split())
         mode = " ".join((SKILL_DIR / "references" / "agent-mode.md").read_text().split())
         lean = (SKILL_DIR / "references" / "lean-path.md").read_text()

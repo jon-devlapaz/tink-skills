@@ -717,24 +717,7 @@ class TestViewerBrowser(ViewerFixture, unittest.TestCase):
         self.expect(self.page.locator("#settled-list")).to_contain_text("you accepted the agent's suggestion")
         self.assertEqual(self.errors, [])
 
-    def test_standing_delegation_is_not_shown_as_the_user_accepting_a_suggestion(self):
-        state = session.editable(session.load(self.directory))
-        state.update(goal="Ship it", origin="goal", current_question=None)
-        ordinary = {**node("b", parents=["goal"], answer="B"), "authority": "delegated",
-                    "authority_source": "chat: your arrow", "evidence": ["x.py:1"]}
-        standing = {**node("c", parents=["goal"], answer="C"), "authority": "delegated",
-                    "authority_source": "standing delegation (human opt-in); engram lenses: pg, ka", "evidence": ["lens said C"]}
-        state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A"), ordinary, standing]
-        self.publish(state)
-        self.page.goto(self.url)
-        self.expect(self.page.locator("#settled-list")).to_contain_text("you accepted the agent's suggestion")
-        self.expect(self.page.locator("#settled-list")).to_contain_text("decided under your standing delegation")
-        self.expect(self.page.locator("#accept-summary")).to_have_text(
-            "Accepted as suggested: 1 · Chosen by you: 1 · Under standing delegation: 1")
-        self.assertEqual(self.page.locator("#settled-list .badge.delegated").count(), 2)
-        self.assertEqual(self.errors, [])
-
-    def test_summary_is_unchanged_without_a_standing_delegation(self):
+    def test_summary_counts_accepted_and_chosen_decisions(self):
         state = session.editable(session.load(self.directory))
         state.update(goal="Ship it", origin="goal", current_question=None)
         state["nodes"] = [node("goal", answer="Ship it"), node("a", parents=["goal"], answer="A")]

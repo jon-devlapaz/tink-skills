@@ -46,42 +46,18 @@ You may say: "show me", "your arrow", "skip", "stop". You may not read files, ru
 invent things you would not know. If a question is unclear, say so.
 ```
 
-**Large briefs.** A brief too big to paste (an engram is about 25K characters) may be written to a file that the
+**Large briefs.** A brief too big to paste may be written to a file that the
 operator is told it may read: that one file and nothing else. Say so in the operator's instructions, note it in the
 run, and treat any other tool use as leakage.
 
-**The operator decides; it does not build.** Operators, especially engram ones, drift toward implementation ("build
+**The operator decides; it does not build.** Operators drift toward implementation ("build
 the script and show me the table"). The interviewer answers that building comes after the interview, which produces
 the contract it would be built from, and steers back to the next question.
 
 Vary the decision style across runs. An operator that always accepts the suggestion measures
 nothing.
 
-## Using an engram as the operator
-
-An engram is a folder of persona files for a person, such as `~/.tink-library/skills/engrams/paul-graham/`.
-Build the operator brief from it with the helper instead of pasting files by hand:
-
-```sh
-python3 "<skill>/scripts/engram_brief.py" paul-graham --idea "<the rough idea>"
-python3 "<skill>/scripts/engram_brief.py" paul-graham --check   # completeness and size only
-```
-
-The helper hands the operator the engram's `PERSON`, `MIND`, `CONSTITUTION`, `STAKES`, and `FIDELITY` files as
-data and leaves out the engram's `SKILL.md`, whose workflow (research with tools, ask other personas) conflicts
-with the no-tools rule. It refuses an engram missing `MIND.md` or `CONSTITUTION.md`, any symlinked file, and one
-over the size cap (raise `--max-chars` on purpose). It never writes.
-
-Rules for an engram operator, on top of the ones above:
-- The persona is a **simulation of a person's public record, not the person.** Record the persona as
-  `engram: <name> (simulation, not the person)` in `authority_source`, never as the person's own words, and
-  never quote it as something the real person said.
-- The operator cannot research. The interviewer supplies facts, and the operator may say "I'd need to know X."
-- The operator answers about *someone else's idea*. Its answers show how this mind would push on the idea; they
-  are not that person's endorsement and not the idea owner's decisions.
-- Report which engram was used at the top of the simulated seed contract.
-
-## Lessons from the first engram runs (rules)
+## Lessons from simulated runs (rules)
 - **Defer what only a person knows.** If the deciding fact is something only the human owner has (what their notes
   contain, whether they need an old file), the operator must hand it back instead of guessing. Record it as a
   `deferred` item owned by "the human owner", with a `revisit_condition` that names the moment it must be answered.
