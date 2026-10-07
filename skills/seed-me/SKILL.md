@@ -3,7 +3,7 @@ name: seed-me
 description: Interview the user into a confirmed seed contract before anything is built. Use when they ask for seed-me, or want a plan, decision, or loose idea pressure-tested ("seed this", "grill me", "find the holes"). Reviews, summaries, and no-interview requests keep their own format.
 license: MIT
 metadata:
-  version: "2.1.2"
+  version: "2.2.0"
 ---
 
 # Seed Me
@@ -355,7 +355,7 @@ Once the local review and close checklist are resolved:
    The helper rewrites line 1 to `status: confirmed for intake`, adds a `Confirmed by:` line
    after the `revision:` line, and leaves every other line unchanged. It refuses, and writes
    nothing, when the seed is missing, line 1 is not `status: draft`, the label does not match the
-   file's `revision:` line, the source is empty, any ledger node is unresolved or flagged for
+   file's `revision:` line, the seed has no `## You are confirming` section with content after its `revision:` line, the source is empty, any ledger node is unresolved or flagged for
    review, the session is simulated or not active, or the seed is already confirmed. Never type
    the confirmed line by hand, and never run the helper before the user has affirmed that revision.
 4. End the session as `completed`, save its final viewer snapshot, and stop the

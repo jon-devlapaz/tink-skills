@@ -121,21 +121,35 @@ class ConfirmWritesTests(SessionCase):
     def test_confirmed_by_goes_directly_after_the_revision_line_wherever_it_is(self):
         directory = self.complete_human()
         path = directory / "seed-contract.md"
-        path.write_bytes(b"status: draft\nrevision: r7\n# Title\nBody line\n")
+        path.write_bytes(b"status: draft\nrevision: r7\n# Title\n## You are confirming\nBody line\n")
         self.assertEqual(self.confirm(directory, "r7").returncode, 0)
         lines = path.read_bytes().decode("utf-8").split("\n")
         self.assertEqual([lines[0], lines[1]], [CONFIRMED, "revision: r7"])
         self.assertTrue(lines[2].startswith("Confirmed by:"))
-        self.assertEqual(lines[3:], ["# Title", "Body line", ""])
+        self.assertEqual(lines[3:], ["# Title", "## You are confirming", "Body line", ""])
 
-    def test_a_revision_line_that_ends_the_file_gets_a_line_break_added(self):
+    def test_a_last_line_without_a_line_break_is_left_that_way(self):
         directory = self.complete_human()
         path = directory / "seed-contract.md"
-        path.write_bytes(b"status: draft\n# Title\nrevision: r1")
+        path.write_bytes(b"status: draft\n# Title\nrevision: r1\n## You are confirming\n- Goal: x")
         self.assertEqual(self.confirm(directory).returncode, 0)
         lines = path.read_bytes().decode("utf-8").split("\n")
-        self.assertEqual(lines[:3], [CONFIRMED, "# Title", "revision: r1"])
-        self.assertTrue(lines[3].startswith("Confirmed by:") and len(lines) == 4, lines)
+        self.assertEqual([lines[0], lines[1], lines[2]], [CONFIRMED, "# Title", "revision: r1"])
+        self.assertTrue(lines[3].startswith("Confirmed by:"))
+        self.assertEqual(lines[4:], ["## You are confirming", "- Goal: x"])
+
+    def test_confirm_refuses_a_draft_that_is_not_a_seed_contract(self):
+        for body in ("revision: r1\n", "revision: r1\n**You are confirming**\n- Goal: x\n",
+                     "revision: r1\n## You are confirming\n\n## Now\n", "## You are confirming\n- Goal: x\nrevision: r1\n"):
+            with self.subTest(body=body):
+                directory = self.complete_human()
+                path = directory / "seed-contract.md"
+                path.write_bytes(("status: draft\n" + body).encode())
+                before = path.read_bytes()
+                result = self.confirm(directory)
+                self.assertEqual(result.returncode, 1)
+                self.assertRegex(result.stderr, r"cannot confirm.*You are confirming")
+                self.assertEqual(path.read_bytes(), before)
 
     def test_the_file_mode_is_kept(self):
         directory = self.complete_human()

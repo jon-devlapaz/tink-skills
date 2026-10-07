@@ -552,6 +552,11 @@ def require_seed_line(directory, expected):
     found = seed_line_one(seed_lines(directory))
     require(found == expected, "cannot complete: line 1 of %s must be exactly %r for this session, found %r"
             % (Path(directory) / SEED_FILE, expected, found))
+    require_seed_body(directory, "cannot complete")
+
+
+def require_seed_body(directory, refusal):
+    """The saved seed must be a contract, not a status line: a `revision:` line, then a non-empty `## You are confirming` section."""
     lines = [split_terminator(line)[0] for line in seed_lines(directory)]
     box = next((i for i, line in enumerate(lines) if i and line.strip() == "## You are confirming"), None)
     section = []
@@ -562,8 +567,8 @@ def require_seed_line(directory, expected):
     revision = r"revision:[ \t]*\S"
     require(box is not None and any(re.match(revision, line) for line in lines[1:box])
             and any(line.strip() and not re.match(revision, line) for line in section),
-            "cannot complete: %s is not a seed contract; after its status line it needs a 'revision:' line and a "
-            "'## You are confirming' section with content" % (Path(directory) / SEED_FILE))
+            "%s: %s is not a seed contract; after its status line it needs a 'revision:' line and a "
+            "'## You are confirming' section with content" % (refusal, Path(directory) / SEED_FILE))
 
 
 def confirm_seed(directory, revision, source):
@@ -593,6 +598,7 @@ def confirm_seed(directory, revision, source):
         require(found, "%s has no 'revision:' line, so the revision cannot be matched" % SEED_FILE)
         index, label = found[0]
         require(label == revision.strip(), "revision %r does not match the file's revision line (%r)" % (revision.strip(), label))
+        require_seed_body(directory, "cannot confirm")
         first_end = split_terminator(lines[0])[1] or "\n"
         body, terminator = split_terminator(lines[index])
         note = 'Confirmed by: "%s" (revision %s, %s). Not approved for implementation.' % (
