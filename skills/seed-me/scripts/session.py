@@ -558,7 +558,7 @@ def require_seed_line(directory, expected):
 def require_seed_body(directory, refusal):
     """The saved seed must be a contract, not a status line: a `revision:` line, then a non-empty `## You are confirming` section."""
     lines = [split_terminator(line)[0] for line in seed_lines(directory)]
-    box = next((i for i, line in enumerate(lines) if i and line.strip() == "## You are confirming"), None)
+    box = next((i for i, line in enumerate(lines) if i and line.rstrip() == "## You are confirming"), None)
     section = []
     for line in lines[box + 1:] if box is not None else []:
         if line.startswith("#"):
