@@ -168,7 +168,7 @@ class TestSkillTextMatchesTheEnforcement(unittest.TestCase):
         self.assertIn("Human edits are never overwritten", self.lean)
         self.assertIn("not approval to implement", self.lean)
         self.assertIn("no automatic Markdown import", self.lean)
-        self.assertIn("The folder is the handoff", self.lean)
+        self.assertIn("The folder is the handoff", self.skill)
         self.assertIn("contract revision", self.lean)
         self.assertIn("do not bypass", self.skill)
         mode = (SKILL / "references/agent-mode.md").read_text()

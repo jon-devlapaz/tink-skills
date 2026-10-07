@@ -8,9 +8,6 @@ from urllib.parse import urlsplit
 from session import atomic_write_text, load, now, snapshot_page, write_snapshot, writer
 
 
-ASSET = Path(__file__).resolve().parents[1] / "assets/ledger-view.html"
-
-
 def save_snapshot(directory):
     directory = Path(directory).resolve()
     with writer(directory):

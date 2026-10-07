@@ -31,9 +31,6 @@ status messages, and the seed contract on both Lean and Full:
   what remains blocked, and whether the handoff is confirmed. Name the next owner
   when known; if no owner is assigned, say so.
 
-These rules borrow clear-writing ideas from ASD-STE100; they do not claim compliance
-with its controlled language standard. Interview and authority rules below still apply.
-
 ## 1. Triage the ask and extract context
 
 - Open an interview for any input the user wants formalized — a plan, a loose brainstorm, braindump,

@@ -42,15 +42,9 @@ any time. Switching to full continues the same session without discarding this f
    leave both standing.
 7. Right after the goal is confirmed, ask the open probes before showing any finding, and for any deletion ask the recoverability probe. Run three probes (a pre-mortem, a counter-example, an outside view), put at least one to the
    user, and fill the Knowledge map honestly; ask for a one-sentence teach-back.
-8. Accepting wording is not approval to implement. Line 1 is exactly one of `status: draft` (every
-   revision not yet confirmed), `status: confirmed for intake` (only after the user affirms the displayed
-   revision label) and `status: simulated` (agent-mode sessions); nothing else goes on line 1. Never
-   type the confirmed line: when the user affirms, run
-   `python3 "<skill>/scripts/session.py" seed confirm "<session>" --revision "<the label>" --source "<the user's words>"`.
-   It rewrites line 1, adds a `Confirmed by:` line after the `revision:` line, and refuses (writing
-   nothing) when the seed is missing, line 1 is not `status: draft`, the label does not match the
-   file's `revision:` line, the source is empty, a ledger node is unresolved or flagged for review,
-   the session is simulated or not active, or the seed is already confirmed.
+8. Accepting wording is not approval to implement. Confirm the displayed revision as SKILL.md Step 5.3
+   describes; only `seed confirm` writes the confirmed status line, and line 1 is one of the three values
+   in the template below.
 
 ## Keep the ledger and editable file in agreement
 
@@ -80,11 +74,7 @@ The helper validates the state and retains history; report rejected or stale pub
 
 The Markdown contract revision and confirmation are separate from the ledger's helper-owned
 premise revision and publication version. Publishing or opening the viewer does not confirm
-the contract. End as `completed` only after actual contract confirmation and a successful save;
-stop preserves unanswered questions. `end --status completed` refuses unless line 1 of
-`<session>/seed-contract.md` is `status: confirmed for intake` (`status: simulated` in a simulated
-session), and the file also has a `revision:` line and a non-empty `## You are confirming` section. The folder is the handoff: `<session>/seed-contract.md` and `ledger.json` together; the
-viewer page is not a required downstream artifact.
+the contract. Completion, the folder handoff, and stopping follow **Session lifecycle** in SKILL.md.
 
 ## Template
 
@@ -139,7 +129,3 @@ Q1 NEXT [agent] <title> — owner: <who decides> — why it matters: ...
 ## Evidence
 E1 [evidence] "<quoted line>" (<path>:<line>) — observed YYYY-MM-DD; re-check if <trigger>
 ```
-
-Line 1 is `status: draft` until `seed confirm` rewrites it. Below the revision line the file must
-still open with **You are confirming** and carry executable acceptance checks: the lean path drops
-the extended interview structure, not the viewer or the honesty.
