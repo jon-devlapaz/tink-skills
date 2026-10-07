@@ -391,14 +391,9 @@ class TestSeedSession(unittest.TestCase):
         reference = (SCRIPT.parents[1] / "references/ledger-transitions.md").read_text()
         section = reference.split("### Publication payload\n", 1)[1].split("### Node Statuses", 1)[0]
         payloads = [json.loads(block) for block in re.findall(r"```json\n(.*?)\n```", section, re.S)]
-        self.assertEqual(len(payloads), 2, "Document draft and confirmed-goal publications")
-        draft = session.publish(self.directory, **payloads[0])
-        self.assertEqual(draft["draft"]["goal"], "Candidate goal")
-        self.assertEqual(draft["nodes"], [])
-        self.assertIsNone(draft["origin"])
-        self.assertEqual(draft["version"], 1)
-        saved = session.publish(self.directory, **payloads[1])
-        self.assertEqual(saved["version"], 2)
+        self.assertEqual(len(payloads), 1, "Document the first publication: draft and confirmed origin together")
+        saved = session.publish(self.directory, **payloads[0])
+        self.assertEqual(saved["version"], 1)
         self.assertEqual(session.load(self.directory), saved)
         nodes = {node["id"]: node for node in saved["nodes"]}
         origin = nodes[saved["origin"]]

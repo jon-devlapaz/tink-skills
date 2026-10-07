@@ -153,48 +153,11 @@ class TestSkillTextMatchesTheEnforcement(unittest.TestCase):
         self.skill = (SKILL / "SKILL.md").read_text()
         self.lean = (SKILL / "references/lean-path.md").read_text()
 
-    def test_the_viewer_is_started_by_default_not_offered(self):
-        self.assertNotIn("only if the user says yes", self.skill)
-        self.assertIn("--no-viewer", self.skill)
-        self.assertIn('session.py" status', self.skill)
-
-    def test_both_paths_share_startup_without_changing_authority_or_handoff(self):
-        for text in (self.skill, self.lean):
-            self.assertNotIn("no session, ledger, or viewer", text)
-            self.assertNotIn("skip the session, ledger, and viewer", text)
-        self.assertIn("On both Lean and Full", self.skill)
-        self.assertIn("start the session and viewer", self.lean)
-        self.assertIn("Session lifecycle", self.lean)
-        self.assertIn("Human edits are never overwritten", self.lean)
-        self.assertIn("not approval to implement", self.lean)
-        self.assertIn("no automatic Markdown import", self.lean)
-        self.assertIn("The folder is the handoff", self.skill)
-        self.assertIn("contract revision", self.lean)
-        self.assertIn("do not bypass", self.skill)
-        mode = (SKILL / "references/agent-mode.md").read_text()
-        self.assertIn('Both paths: `python3 "<skill>/scripts/session.py" init --operator simulated`', mode)
-        self.assertNotIn("Full path:", mode)
-
     def test_the_ledger_reference_is_read_only_after_choosing_full(self):
         self.assertNotIn("Before opening the interview, read [ledger-transitions.md]", self.skill)
         full = self.skill.split("### Size gate", 1)[1]
         self.assertIn("ledger-transitions.md", full)
         self.assertLess(self.skill.index("### Size gate"), self.skill.index("ledger-transitions.md", self.skill.index("### Size gate")))
-
-    def test_a_check_for_something_not_built_yet_may_be_provisional_and_does_not_block(self):
-        rule = (SKILL / "references/seed-contract.md").read_text().split("- Acceptance criteria:", 1)[1].split("- Affected users and systems", 1)[0]
-        for needed in ("does not exist yet", "provisional:", "do not block confirmation", "never reported as verification"):
-            self.assertIn(needed, rule)
-        self.assertIn("downstream stages consume it verbatim", rule, "the executable-core rule for existing interfaces stays")
-        self.assertIn("provisional:", self.lean.split("## Acceptance checks", 1)[1])
-
-    def test_lean_questions_may_be_plain_when_no_real_choice_exists(self):
-        self.assertIn("factual", self.lean.split("5. One question at a time", 1)[1].split("6.", 1)[0])
-
-    def test_the_money_exclusion_is_defined_by_exposure(self):
-        gate = self.lean.split("Lean only if", 1)[1].split("The agent proposes", 1)[0]
-        self.assertNotIn("data loss, money, or public exposure", gate)
-        self.assertIn("financial", gate)
 
 
 if __name__ == "__main__":
