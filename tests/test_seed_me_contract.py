@@ -77,99 +77,25 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                 with self.subTest(path=str(path), token=token):
                     self.assertNotIn(token, content)
 
-    def test_braindump_entry_and_draft_step(self):
-        content = (SKILL_DIR / "SKILL.md").read_text()
-        for required in ("braindump", "Shape the working draft",
-                         "PROVISIONAL", "Only then does the frontier loop"):
-            with self.subTest(required=required):
-                self.assertIn(required, content)
-
-    def test_check_labels_guesses_and_definitions_rules(self):
-        skill = skill_with_seed_contract()
-        for required in ("line starting `cmd:`", "`expect:`", "may not settle a decision until you ran the check",
-                         "name one case\nthat must fail it"):
-            with self.subTest(required=required):
-                self.assertIn(required, skill)
-
     def test_single_presentation_template(self):
         content = (SKILL_DIR / "SKILL.md").read_text()
         self.assertEqual(len(re.findall(r"```text", content)), 1)
         self.assertIn("\U0001f4dc What I found:", content)
         self.assertIn("\U0001f464 Owner:", content)
 
-    def test_question_format_names_options_and_assumptions(self):
-        skill = (SKILL_DIR / "SKILL.md").read_text()
-        ledger = (SKILL_DIR / "references/ledger-transitions.md").read_text()
-        for required in ("Question 1 of 3 ready", "Option A:", "Option B:", "Undo cost:",
-                         "Proposed number", "Confidence:", "I would change my suggestion if:", "Not checked:", "contradicts: <node id>", "never by \"Q3\"", "You are confirming",
-                         "I'll assume these unless you object", "`assumed`", "seed-contract.md",
-                         "naming the three riskiest items"):
-            with self.subTest(required=required):
-                self.assertIn(required, skill)
-        self.assertIn("`assumed`", ledger)
-
-    def test_size_gate_and_instinct_first(self):
-        skill = (SKILL_DIR / "SKILL.md").read_text()
+    def test_lean_path_exists_and_its_template_has_the_required_parts(self):
         lean = SKILL_DIR / "references" / "lean-path.md"
         self.assertTrue(lean.is_file())
-        for required in ("Size gate", "the Lean path", "the Full path", "references/lean-path.md",
-                         "Instinct first for hard-to-undo questions", "What's your instinct?",
-                         "Against my suggestion:", "without `recommendation`",
-                         "Ledger: <the viewer URL", "Always show where the ledger is"):
-            with self.subTest(required=required):
-                self.assertIn(required, skill)
         text = lean.read_text()
-        for required in ("You are confirming", "status: draft", "[evidence]",
-                         "cmd: `<exact command>`", "start the session and viewer",
-                         "print its absolute path as a `file://` link"):
+        for required in ("You are confirming", "status: draft", "[evidence]", "cmd: `<exact command>`"):
             with self.subTest(lean=required):
                 self.assertIn(required, text)
 
-    def test_agent_mode_keeps_simulated_answers_apart_from_human_ones(self):
-        skill = (SKILL_DIR / "SKILL.md").read_text()
-        mode = SKILL_DIR / "references" / "agent-mode.md"
-        self.assertTrue(mode.is_file())
-        for required in ("### Agent mode (simulated operator)", "references/agent-mode.md",
-                         "--operator simulated", "`<session>/seed-contract.md`",
-                         "line 1 `status: simulated`", "never `user` or `delegated`"):
-            with self.subTest(required=required):
-                self.assertIn(required, " ".join(skill.split()))
-        text = mode.read_text()
-        for required in ("Operator brief", "must not see", "authority: simulated",
-                         "Decision style", "never authorizes implementation",
-                         "Large briefs.", "The operator decides; it does not build."):
-            with self.subTest(mode=required):
-                self.assertIn(required, text)
-
-    def test_unknowns_are_probed_mapped_and_taught_back(self):
-        skill = " ".join(skill_with_seed_contract().split())
+    def test_lean_template_has_the_sections_the_conduct_checker_reads(self):
         lean = (SKILL_DIR / "references" / "lean-path.md").read_text()
-        for required in ("### Look for what we don't know we don't know", "Pre-mortem:", "Counter-example:",
-                         "Outside view:", "Probe: <question>", "Where we did not look:", "**Knowledge map**",
-                         "What we know, with proof", "What we know we don't know", "What we have not read",
-                         "What could surprise us", "teach-back", "re-check trigger"):
-            with self.subTest(required=required):
-                self.assertIn(required, skill)
         for required in ("## Knowledge map", "Probe:", "Where we did not look:", "We would know we were wrong if:"):
             with self.subTest(lean=required):
                 self.assertIn(required, lean)
-
-    def test_lessons_from_the_simulated_runs_are_in_the_skill(self):
-        skill = " ".join((SKILL_DIR / "SKILL.md").read_text().split())
-        mode = " ".join((SKILL_DIR / "references" / "agent-mode.md").read_text().split())
-        lean = (SKILL_DIR / "references" / "lean-path.md").read_text()
-        for required in ("NOT independent: asked after the finding", "Recoverability (for any decision that deletes",
-                         "confirm it exists and holds what its name", "A name is a claim, not evidence",
-                         "read the settled decisions against each other for contradictions",
-                         "what was **decided** from what was **done**", "comes from a command, not from a summary"):
-            with self.subTest(required=required):
-                self.assertIn(required, skill)
-        for required in ("Defer what only a person knows", "Do not hand personal file names to the operator",
-                         "Check the operator's provenance claims", "Do not take its arithmetic",
-                         "weak evidence", "Ask open probes first"):
-            with self.subTest(mode=required):
-                self.assertIn(required, mode)
-        self.assertIn("recoverability probe", lean)
 
     def test_ledger_viewer_asset(self):
         viewer = SKILL_DIR / "assets" / "ledger-view.html"

@@ -88,24 +88,8 @@ not an artificial prerequisite.
 Write a proposed update to `<session>/update.json`, then invoke `publish` as in
 SKILL.md. Start from a fresh `read`: retain only `status`, `draft`, `goal`, `origin`,
 `current_question`, and `nodes` under `state`. Strip `history` and `revision` from
-each node. The helper owns all other stored fields. Initial draft example:
-
-```json
-{
-  "expected_version": 0,
-  "reason": "Shape the provisional working draft",
-  "state": {
-    "status": "active",
-    "draft": {"goal": "Candidate goal", "outcome": "Candidate outcome", "options": []},
-    "goal": null,
-    "origin": null,
-    "current_question": null,
-    "nodes": []
-  }
-}
-```
-
-After that draft publication, a confirmed-goal update can look like this.
+each node. The helper owns all other stored fields. The first publication follows goal
+confirmation (SKILL.md Session lifecycle step 1) and carries the draft with the confirmed origin.
 This is a **synthetic example**, including its user confirmation and inspected
 fixture: do not treat these strings as real authority or workspace evidence.
 In a real session, settle the goal only from explicit user confirmation and
@@ -114,7 +98,7 @@ both `state.goal` and the origin node's `answer`.
 
 ```json
 {
-  "expected_version": 1,
+  "expected_version": 0,
   "reason": "Synthetic example: user confirmed investigation scope; inspected import fixture",
   "state": {
     "status": "active",
@@ -376,27 +360,22 @@ contradictions. Flags are derived, never stored. They
 never reopen a node, change its `answer`, `authority` or `authority_source`, or
 choose a replacement.
 
-Each node is measured against its own review only. Two helper-owned counters
-decide it: `premise_version` (the publication that last changed a node's `status`,
-`answer`, `evidence`, `claim`, the set of IDs in `supported_by`, or, on a fact, its
-`contradicts`) and
-`reviewed_version` (the publication that created the node, first settled it, or
-revalidated it). An explicit review counts as later than everything recorded in the
-same publication, so a contradiction and the review of what it contradicts can be
-published together; creating or first settling a node is not a review, so a node
-recorded together with the fact that contradicts it stays flagged. Editing a label, question, owner, or gate, or reordering
-`supported_by`, moves neither, so such an edit never clears a flag and never raises
-one. Only explicit revalidation clears a flag, including one for withdrawn or
-contradicted evidence: the user may keep a decision after seeing that its evidence
-is gone. Reviewing an inference does not review the decision that rests on it, and
-changing evidence while reviewing only the inference in the same publication
-still leaves the decision flagged. Every settled fact naming a piece of evidence in
-`contradicts` counts, in any node order. A settled node cannot take on evidence,
-when it is first settled or when its `supported_by` grows, that is not yet settled,
-or that a settled fact still contradicts (the evidence has been neither revised nor
-reviewed since; reviewing it first, or in the same publication, makes it usable). A review may target
-exactly the nodes this rule flags on the state being published. Omit both counters
-from publication payloads.
+Each node is measured against its own review only. The helper keeps two counters for this
+(`premise_version`, `reviewed_version`; see `review_flags` and `transition` in
+`scripts/session.py`); omit them from publication payloads. What a host needs:
+
+- Only explicit revalidation clears a flag, including one for withdrawn or contradicted
+  evidence: the user may keep a decision after seeing that its evidence is gone.
+- An explicit review counts as later than everything else in the same publication, so a
+  contradiction and the review of what it contradicts can be published together. Creating or
+  first settling a node is not a review: a node recorded with the fact that contradicts it
+  stays flagged.
+- Editing a label, question, owner, or gate, or reordering `supported_by`, neither raises
+  nor clears a flag.
+- Reviewing an inference does not review the decision that rests on it; review each flagged node.
+- A settled node cannot cite evidence that is not yet settled, or that a settled fact still
+  contradicts, until that evidence is revised or reviewed (reviewing it in the same publication works).
+- A review may target only the nodes this rule flags on the state being published.
 
 Completion is blocked while flags are unreviewed. To review, publish
 `revalidated` with a nonblank reason for each flagged ID; the node keeps its
