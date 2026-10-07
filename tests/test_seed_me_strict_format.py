@@ -381,7 +381,8 @@ class SimulatedTests(SessionCase):
 
     def test_end_completed_refuses_a_seed_with_a_revision_line_but_no_sections(self):
         for body in ("revision: r1        date: 2026-10-06\n", "revision: r1\n## You are confirming\n",
-                     "revision: r1\n## You are confirming\n\n## Now\n- Settled: x\n"):
+                     "revision: r1\n## You are confirming\n\n## Now\n- Settled: x\n",
+                     "## You are confirming\nrevision: r1\n", "## You are confirming\n- Goal: x\n"):
             with self.subTest(body=body):
                 directory = self.complete_simulated()
                 (directory / "seed-contract.md").write_bytes((SIMULATED + "\n" + body).encode())

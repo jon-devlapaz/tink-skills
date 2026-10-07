@@ -559,7 +559,9 @@ def require_seed_line(directory, expected):
         if line.startswith("#"):
             break
         section.append(line)
-    require(any(re.match(r"revision:[ \t]*\S", line) for line in lines[1:]) and any(line.strip() for line in section),
+    revision = r"revision:[ \t]*\S"
+    require(box is not None and any(re.match(revision, line) for line in lines[1:box])
+            and any(line.strip() and not re.match(revision, line) for line in section),
             "cannot complete: %s is not a seed contract; after its status line it needs a 'revision:' line and a "
             "'## You are confirming' section with content" % (Path(directory) / SEED_FILE))
 
