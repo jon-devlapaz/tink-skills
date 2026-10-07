@@ -91,6 +91,10 @@ class TestGrillMeWithJevContract(unittest.TestCase):
             with self.subTest(lean=required):
                 self.assertIn(required, text)
 
+    def test_full_spec_names_the_heading_the_completion_gate_requires(self):
+        spec = (SKILL_DIR / "references" / "seed-contract.md").read_text()
+        self.assertIn("`## You are confirming` heading", spec)
+
     def test_lean_template_has_the_sections_the_conduct_checker_reads(self):
         lean = (SKILL_DIR / "references" / "lean-path.md").read_text()
         for required in ("## Knowledge map", "Probe:", "Where we did not look:", "We would know we were wrong if:"):

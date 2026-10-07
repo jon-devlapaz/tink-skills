@@ -3,7 +3,7 @@ name: seed-me
 description: Interview the user into a confirmed seed contract before anything is built. Use when they ask for seed-me, or want a plan, decision, or loose idea pressure-tested ("seed this", "grill me", "find the holes"). Reviews, summaries, and no-interview requests keep their own format.
 license: MIT
 metadata:
-  version: "2.1.1"
+  version: "2.1.2"
 ---
 
 # Seed Me

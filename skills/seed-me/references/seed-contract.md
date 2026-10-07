@@ -9,7 +9,7 @@ Read this before drafting the seed (SKILL.md Step 5.1). The displayed and saved 
 - Then the title and provenance: originator when known, a `revision:` line with the revision label and
   the date, and, once confirmed, the helper's `Confirmed by:` line, which says the seed is
   not approved for implementation.
-- **You are confirming** box directly after the title and provenance lines, five short lines: the goal; what gets built;
+- **You are confirming** box under a `## You are confirming` heading (the completion gate checks for it) directly after the title and provenance lines, five short lines: the goal; what gets built;
   what does not; what the user accepted unchanged (with the accepted-versus-chosen count);
   what is still unknown — plus any earlier decision this reverses.
 - Problem statement: current behavior, evidence, and why it matters.
