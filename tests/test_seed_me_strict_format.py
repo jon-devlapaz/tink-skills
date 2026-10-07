@@ -380,13 +380,21 @@ class SimulatedTests(SessionCase):
         self.assertEqual(self.snapshot(directory), before)
 
     def test_end_completed_refuses_a_seed_with_a_revision_line_but_no_sections(self):
-        for body in ("revision: r1        date: 2026-10-06\n", "revision: r1\n## You are confirming\n"):
+        for body in ("revision: r1        date: 2026-10-06\n", "revision: r1\n## You are confirming\n",
+                     "revision: r1\n## You are confirming\n\n## Now\n- Settled: x\n"):
             with self.subTest(body=body):
                 directory = self.complete_simulated()
                 (directory / "seed-contract.md").write_bytes((SIMULATED + "\n" + body).encode())
                 result = self.end(directory)
                 self.assertEqual(result.returncode, 1)
                 self.assertRegex(result.stderr, r"You are confirming")
+
+    def test_end_completed_accepts_content_after_a_blank_line_in_the_confirming_section(self):
+        directory = self.complete_simulated()
+        body = "revision: r1\n## You are confirming\n\n- Goal: x\n\n## Now\n"
+        (directory / "seed-contract.md").write_bytes((SIMULATED + "\n" + body).encode())
+        result = self.end(directory)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_end_completed_refuses_a_confirmed_line_with_no_body(self):
         directory = self.complete_human()

@@ -262,6 +262,10 @@ class TestThroughlineSkillOrder(unittest.TestCase):
         self.assertRegex(flat(SKILL_DIR / "references" / "lean-path.md"), r"ask the open probes before showing any finding")
         self.assertRegex(flat(SKILL_DIR / "references" / "agent-mode.md"), r"pre-mortem and counter-example to the operator before revealing any finding")
 
+    def test_ledger_reference_allows_a_simulated_origin(self):
+        text = " ".join((SKILL_DIR / "references" / "ledger-transitions.md").read_text().split())
+        self.assertIn("`authority: user`; `simulated` in an agent-mode session", text)
+
     def test_every_copy_of_the_completion_rule_names_the_body_requirement(self):
         for name in ("SKILL.md", "references/lean-path.md", "references/agent-mode.md"):
             with self.subTest(name):

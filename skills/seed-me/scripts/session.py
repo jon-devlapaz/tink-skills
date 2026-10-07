@@ -554,8 +554,12 @@ def require_seed_line(directory, expected):
             % (Path(directory) / SEED_FILE, expected, found))
     lines = [split_terminator(line)[0] for line in seed_lines(directory)]
     box = next((i for i, line in enumerate(lines) if i and line.strip() == "## You are confirming"), None)
-    require(any(re.match(r"revision:[ \t]*\S", line) for line in lines[1:]) and box is not None
-            and any(line.strip() for line in lines[box + 1:box + 2]),
+    section = []
+    for line in lines[box + 1:] if box is not None else []:
+        if line.startswith("#"):
+            break
+        section.append(line)
+    require(any(re.match(r"revision:[ \t]*\S", line) for line in lines[1:]) and any(line.strip() for line in section),
             "cannot complete: %s is not a seed contract; after its status line it needs a 'revision:' line and a "
             "'## You are confirming' section with content" % (Path(directory) / SEED_FILE))
 
