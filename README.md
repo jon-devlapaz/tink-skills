@@ -48,8 +48,8 @@ Refresh an installed skill with `tink skill refresh NAME`.
 ### Interview format
 
 ```text
-Decision 1 of 3 ready (2 parked)
-❓ Q1 — Decision: Consequence or tradeoff requiring your judgment.
+Question 1 of 3 ready (2 waiting on earlier answers)
+❓ <Title>: Consequence or tradeoff requiring your judgment.
 ➡️ Recommended: Evidence-grounded option.
 📜 Grounded: workspace evidence summary.
 ```

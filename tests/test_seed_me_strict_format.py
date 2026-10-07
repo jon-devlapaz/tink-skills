@@ -370,6 +370,22 @@ class SimulatedTests(SessionCase):
                     self.assertRegex(result.stderr, r"status: simulated")
                     self.assertEqual(self.snapshot(directory), before)
 
+    def test_end_completed_refuses_a_seed_that_is_only_its_status_line(self):
+        directory = self.complete_simulated()
+        (directory / "seed-contract.md").write_bytes((SIMULATED + "\n").encode())
+        before = self.snapshot(directory)
+        result = self.end(directory)
+        self.assertEqual(result.returncode, 1)
+        self.assertRegex(result.stderr, r"revision:")
+        self.assertEqual(self.snapshot(directory), before)
+
+    def test_end_completed_refuses_a_confirmed_line_with_no_body(self):
+        directory = self.complete_human()
+        (directory / "seed-contract.md").write_bytes((CONFIRMED + "\n").encode())
+        result = self.end(directory)
+        self.assertEqual(result.returncode, 1)
+        self.assertRegex(result.stderr, r"revision:")
+
     def test_confirm_refuses_a_simulated_session_and_leaves_the_seed_alone(self):
         directory = self.complete_simulated()
         path = self.write_seed(directory, SIMULATED)

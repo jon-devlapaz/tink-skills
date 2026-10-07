@@ -242,5 +242,22 @@ class TestThroughlineSkillOrder(unittest.TestCase):
                 self.assertNotIn("grill-me", text)
 
 
+    def test_readme_question_example_matches_the_skill_format(self):
+        readme = (ROOT / "README.md").read_text()
+        self.assertIn("Question 1 of 3 ready (2 waiting on earlier answers)", readme)
+        self.assertNotRegex(readme, r"Q\d+ — ")
+
+    def test_origin_instruction_names_the_simulated_authority(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        step = skill.split("4. On goal confirmation,", 1)[1].split("\n", 1)[0]
+        self.assertIn("`simulated`", step)
+        self.assertNotIn("settled user decision", step)
+
+    def test_probes_are_asked_before_the_first_frontier_question(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        self.assertIn("right after the goal is confirmed", skill)
+        self.assertIn("the first frontier question shows them anything", skill)
+
+
 if __name__ == "__main__":
     unittest.main()

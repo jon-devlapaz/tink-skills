@@ -3,7 +3,7 @@ name: seed-me
 description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract by checking facts and asking the user about choices that matter. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
 license: MIT
 metadata:
-  version: "2.0.0"
+  version: "2.0.1"
 ---
 
 # Seed Me
@@ -245,14 +245,14 @@ authorize product edits. The host runs the commands and owns the viewer process.
    `python3 "<skill>/scripts/session.py" status "<session>"` is the cheap check: open and settled
    counts, the current question, whether the viewer is live and the saved view current. Use it
    instead of rereading the whole ledger.
-4. On goal confirmation, publish a settled user decision as `origin`. Keep the
+4. On goal confirmation, publish a settled decision as `origin`, with authority `user` (`simulated` in an agent-mode session). Keep the
    confirmed goal prominent. Add edges only for actual prerequisites; independent
    concerns may remain unconnected. The goal is implicit: do not make `origin` a
    prerequisite of every concern, only of one whose wording truly depends on it. Publish answers and reopened nodes before
    advancing the current question. Answers stay in chat; the viewer is read-only.
 5. On explicit stop, end as `stopped`. End as `completed` only after the seed is confirmed with
    `seed confirm` and saved as `<session>/seed-contract.md` in Step 5. `end --status completed`
-   refuses unless line 1 of that file is `status: confirmed for intake` (`status: simulated` in a simulated session):
+   refuses unless line 1 of that file is `status: confirmed for intake` (`status: simulated` in a simulated session) and the file has a `revision:` line, so a status line alone never completes a session:
    ```sh
    python3 "<skill>/scripts/session.py" end "<session>" --status stopped --reason "User stopped the interview"
    python3 "<skill>/scripts/viewer.py" "<session>" --snapshot
@@ -317,7 +317,7 @@ put at least one of them to the user (the others may be answered from evidence):
 - **Recoverability (for any decision that deletes, moves, or replaces something):** "What else holds a copy, and
   is that copy independent, or does it share the same disk or account?" Answer it with a check, not a guess.
 
-Ask the probes the user must answer **before** you show them anything you found; an answer given after seeing
+Ask the probes the user must answer right after the goal is confirmed, **before** the first frontier question shows them anything you found; an answer given after seeing
 your finding is not independent evidence, so record it as such (`NOT independent: asked after the finding`).
 
 Record each as `Probe: <question> — answer: <the answer> — changed: <what it changed, or "nothing">`.
