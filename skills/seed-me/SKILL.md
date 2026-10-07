@@ -20,7 +20,7 @@ status messages, and the seed contract on both Lean and Full:
 - Use common words, short sentences, and active voice. Keep one main point per
   sentence. Name who acts and what they must do.
 - Put every label the person sees into words they already use. Offer the path as
-  "quick" or "thorough". On the first question turn, say in one line what the `Ledger:`
+  "quick" or "thorough". On the first question turn after the viewer starts, say in one line what the `Ledger:`
   link shows (every decision and whether it is settled). Call a `status: simulated` seed a
   "practice run that no person confirmed".
 - Use the same term for the same thing. Keep a necessary technical term and
@@ -42,7 +42,7 @@ status messages, and the seed contract on both Lean and Full:
   then grill it. Ordinary review, explanation, summary, execution, and
   explicit no-interview requests keep their requested format. Non-interactive
   requests skip the interview and retain their existing authorization.
-- Read the ledger reference after the size gate, which decides how much interview structure is needed.
+- The size gate below decides how much interview structure is needed, and whether to read the ledger reference (Full only).
   On both Lean and Full, start the session when the user confirms the goal (see
   **Session lifecycle** below); until then the working draft lives in chat. Maintain the decision
   ledger throughout; visible questions are a projection of this ledger.
@@ -69,13 +69,13 @@ record only explicit choices as accepted answers. Only then does the frontier lo
 
 ### Size gate
 
-After the user reacts to the draft, propose a path in one line with your reason: **Lean**
-(quick: one file, few questions) or **Full** (thorough: a full decision ledger). Take Lean only if the idea is small and easy to undo — the criteria are in
+After the user reacts to the draft, propose a path in one line with your reason, in plain words: **quick** (the Lean path: one file,
+few questions) or **thorough** (the Full path: a full decision ledger). Take Lean only if the idea is small and easy to undo — the criteria are in
 [lean-path.md](references/lean-path.md), which also holds the whole lean procedure. Lean
 keeps one editable `<session>/seed-contract.md` and a short interview, with the same session and viewer
 startup as Full (see **Session lifecycle**). Neither startup nor graph availability depends on
 dependency edges. Full means everything below. On Full, read [ledger-transitions.md](references/ledger-transitions.md) now for ledger
-setup, frontier transitions, and ranking; Lean never reads it. The user can say "lean" or "full"
+setup, frontier transitions, and ranking; Lean never reads it. The user can say "quick" or "thorough" (or "lean" or "full")
 at any time; switching to Full continues the existing session and preserves the lean file's items.
 
 ### Agent mode (simulated operator)

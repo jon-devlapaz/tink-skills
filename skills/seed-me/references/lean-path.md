@@ -16,7 +16,7 @@ Lean only if **all** of these hold; otherwise take the full path:
   changing financial records); a local helper that only drafts or reads is fine;
 - about three or fewer questions would change what gets built.
 
-The agent proposes a path in one line with its reason. The user can say "lean" or "full" at
+The agent proposes a path in one line with its reason. The user can say "quick" or "thorough" (or "lean" or "full") at
 any time. Switching to full continues the same session without discarding this file's items.
 
 ## Rules

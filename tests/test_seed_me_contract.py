@@ -112,7 +112,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         skill = (SKILL_DIR / "SKILL.md").read_text()
         lean = SKILL_DIR / "references" / "lean-path.md"
         self.assertTrue(lean.is_file())
-        for required in ("Size gate", "**Lean**", "**Full**", "references/lean-path.md",
+        for required in ("Size gate", "the Lean path", "the Full path", "references/lean-path.md",
                          "Instinct first for hard-to-undo questions", "What's your instinct?",
                          "Against my suggestion:", "without `recommendation`",
                          "Ledger: <the viewer URL", "Always show where the ledger is"):
