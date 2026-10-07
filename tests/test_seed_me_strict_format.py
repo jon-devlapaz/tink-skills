@@ -141,7 +141,8 @@ class ConfirmWritesTests(SessionCase):
     def test_confirm_refuses_a_draft_that_is_not_a_seed_contract(self):
         for body in ("revision: r1\n", "revision: r1\n**You are confirming**\n- Goal: x\n",
                      "revision: r1\n## You are confirming\n\n## Now\n", "## You are confirming\n- Goal: x\nrevision: r1\n",
-                     "revision: r1\n    ## You are confirming\n- Goal: x\n"):
+                     "revision: r1\n    ## You are confirming\n- Goal: x\n",
+                     "revision: r1\n```text\n## You are confirming\n```\n"):
             with self.subTest(body=body):
                 directory = self.complete_human()
                 path = directory / "seed-contract.md"
