@@ -552,6 +552,18 @@ def require_seed_line(directory, expected):
     found = seed_line_one(seed_lines(directory))
     require(found == expected, "cannot complete: line 1 of %s must be exactly %r for this session, found %r"
             % (Path(directory) / SEED_FILE, expected, found))
+    lines = [split_terminator(line)[0] for line in seed_lines(directory)]
+    box = next((i for i, line in enumerate(lines) if i and line.strip() == "## You are confirming"), None)
+    section = []
+    for line in lines[box + 1:] if box is not None else []:
+        if line.startswith("#"):
+            break
+        section.append(line)
+    revision = r"revision:[ \t]*\S"
+    require(box is not None and any(re.match(revision, line) for line in lines[1:box])
+            and any(line.strip() and not re.match(revision, line) for line in section),
+            "cannot complete: %s is not a seed contract; after its status line it needs a 'revision:' line and a "
+            "'## You are confirming' section with content" % (Path(directory) / SEED_FILE))
 
 
 def confirm_seed(directory, revision, source):

@@ -242,5 +242,36 @@ class TestThroughlineSkillOrder(unittest.TestCase):
                 self.assertNotIn("grill-me", text)
 
 
+    def test_readme_question_example_matches_the_skill_format(self):
+        readme = (ROOT / "README.md").read_text()
+        self.assertIn("Question 1 of 3 ready (2 waiting on earlier answers)", readme)
+        self.assertNotRegex(readme, r"Q\d+ — ")
+
+    def test_origin_instruction_names_the_simulated_authority(self):
+        skill = (SKILL_DIR / "SKILL.md").read_text()
+        step = skill.split("4. On goal confirmation,", 1)[1].split("\n", 1)[0]
+        self.assertIn("`simulated`", step)
+        self.assertNotIn("settled user decision", step)
+
+    def test_every_copy_orders_probes_before_any_finding(self):
+        flat = lambda path: " ".join(path.read_text().split())
+        skill = flat(SKILL_DIR / "SKILL.md")
+        # Full: the probe rule covers every message, and the "surface findings promptly" rule waits for the probes.
+        self.assertRegex(skill, r"probes the user must answer right after the goal is confirmed, \*\*before\*\* any message")
+        self.assertRegex(skill, r"Surface material findings promptly as they arise, but only after the probes in Step 5")
+        self.assertRegex(flat(SKILL_DIR / "references" / "lean-path.md"), r"ask the open probes before showing any finding")
+        self.assertRegex(flat(SKILL_DIR / "references" / "agent-mode.md"), r"pre-mortem and counter-example to the operator before revealing any finding")
+
+    def test_ledger_reference_allows_a_simulated_origin(self):
+        text = " ".join((SKILL_DIR / "references" / "ledger-transitions.md").read_text().split())
+        self.assertIn("`authority: user`; `simulated` in an agent-mode session", text)
+
+    def test_every_copy_of_the_completion_rule_names_the_body_requirement(self):
+        for name in ("SKILL.md", "references/lean-path.md", "references/agent-mode.md"):
+            with self.subTest(name):
+                text = " ".join((SKILL_DIR / name).read_text().split())
+                self.assertIn("`revision:` line and a non-empty `## You are confirming` section", text)
+
+
 if __name__ == "__main__":
     unittest.main()

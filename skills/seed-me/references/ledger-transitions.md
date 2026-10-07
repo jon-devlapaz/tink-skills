@@ -74,8 +74,8 @@ Top-level fields:
   e.g. `"Label — tradeoff"`); none is an accepted answer.
 - `assumed`: optional list of `{text, why}` defaults the agent assumes unless the user
   objects. Never user answers; an objection turns an entry into a decision node.
-- `goal`, `origin`: initially `null`. Confirmation creates a settled user decision
-  whose ID is `origin` and whose `answer` exactly equals `goal` (string equality).
+- `goal`, `origin`: initially `null`. Confirmation creates a settled decision
+  (`authority: user`; `simulated` in an agent-mode session) whose ID is `origin` and whose `answer` exactly equals `goal` (string equality).
   Both then remain fixed; record scope refinements in other nodes.
   A replacement goal starts a new session.
 - `current_question`: one ready decision ID, or `null`; always `null` after ending.
@@ -154,7 +154,7 @@ both `state.goal` and the origin node's `answer`.
 }
 ```
 
-The origin is a user decision, so its evidence list may be empty. The settled
+The origin is a user decision (a simulated one in agent mode), so its evidence list may be empty. The settled
 fact requires nonempty evidence and omits `owner`/`gate`. Neither the goal nor
 the fact chooses an implementation; no decorative prerequisite connects them.
 

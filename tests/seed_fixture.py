@@ -11,4 +11,4 @@ def save_seed(session, directory, status_line=None):
     if status_line is None:
         operator = session.load(directory).get("operator", "human")
         status_line = session.STATUS_SIMULATED if operator == "simulated" else session.STATUS_CONFIRMED
-    (directory / session.SEED_FILE).write_text(status_line + "\n# Seed contract: fixture\nrevision: r1        date: 2026-10-06\n", encoding="utf-8")
+    (directory / session.SEED_FILE).write_text(status_line + "\n# Seed contract: fixture\nrevision: r1        date: 2026-10-06\n\n## You are confirming\n- Goal: fixture\n", encoding="utf-8")

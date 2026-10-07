@@ -40,7 +40,7 @@ any time. Switching to full continues the same session without discarding this f
    factual question (where something lives, what a name is) is just asked, in one sentence.
 6. When later evidence contradicts a decision, edit the decision and note why in the item; do not
    leave both standing.
-7. Before confirming, ask the open probes before showing any finding, and for any deletion ask the recoverability probe. Run three probes (a pre-mortem, a counter-example, an outside view), put at least one to the
+7. Right after the goal is confirmed, ask the open probes before showing any finding, and for any deletion ask the recoverability probe. Run three probes (a pre-mortem, a counter-example, an outside view), put at least one to the
    user, and fill the Knowledge map honestly; ask for a one-sentence teach-back.
 8. Accepting wording is not approval to implement. Line 1 is exactly one of `status: draft` (every
    revision not yet confirmed), `status: confirmed for intake` (only after the user affirms the displayed
@@ -83,7 +83,7 @@ premise revision and publication version. Publishing or opening the viewer does 
 the contract. End as `completed` only after actual contract confirmation and a successful save;
 stop preserves unanswered questions. `end --status completed` refuses unless line 1 of
 `<session>/seed-contract.md` is `status: confirmed for intake` (`status: simulated` in a simulated
-session). The folder is the handoff: `<session>/seed-contract.md` and `ledger.json` together; the
+session), and the file also has a `revision:` line and a non-empty `## You are confirming` section. The folder is the handoff: `<session>/seed-contract.md` and `ledger.json` together; the
 viewer page is not a required downstream artifact.
 
 ## Template

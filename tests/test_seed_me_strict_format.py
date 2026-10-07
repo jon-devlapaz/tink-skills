@@ -370,6 +370,40 @@ class SimulatedTests(SessionCase):
                     self.assertRegex(result.stderr, r"status: simulated")
                     self.assertEqual(self.snapshot(directory), before)
 
+    def test_end_completed_refuses_a_seed_that_is_only_its_status_line(self):
+        directory = self.complete_simulated()
+        (directory / "seed-contract.md").write_bytes((SIMULATED + "\n").encode())
+        before = self.snapshot(directory)
+        result = self.end(directory)
+        self.assertEqual(result.returncode, 1)
+        self.assertRegex(result.stderr, r"revision:.*You are confirming")
+        self.assertEqual(self.snapshot(directory), before)
+
+    def test_end_completed_refuses_a_seed_with_a_revision_line_but_no_sections(self):
+        for body in ("revision: r1        date: 2026-10-06\n", "revision: r1\n## You are confirming\n",
+                     "revision: r1\n## You are confirming\n\n## Now\n- Settled: x\n",
+                     "## You are confirming\nrevision: r1\n", "## You are confirming\n- Goal: x\n"):
+            with self.subTest(body=body):
+                directory = self.complete_simulated()
+                (directory / "seed-contract.md").write_bytes((SIMULATED + "\n" + body).encode())
+                result = self.end(directory)
+                self.assertEqual(result.returncode, 1)
+                self.assertRegex(result.stderr, r"You are confirming")
+
+    def test_end_completed_accepts_content_after_a_blank_line_in_the_confirming_section(self):
+        directory = self.complete_simulated()
+        body = "revision: r1\n## You are confirming\n\n- Goal: x\n\n## Now\n"
+        (directory / "seed-contract.md").write_bytes((SIMULATED + "\n" + body).encode())
+        result = self.end(directory)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_end_completed_refuses_a_confirmed_line_with_no_body(self):
+        directory = self.complete_human()
+        (directory / "seed-contract.md").write_bytes((CONFIRMED + "\n").encode())
+        result = self.end(directory)
+        self.assertEqual(result.returncode, 1)
+        self.assertRegex(result.stderr, r"revision:.*You are confirming")
+
     def test_confirm_refuses_a_simulated_session_and_leaves_the_seed_alone(self):
         directory = self.complete_simulated()
         path = self.write_seed(directory, SIMULATED)
