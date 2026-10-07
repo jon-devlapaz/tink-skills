@@ -168,7 +168,7 @@ class TestSkillTextMatchesTheEnforcement(unittest.TestCase):
         self.assertIn("Human edits are never overwritten", self.lean)
         self.assertIn("not approval to implement", self.lean)
         self.assertIn("no automatic Markdown import", self.lean)
-        self.assertIn("The folder is the handoff", self.lean)
+        self.assertIn("The folder is the handoff", self.skill)
         self.assertIn("contract revision", self.lean)
         self.assertIn("do not bypass", self.skill)
         mode = (SKILL / "references/agent-mode.md").read_text()
@@ -182,7 +182,7 @@ class TestSkillTextMatchesTheEnforcement(unittest.TestCase):
         self.assertLess(self.skill.index("### Size gate"), self.skill.index("ledger-transitions.md", self.skill.index("### Size gate")))
 
     def test_a_check_for_something_not_built_yet_may_be_provisional_and_does_not_block(self):
-        rule = self.skill.split("- Acceptance criteria:", 1)[1].split("- Affected users and systems", 1)[0]
+        rule = (SKILL / "references/seed-contract.md").read_text().split("- Acceptance criteria:", 1)[1].split("- Affected users and systems", 1)[0]
         for needed in ("does not exist yet", "provisional:", "do not block confirmation", "never reported as verification"):
             self.assertIn(needed, rule)
         self.assertIn("downstream stages consume it verbatim", rule, "the executable-core rule for existing interfaces stays")
