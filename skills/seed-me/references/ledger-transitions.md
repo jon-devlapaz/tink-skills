@@ -270,7 +270,7 @@ or “Use Redis only if cluster mode is supported”) are **conditional answers*
 
 ### Silence & Stopping
 - Unanswered nodes remain `unresolved`; do not reprint unchanged questions repeatedly. Identify the remaining blocker once and wait for input.
-- If the user asks to stop interviewing, immediately halt questioning, preserve all unresolved blockers in the ledger, and report `stopped — incomplete`.
+- Stopping follows SKILL.md Step 4.
 
 ---
 

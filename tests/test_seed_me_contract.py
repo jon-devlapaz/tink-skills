@@ -12,6 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILL_DIR = ROOT / "skills" / "seed-me"
 
 
+def skill_with_seed_contract():
+    """SKILL.md plus the seed-contract reference it points to."""
+    return (SKILL_DIR / "SKILL.md").read_text() + "\n" + (SKILL_DIR / "references" / "seed-contract.md").read_text()
+
+
 class TestGrillMeWithJevContract(unittest.TestCase):
     def test_skill_identity_and_metadata(self):
         content = (SKILL_DIR / "SKILL.md").read_text()
@@ -23,7 +28,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         self.assertRegex(fields["  version"].strip().strip('"'), r"^\d+\.\d+\.\d+$")
 
     def test_pre_intent_handoff_contract(self):
-        content = (SKILL_DIR / "SKILL.md").read_text()
+        content = skill_with_seed_contract()
         self.assertIn("`<session>/seed-contract.md`", content)
         self.assertNotIn("grill-plan.md", content)
         for required in (
@@ -80,7 +85,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                 self.assertIn(required, content)
 
     def test_check_labels_guesses_and_definitions_rules(self):
-        skill = (SKILL_DIR / "SKILL.md").read_text()
+        skill = skill_with_seed_contract()
         for required in ("line starting `cmd:`", "`expect:`", "may not settle a decision until you ran the check",
                          "name one case\nthat must fail it"):
             with self.subTest(required=required):
@@ -137,7 +142,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
                 self.assertIn(required, text)
 
     def test_unknowns_are_probed_mapped_and_taught_back(self):
-        skill = " ".join((SKILL_DIR / "SKILL.md").read_text().split())
+        skill = " ".join(skill_with_seed_contract().split())
         lean = (SKILL_DIR / "references" / "lean-path.md").read_text()
         for required in ("### Look for what we don't know we don't know", "Pre-mortem:", "Counter-example:",
                          "Outside view:", "Probe: <question>", "Where we did not look:", "**Knowledge map**",
@@ -194,7 +199,7 @@ class TestGrillMeWithJevContract(unittest.TestCase):
         self.assertIn("rename", skill)
 
     def test_session_lifecycle_uses_validated_helpers(self):
-        skill = (SKILL_DIR / "SKILL.md").read_text()
+        skill = skill_with_seed_contract()
         ledger = (SKILL_DIR / "references/ledger-transitions.md").read_text()
         self.assertNotIn("python3 -m http.server", skill)
         self.assertNotIn("every later node descends from it", ledger)
@@ -257,7 +262,8 @@ class TestThroughlineSkillOrder(unittest.TestCase):
         flat = lambda path: " ".join(path.read_text().split())
         skill = flat(SKILL_DIR / "SKILL.md")
         # Full: the probe rule covers every message, and the "surface findings promptly" rule waits for the probes.
-        self.assertRegex(skill, r"probes the user must answer right after the goal is confirmed, \*\*before\*\* any message")
+        self.assertRegex(skill, r"probes the user must answer when the goal is confirmed \(Session lifecycle step 4\), \*\*before\*\* any message")
+        self.assertRegex(skill, r"Then put the probes to the user .* before any message shows a finding")
         self.assertRegex(skill, r"Surface material findings promptly as they arise, but only after the probes in Step 5")
         self.assertRegex(flat(SKILL_DIR / "references" / "lean-path.md"), r"ask the open probes before showing any finding")
         self.assertRegex(flat(SKILL_DIR / "references" / "agent-mode.md"), r"pre-mortem and counter-example to the operator before revealing any finding")

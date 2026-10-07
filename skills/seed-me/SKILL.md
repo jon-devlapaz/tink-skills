@@ -1,9 +1,9 @@
 ---
 name: seed-me
-description: Turn anything — a plan, architecture, design, technical decision, brainstorm, braindump, hunch, or half-formed idea — into a confirmed seed contract by checking facts and asking the user about choices that matter. Use for requests to seed-me, seed this, grill, challenge assumptions, pressure-test, find holes, identify missing decisions, or think through loose material. Do not turn ordinary reviews, explanations, summaries, implementation requests, load tests, or explicit no-interview requests into an interview.
+description: Interview the user into a confirmed seed contract before anything is built. Use when they ask for seed-me, or want a plan, decision, or loose idea pressure-tested ("seed this", "grill me", "find the holes"). Reviews, summaries, and no-interview requests keep their own format.
 license: MIT
 metadata:
-  version: "2.0.1"
+  version: "2.1.0"
 ---
 
 # Seed Me
@@ -19,6 +19,10 @@ status messages, and the seed contract on both Lean and Full:
 
 - Use common words, short sentences, and active voice. Keep one main point per
   sentence. Name who acts and what they must do.
+- Put every label the person sees into words they already use. Offer the path as
+  "quick" or "thorough". On the first question turn, say in one line what the `Ledger:`
+  link shows (every decision and whether it is settled). Call a `status: simulated` seed a
+  "practice run that no person confirmed".
 - Use the same term for the same thing. Keep a necessary technical term and
   explain it briefly on first use. Preserve exact quotes, paths, commands, and
   data field names; explain them outside the quoted text.
@@ -38,7 +42,7 @@ status messages, and the seed contract on both Lean and Full:
   then grill it. Ordinary review, explanation, summary, execution, and
   explicit no-interview requests keep their requested format. Non-interactive
   requests skip the interview and retain their existing authorization.
-- Do not read the ledger reference yet: the size gate below decides how much interview structure is needed.
+- Read the ledger reference after the size gate, which decides how much interview structure is needed.
   On both Lean and Full, start the session when the user confirms the goal (see
   **Session lifecycle** below); until then the working draft lives in chat. Maintain the decision
   ledger throughout; visible questions are a projection of this ledger.
@@ -66,7 +70,7 @@ record only explicit choices as accepted answers. Only then does the frontier lo
 ### Size gate
 
 After the user reacts to the draft, propose a path in one line with your reason: **Lean**
-or **Full**. Take Lean only if the idea is small and easy to undo — the criteria are in
+(quick: one file, few questions) or **Full** (thorough: a full decision ledger). Take Lean only if the idea is small and easy to undo — the criteria are in
 [lean-path.md](references/lean-path.md), which also holds the whole lean procedure. Lean
 keeps one editable `<session>/seed-contract.md` and a short interview, with the same session and viewer
 startup as Full (see **Session lifecycle**). Neither startup nor graph availability depends on
@@ -125,7 +129,7 @@ explicit disposition, or a ledger node. Ready independent questions can proceed.
 ## 3. Present the Frontier
 
 Pace decisions by presenting exactly one ready decision per user turn to minimize
-cognitive load. Ground each recommendation in the cited lines beneath it — a recommendation carries only what its 📜 lines support, never material from an unanswered recommendation. Never re-ask what the user already answered or volunteered; record it and move on. Every frontier question carries at least
+cognitive load. Ground each recommendation in the cited lines beneath it — a recommendation carries only what its 📜 lines support, never material from an unanswered recommendation. Record what the user already answered or volunteered and move on. Every frontier question carries at least
 one 📜 line (the working draft in Step 1 is scaffolding, not a frontier question, so its PROVISIONAL lines are exempt); at most two ungrounded questions per session (a convention the scripts do not count), each marked
 `⚠️ ungrounded — no delegation`, barred from carrying a ➡️ recommendation and
 from settling by delegation (see Step 4). Every frontier question names its decider and gate;
@@ -244,9 +248,10 @@ authorize product edits. The host runs the commands and owns the viewer process.
    instead of rereading the whole ledger.
 4. On goal confirmation, publish a settled decision as `origin`, with authority `user` (`simulated` in an agent-mode session). Keep the
    confirmed goal prominent. Add edges only for actual prerequisites; independent
-   concerns may remain unconnected. The goal is implicit: do not make `origin` a
-   prerequisite of every concern, only of one whose wording truly depends on it. Publish answers and reopened nodes before
+   concerns may remain unconnected. The goal is implicit: make `origin` a
+   prerequisite only of a concern whose wording truly depends on it. Publish answers and reopened nodes before
    advancing the current question. Answers stay in chat; the viewer is read-only.
+   Then put the probes to the user (**Look for what we don't know we don't know**) before any message shows a finding.
 5. On explicit stop, end as `stopped`. End as `completed` only after the seed is confirmed with
    `seed confirm` and saved as `<session>/seed-contract.md` in Step 5. `end --status completed`
    refuses unless line 1 of that file is `status: confirmed for intake` (`status: simulated` in a simulated session) and the file has a `revision:` line and a non-empty `## You are confirming` section, so a status line alone never completes a session:
@@ -314,17 +319,17 @@ put at least one of them to the user (the others may be answered from evidence):
 - **Recoverability (for any decision that deletes, moves, or replaces something):** "What else holds a copy, and
   is that copy independent, or does it share the same disk or account?" Answer it with a check, not a guess.
 
-Ask the probes the user must answer right after the goal is confirmed, **before** any message (a status update, a finding, or a frontier question) shows them anything you found; an answer given after seeing
+Ask the probes the user must answer when the goal is confirmed (Session lifecycle step 4), **before** any message (a status update, a finding, or a frontier question) shows them anything you found; an answer given after seeing
 your finding is not independent evidence, so record it as such (`NOT independent: asked after the finding`).
 
 Record each as `Probe: <question> — answer: <the answer> — changed: <what it changed, or "nothing">`.
-A probe that changed nothing is still recorded; do not invent a change. Then write one line,
+A probe that changed nothing is still recorded; record only a real change. Then write one line,
 `Where we did not look:` — the repos, people, time span, or scenarios that were out of reach.
-If the user skips a probe, record "skipped by the user". Never fill this section with reassurance.
+If the user skips a probe, record "skipped by the user". Fill this section with what was checked and what was missed.
 
 Once the local review and close checklist are resolved:
 
-1. Present the revision-labeled seed contract, opening with the **You are confirming** box, using the structure below (on the lean path the file itself is the seed contract and uses the lean template), including
+1. Present the revision-labeled seed contract, opening with the **You are confirming** box, using the structure in [seed-contract.md](references/seed-contract.md) (on the lean path the file itself is the seed contract and uses the lean template), including
    actual accepted choices and their authority, with line 1
    `status: draft`. Line 1 becomes `status: confirmed for intake` only when the user affirms
    the displayed revision label, and only the helper in step 3 writes it. Describe the review as “I checked this draft for missing decisions and contradictions.”
@@ -362,71 +367,7 @@ Once the local review and close checklist are resolved:
 
 ### Seed contract (artifact contract)
 
-The displayed and saved revision must contain:
-
-- Line 1, exactly one of three values and nothing else on that line: `status: draft` for every
-  revision not yet confirmed, `status: confirmed for intake` only after the human affirms and the
-  helper writes it, and `status: simulated` for an agent-mode session. The file is
-  `<session>/seed-contract.md` in every case, saved beside `ledger.json`.
-- Then the title and provenance: originator when known, a `revision:` line with the revision label and
-  the date, and, once confirmed, the helper's `Confirmed by:` line, which says the seed is
-  not approved for implementation.
-- **You are confirming** box directly after the title and provenance lines, five short lines: the goal; what gets built;
-  what does not; what the user accepted unchanged (with the accepted-versus-chosen count);
-  what is still unknown — plus any earlier decision this reverses.
-- Problem statement: current behavior, evidence, and why it matters.
-- Proposed outcome: desired user-visible results and success criteria.
-- Acceptance criteria: standalone testable checks, each opening with one plain-English line,
-  then the exact command below it on a line starting `cmd:`, then `expect:` with the expected output, each independently
-  verifiable without re-reading the interview. Every check that can run today copies a settled command as its exact command,
-  with that command's settled expected output and where it runs — prose without those literals is
-  not a criterion, and a substitute or extra command is not a check. This section is the executable core of the intake —
-  downstream stages consume it verbatim.
-  When the thing being specified does not exist yet, no settled command exists to copy. Write the check as a proposal:
-  put `provisional:` before `cmd:` and name what must exist for it to run. Provisional checks record the intended
-  behavior, do not block confirmation, and are never reported as verification; the implementation stage replaces
-  each one with the real command once it can run.
-- Affected users and systems: relevant repositories, modules, and execution paths.
-- Constraints and boundaries: non-negotiables, exclusions, and rejected alternatives.
-- Assumed defaults: every `assumed` entry, labelled as not confirmed by the user.
-- Accepted decisions: actual answers, authority, rationale, and dependencies;
-  distinguish user choices from evidence-derived facts and delegated choices.
-- **Knowledge map**, in plain words, four parts:
-  1. *What we know, with proof:* each item has its receipt and the date it was observed, and, for a fact that can
-     change, a re-check trigger (`observed 2026-09-29; re-check if X changes or after N days`).
-  2. *What we know we don't know:* each item with its owner and how to find out.
-  3. *What we have not read:* the close checklist's unread material.
-  4. *What could surprise us:* the `Probe:` lines, `Where we did not look:`, and what would tell us we were
-     wrong (a concrete signal, not a mood).
-- Evidence and uncertainty: inspected paths, measurements, unverified hypotheses,
-  assumptions, what we haven't read (from the close checklist), and repeat
-  surprises with their citations. Carry a `Grounded in:` list of paths actually read
-  this session. Flag a stale watch: any cited source older than the session start
-  or since modified is suspect until re-read. Record verified origins and state
-  gaps explicitly rather than inventing missing provenance.
-- Suggested first slice: the smallest implementation step that would start
-  resolving the problem, labeled proposal only, stated as an exact first
-  command with its working directory. Non-binding: it seeds Stage 01
-  approach drafting without preempting design or authorizing work.
-- Risks and verification: consequential failure modes, mitigations, and testable
-  acceptance criteria; distinguish proposed checks from completed verification.
-- Open questions and deferrals: only non-blocking items, with reasons and revisit
-  conditions. Unresolved blockers still prevent confirmation and saving.
-- Owners and next steps: for each open blocker, the owning decider and gate; for each
-  item to be read later, who will read it; for each repeat surprise, its guardrail.
-  Map each to ledger status: known → settled (evidence), needs a decision →
-  unresolved (blocker), watch → parked or risk, repeat surprise → risk with guardrail.
-- Downstream handoff: the session folder is the handoff: `<session>/seed-contract.md` together with
-  `ledger.json`, which a consumer needs to see that the session completed with a human. The viewer
-  page is not required. This artifact
-  is discovery input, not an implementation plan,
-  approved specification, or review receipt. Preserve accepted constraints when
-  deriving downstream plans or specifications; follow the selected workflow's
-  active contract and surface conflicts rather than silently replacing decisions.
-  Do not preselect a downstream profile or fabricate stage approval.
-
-Label technical proposals as proposals unless explicitly accepted; downstream
-workflows own subsequent specification and implementation approval.
+Read [seed-contract.md](references/seed-contract.md) before drafting the seed. Every displayed and saved revision follows it.
 
 **Authorization:** Read-only investigation is a planning operation. Starting the
 interview permits its local session ledger, snapshot, and loopback viewer lifecycle.
