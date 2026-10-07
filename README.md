@@ -2,7 +2,7 @@
 
 Evidence-oriented Agent Skills for AI coding workflows:
 
-- **seed-me** — Pressure-tests your engineering plan through a step-by-step interview, resolving facts in the codebase first and asking one consequential decision at a time.
+- **[seed-me](https://github.com/jon-devlapaz/seed-me)** — Pressure-tests your engineering plan through a step-by-step interview, resolving facts in the codebase first and asking one consequential decision at a time. Maintained in its own repository.
 - **skill-scout** — Finds, inspects, and qualifies existing agent skills before you build a new one.
 - **ai-native-sdlc** — Runs an evidence-based software development lifecycle with stage contracts, verified test receipts, and test locks.
 - **skill-gate** — Statically extracts feature vectors, profiles execution risk, and evaluates harness compatibility for agent skills.
@@ -20,7 +20,6 @@ flowchart LR
 Install the skills from this repository with [Tink](https://github.com/jon-devlapaz/tink):
 
 ```console
-tink skill add jon-devlapaz/tink-skills --skill seed-me
 tink skill add jon-devlapaz/tink-skills --skill skill-scout
 tink skill add jon-devlapaz/tink-skills --skill skill-gate
 tink skill add jon-devlapaz/tink-skills --skill triage-issues-with-jev
@@ -38,24 +37,14 @@ Refresh an installed skill with `tink skill refresh NAME`.
 
 ## seed-me
 
+> **Note:** `seed-me` is maintained in its own repository: [jon-devlapaz/seed-me](https://github.com/jon-devlapaz/seed-me).
+
 `seed-me` stress-tests your architectural plan or technical decision through a focused, single-question interview before you write code.
 
-### How it works
-- **Investigates facts first:** Checks repository code, configs, and schemas before asking you anything. If a fact is discoverable, it won't interrupt you for it.
-- **One decision at a time:** Paces questions one by one with a clear recommendation grounded in workspace evidence, keeping cognitive load low.
-- **Durable discovery artifact:** Once all blockers are resolved and confirmed, saves the accepted plan as `<session>/seed-contract.md`, beside the interview's `ledger.json`, as intake for downstream implementation. The folder is the handoff, and line 1 of the seed is `status: draft`, `status: confirmed for intake` or `status: simulated`.
-
-### Interview format
-
-```text
-Question 1 of 3 ready (2 waiting on earlier answers)
-❓ <Title>: Consequence or tradeoff requiring your judgment.
-➡️ Recommended: Evidence-grounded option.
-📜 Grounded: workspace evidence summary.
+Install:
+```console
+tink skill add jon-devlapaz/seed-me
 ```
-
-Full contract: [`skills/seed-me/SKILL.md`](skills/seed-me/SKILL.md)
-Operational references: [`ledger-transitions.md`](skills/seed-me/references/ledger-transitions.md)
 
 ---
 
@@ -123,7 +112,6 @@ Full contract: [`skills/triage-issues-with-jev/SKILL.md`](skills/triage-issues-w
 ```text
 .
 ├── skills/
-│   ├── seed-me/
 │   ├── skill-gate/
 │   ├── skill-scout/
 │   └── triage-issues-with-jev/
