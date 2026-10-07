@@ -53,10 +53,6 @@ them there. Types for `label`, `question`, and `recommendation` are authoring
 conventions, not validator guarantees. Clear `answer`, `authority`, and `authority_source` when
 reopening; their previous values remain in history.
 
-Record default behaviors and engineering conventions as labeled **assumptions**,
-never as user answers. Fact nodes resolve through workspace evidence recorded within a stated scope;
-consequential decisions strictly require explicit user choice or scoped delegation.
-
 ### JSON serialization (`ledger.json`)
 
 `scripts/session.py` validates and publishes the source rendered by
@@ -200,11 +196,9 @@ A node is **ready** if and only if:
 
 ---
 
-## 3. Frontier Ranking & Single-Decision Pacing
+## 3. Frontier Ranking & Backlog Counts
 
-To minimize user cognitive load, the workflow replaces multi-question batching
-with **single-decision pacing**. When multiple independent decisions become ready
-on the frontier simultaneously, they are never presented all at once.
+Pacing follows SKILL.md Steps 3 and 4 (one decision per turn). This section owns ranking and counts.
 
 ### Ranking Priority
 When multiple independent nodes are ready on the frontier, prioritize and rank
@@ -214,29 +208,14 @@ them by:
 
 Select the single highest-priority ready decision to present to the user.
 
-### Presentation Format & Backlog Progress
-Present exactly one decision per interaction turn in the canonical template
-owned by SKILL.md Step 3 (single source; do not duplicate it here). Always report backlog progress
-so the user retains visibility into total scope without feeling overwhelmed:
+### Backlog counts
+Report `Question X of Y ready (Z waiting on earlier answers)` where:
+- `X`: Current question index in the ready queue.
+- `Y`: Total count of currently ready independent decisions.
+- `Z`: Count of parked nodes awaiting prerequisites or investigations.
 
-```text
-Question 1 of 3 ready (2 waiting on earlier answers)
-(see SKILL.md Step 3 for the canonical ❓/📜/👤/➡️ template)
-```
-
-- Report counts: `Question X of Y ready (Z waiting on earlier answers)` where:
-  - `X`: Current question index in the ready queue.
-  - `Y`: Total count of currently ready independent decisions.
-  - `Z`: Count of parked nodes awaiting prerequisites or investigations.
-- Undisplayed and queued ready nodes remain tracked blockers in the ledger that
-  prevent completion until settled.
-
-### Pacing Cycle
-1. Select and present the single highest-ranked ready decision.
-2. Wait for explicit user input before advancing the ledger.
-3. Record the answer, apply scoped delegations or exclusions, and transition the node to `settled`.
-4. Recompute readiness across all remaining ledger nodes.
-5. Select and present the next single ready decision, or proceed to completion review if the frontier is clear.
+Undisplayed and queued ready nodes remain tracked blockers in the ledger that
+prevent completion until settled.
 
 ---
 
@@ -291,7 +270,7 @@ or “Use Redis only if cluster mode is supported”) are **conditional answers*
 
 ### Silence & Stopping
 - Unanswered nodes remain `unresolved`; do not reprint unchanged questions repeatedly. Identify the remaining blocker once and wait for input.
-- If the user asks to stop interviewing, immediately halt questioning, preserve all unresolved blockers in the ledger, and report `stopped — incomplete`.
+- Stopping follows SKILL.md Step 4.
 
 ---
 
