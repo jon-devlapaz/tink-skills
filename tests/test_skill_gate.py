@@ -416,10 +416,10 @@ tools:
 
 class TestSkillGateE2E(unittest.TestCase):
     def test_analyze_existing_repo_skills(self):
-        # Statically analyze active repo skills
+        # seed-me is https://github.com/jon-devlapaz/seed-me and is not in this tree.
+        self.assertFalse((ROOT / "skills" / "seed-me").exists())
         skill_dirs = [
             ROOT / "skills/skill-scout",
-            ROOT / "skills/seed-me",
         ]
         for skill_dir in skill_dirs:
             self.assertTrue(skill_dir.is_dir(), f"Missing expected skill dir: {skill_dir}")
