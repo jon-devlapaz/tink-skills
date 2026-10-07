@@ -253,10 +253,20 @@ class TestThroughlineSkillOrder(unittest.TestCase):
         self.assertIn("`simulated`", step)
         self.assertNotIn("settled user decision", step)
 
-    def test_probes_are_asked_before_the_first_frontier_question(self):
-        skill = (SKILL_DIR / "SKILL.md").read_text()
-        self.assertIn("right after the goal is confirmed", skill)
-        self.assertIn("the first frontier question shows them anything", skill)
+    def test_every_copy_orders_probes_before_any_finding(self):
+        flat = lambda path: " ".join(path.read_text().split())
+        skill = flat(SKILL_DIR / "SKILL.md")
+        # Full: the probe rule covers every message, and the "surface findings promptly" rule waits for the probes.
+        self.assertRegex(skill, r"probes the user must answer right after the goal is confirmed, \*\*before\*\* any message")
+        self.assertRegex(skill, r"Surface material findings promptly as they arise, but only after the probes in Step 5")
+        self.assertRegex(flat(SKILL_DIR / "references" / "lean-path.md"), r"ask the open probes before showing any finding")
+        self.assertRegex(flat(SKILL_DIR / "references" / "agent-mode.md"), r"pre-mortem and counter-example to the operator before revealing any finding")
+
+    def test_every_copy_of_the_completion_rule_names_the_body_requirement(self):
+        for name in ("SKILL.md", "references/lean-path.md", "references/agent-mode.md"):
+            with self.subTest(name):
+                text = " ".join((SKILL_DIR / name).read_text().split())
+                self.assertIn("`revision:` line and a non-empty `## You are confirming` section", text)
 
 
 if __name__ == "__main__":

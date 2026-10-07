@@ -81,7 +81,7 @@ nothing.
 - Save the result as `<session>/seed-contract.md`, beside `ledger.json`, with line 1 `status: simulated`
   and nothing else on that line. The operator's "confirm" is recorded as a simulated answer, not as
   confirmation, and never authorizes implementation. `session.py seed confirm` refuses a simulated
-  session, and `end --status completed` on one needs that line 1.
+  session, and `end --status completed` on one needs that line 1, a `revision:` line and a non-empty `## You are confirming` section.
 - To adopt a simulated contract, a person reads it and starts a normal session (with a lean file when appropriate)
   with their own confirmation. The simulated session's operator cannot be changed afterwards.
 

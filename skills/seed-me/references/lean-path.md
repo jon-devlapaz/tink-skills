@@ -83,7 +83,7 @@ premise revision and publication version. Publishing or opening the viewer does 
 the contract. End as `completed` only after actual contract confirmation and a successful save;
 stop preserves unanswered questions. `end --status completed` refuses unless line 1 of
 `<session>/seed-contract.md` is `status: confirmed for intake` (`status: simulated` in a simulated
-session). The folder is the handoff: `<session>/seed-contract.md` and `ledger.json` together; the
+session), and the file also has a `revision:` line and a non-empty `## You are confirming` section. The folder is the handoff: `<session>/seed-contract.md` and `ledger.json` together; the
 viewer page is not a required downstream artifact.
 
 ## Template

@@ -134,7 +134,7 @@ one 📜 line (the working draft in Step 1 is scaffolding, not a frontier questi
 from settling by delegation (see Step 4). Every frontier question names its decider and gate;
 `operator` alone suffices only for consequence-free clarifications. Queued and undisplayed nodes remain tracked blockers in
 the ledger that prevent completion until settled. Surface material findings
-promptly as they arise.
+promptly as they arise, but only after the probes in Step 5 have been put to the user.
 
 ```text
 Question 1 of 3 ready (2 waiting on earlier answers)
@@ -252,7 +252,7 @@ authorize product edits. The host runs the commands and owns the viewer process.
    advancing the current question. Answers stay in chat; the viewer is read-only.
 5. On explicit stop, end as `stopped`. End as `completed` only after the seed is confirmed with
    `seed confirm` and saved as `<session>/seed-contract.md` in Step 5. `end --status completed`
-   refuses unless line 1 of that file is `status: confirmed for intake` (`status: simulated` in a simulated session) and the file has a `revision:` line, so a status line alone never completes a session:
+   refuses unless line 1 of that file is `status: confirmed for intake` (`status: simulated` in a simulated session) and the file has a `revision:` line and a non-empty `## You are confirming` section, so a status line alone never completes a session:
    ```sh
    python3 "<skill>/scripts/session.py" end "<session>" --status stopped --reason "User stopped the interview"
    python3 "<skill>/scripts/viewer.py" "<session>" --snapshot
@@ -317,7 +317,7 @@ put at least one of them to the user (the others may be answered from evidence):
 - **Recoverability (for any decision that deletes, moves, or replaces something):** "What else holds a copy, and
   is that copy independent, or does it share the same disk or account?" Answer it with a check, not a guess.
 
-Ask the probes the user must answer right after the goal is confirmed, **before** the first frontier question shows them anything you found; an answer given after seeing
+Ask the probes the user must answer right after the goal is confirmed, **before** any message (a status update, a finding, or a frontier question) shows them anything you found; an answer given after seeing
 your finding is not independent evidence, so record it as such (`NOT independent: asked after the finding`).
 
 Record each as `Probe: <question> — answer: <the answer> — changed: <what it changed, or "nothing">`.
