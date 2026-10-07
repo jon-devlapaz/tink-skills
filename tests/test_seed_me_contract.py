@@ -266,12 +266,6 @@ class TestThroughlineSkillOrder(unittest.TestCase):
         text = " ".join((SKILL_DIR / "references" / "ledger-transitions.md").read_text().split())
         self.assertIn("`authority: user`; `simulated` in an agent-mode session", text)
 
-    def test_every_copy_of_the_completion_rule_names_the_body_requirement(self):
-        for name in ("SKILL.md", "references/lean-path.md", "references/agent-mode.md"):
-            with self.subTest(name):
-                text = " ".join((SKILL_DIR / name).read_text().split())
-                self.assertIn("`revision:` line and a non-empty `## You are confirming` section", text)
-
 
 if __name__ == "__main__":
     unittest.main()

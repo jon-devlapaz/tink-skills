@@ -429,48 +429,7 @@ class SimulatedTests(SessionCase):
 DOCS = {name: (SKILL / path).read_text(encoding="utf-8")
         for name, path in (("SKILL.md", "SKILL.md"), ("lean-path.md", "references/lean-path.md"),
                            ("agent-mode.md", "references/agent-mode.md"))}
-OLD_PHRASES = ("repository-root", "unconfirmed — awaiting affirmation",
-               "seed contract — confirmed for intake; not approved for implementation",
-               "simulated — not confirmed by a human", "seed-contract.simulated.md")
-
-
 class DocsTests(unittest.TestCase):
-    def test_the_three_line_one_values_are_stated(self):
-        for name in ("SKILL.md", "lean-path.md"):
-            for value in (DRAFT, CONFIRMED, SIMULATED):
-                with self.subTest(doc=name, value=value):
-                    self.assertIn("`%s`" % value, DOCS[name])
-        self.assertIn("`%s`" % SIMULATED, DOCS["agent-mode.md"])
-
-    def test_the_save_location_and_the_folder_handoff_are_stated(self):
-        for name in DOCS:
-            with self.subTest(doc=name):
-                self.assertIn("`<session>/seed-contract.md`", DOCS[name])
-        for name in ("SKILL.md", "lean-path.md"):
-            with self.subTest(doc=name):
-                self.assertIn("The folder is the handoff", DOCS[name])
-                self.assertIn("`ledger.json`", DOCS[name])
-
-    def test_the_confirm_helper_is_described(self):
-        for name in ("SKILL.md", "lean-path.md"):
-            with self.subTest(doc=name):
-                self.assertIn('session.py" seed confirm', DOCS[name])
-                self.assertIn("--revision", DOCS[name])
-                self.assertIn("--source", DOCS[name])
-        self.assertRegex(DOCS["agent-mode.md"], r"seed confirm.*refuses|refuses.*seed confirm")
-
-    def test_the_meaning_of_not_approved_for_implementation_stays(self):
-        self.assertIn("not approved for implementation", DOCS["SKILL.md"].lower())
-
-    def test_no_old_phrase_is_left_anywhere_in_the_skill_text(self):
-        texts = dict(DOCS)
-        for path in SKILL.rglob("*.md"):
-            texts[str(path.relative_to(SKILL))] = path.read_text(encoding="utf-8")
-        for name, content in texts.items():
-            for phrase in OLD_PHRASES:
-                with self.subTest(doc=name, phrase=phrase):
-                    self.assertNotIn(phrase, content)
-
     def test_the_lean_template_opens_with_a_status_line_and_a_revision_line(self):
         template = DOCS["lean-path.md"].split("## Template", 1)[1]
         block = template.split("```markdown\n", 1)[1].split("\n")

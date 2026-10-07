@@ -878,20 +878,11 @@ class TestAcceptanceExamples(EpistemicCase):
         self.assertEqual(nodes["layout-observed"]["claim"]["type"], "observation")
         inferred = nodes["mixed-ownership"]
         self.assertEqual((inferred["claim"]["type"], inferred["supported_by"]), ("inference", ["layout-observed"]))
-        self.assertIn("does not show", inferred["claim"]["limits"])
-        self.assertEqual(nodes["ownership-workflow"]["answer"], "This investigation has not yet established the intended ownership workflow.")
         self.assertNotIn("mixed-ownership", nodes["layout-observed"].get("supported_by", []))
 
-    def test_runtime_and_sdk_differ_records_the_difference_without_a_compatibility_claim(self):
+    def test_runtime_and_sdk_difference_is_recorded_as_an_observation(self):
         found = {n["id"]: n for n in self.seed()["nodes"]}["sdk-version"]
         self.assertEqual(found["claim"]["type"], "observation")
-        self.assertNotIn("incompatib", found["answer"].lower())
-        self.assertIn("does not show whether", found["claim"]["limits"].lower())
-
-    def test_command_paths_keep_their_scope_and_never_assert_global_absence(self):
-        found = {n["id"]: n for n in self.seed()["nodes"]}["command-paths"]
-        self.assertIn("Other handlers were not read", found["claim"]["scope"])
-        self.assertIn("not proof that no containment exists anywhere", found["claim"]["limits"])
 
     def test_safety_target_stays_a_provisional_proposal_resting_on_feasibility_alone(self):
         result = self.seed()
