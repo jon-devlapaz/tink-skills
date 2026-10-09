@@ -16,10 +16,6 @@ source = "https://github.com/eddiebelaval/squire.git"
 path = "skills/epistemic-matrix"
 
 [[skills]]
-name = "seed-me"
-source = "skills/seed-me"
-
-[[skills]]
 name = "manage-tink"
 source = "tink:embedded/manage-tink"
 

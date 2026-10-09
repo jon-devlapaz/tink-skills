@@ -112,7 +112,7 @@ tink-route --receipt runs/<slug>/skills.jsonl "<what you need>"
 
 `tink-route` searches the whole skill library and never reads `AGENTS.md`, so the command is identical in every stage. In our routing eval 56% of the skills a stage needed were not on that stage's shelf, and the whole library was as precise as the shelf where both applied. `--skillset NAME` restricts a call to one skillset (exit 1 may then add `Hint: <skill> fits but is on another shelf (<skillset>); it was not delivered.`); `--anywhere` is the default spelled out.
 
-`seed-me` is human-invoked and belongs to no stage skillset. Install it separately with `tink skill add jon-devlapaz/tink-skills --skill seed-me`. Its confirmed seed contract is the input to 01-plan: give the agent that file's path in the stage-1 launch prompt.
+`seed-me` is human-invoked and belongs to no stage skillset. Install it separately with `tink skill add jon-devlapaz/seed-me` from https://github.com/jon-devlapaz/seed-me. Its confirmed seed contract is the input to 01-plan: give the agent that file's path in the stage-1 launch prompt.
 
 `tink use` and `tink-route` are optional integrations; runs work without them. `tink-route` 0.10.0 or newer is required for whole-library routing (older versions scope routing to the stage shelf in the `AGENTS.md` rules block); `sdlc.py stage` warns when an older one is on PATH.
 

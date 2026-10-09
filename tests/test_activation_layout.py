@@ -3,8 +3,8 @@
 .agents/skills/ is Tink's install (gitignored), not a second source. These
 checks close the two symptoms of that split:
 
-- seed-me on the routed tree is the published skill (Seed Me title,
-  assets/ledger-view.html), and a present install matches that tree.
+- seed-me is the external skill at https://github.com/jon-devlapaz/seed-me,
+  not a published tree in this repository.
 - skill-gate is declared for install and present on the routed tree, and a
   present install contains that same tree.
 """
@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -195,19 +194,15 @@ class TestActivationLayout(unittest.TestCase):
         router = self.agents[self.agents.index(ROUTER_START) : router_end]
         self.assertIn("Read `_system/SDLC.md`", router)
 
-    def test_issue_62_routed_seed_me_matches_published_tree(self):
-        self.assertEqual(self.published["seed-me"], "skills/seed-me")
-        skill_dir = ROOT / "skills" / "seed-me"
-        content = (skill_dir / "SKILL.md").read_text()
-        headings = re.findall(r"^#+ .+$", content, re.M)
-        self.assertEqual(headings[0], "# Seed Me")
-        self.assertFalse(any(re.fullmatch(r"#+ Grill Me", heading) for heading in headings))
-        self.assertTrue((skill_dir / "assets" / "ledger-view.html").is_file())
-        self.assertEqual(
-            lock_digests(self.lock)["seed-me"],
-            tree_digest_v2(skill_dir),
-        )
-        self._assert_install_matches("seed-me")
+    def test_seed_me_is_the_external_repository(self):
+        self.assertNotIn("seed-me", self.published)
+        self.assertNotIn("seed-me", lock_digests(self.lock))
+        self.assertFalse((ROOT / "skills" / "seed-me").exists())
+        self.assertIn("https://github.com/jon-devlapaz/seed-me", self.agents)
+        readme = (ROOT / "README.md").read_text()
+        self.assertIn("https://github.com/jon-devlapaz/seed-me", readme)
+        self.assertIn("tink skill add jon-devlapaz/seed-me", readme)
+        self.assertNotIn("tink-skills --skill seed-me", readme)
 
     def test_issue_63_skill_gate_is_on_routed_tree(self):
         self.assertEqual(self.published["skill-gate"], "skills/skill-gate")
