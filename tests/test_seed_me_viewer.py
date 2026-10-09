@@ -83,6 +83,34 @@ class ViewerFixture:
         return self.publish(state)
 
 
+class TestViewerStartup(unittest.TestCase):
+    def test_loopback_startup_needs_no_reverse_dns_and_serves_http(self):
+        with tempfile.TemporaryDirectory(prefix="seed-me-TEST-loopback-") as root:
+            directory = session.create(root)
+            with patch("socket.getfqdn", side_effect=AssertionError("reverse DNS forbidden")) as fqdn, \
+                    patch("socket.gethostbyaddr", side_effect=AssertionError("reverse DNS forbidden")) as reverse:
+                server = viewer.make_server(directory)
+                self.addCleanup(server.server_close)
+                self.assertEqual(server.server_address[0], "127.0.0.1")
+                self.assertEqual(server.server_name, "127.0.0.1")
+                self.assertEqual(server.server_port, server.server_address[1])
+                self.assertGreater(server.server_port, 0)
+                fqdn.assert_not_called()
+                reverse.assert_not_called()
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                url = f"http://127.0.0.1:{server.server_port}/ledger.json"
+                with urlopen(url, timeout=3) as response:
+                    self.assertEqual(json.load(response), session.load(directory))
+                with self.assertRaises(HTTPError) as raised:
+                    urlopen(Request(url, headers={"Host": "attacker.example"}), timeout=3)
+                self.assertEqual(raised.exception.code, 403)
+            finally:
+                server.shutdown()
+                thread.join(timeout=5)
+
+
 class TestViewerHTTP(ViewerFixture, unittest.TestCase):
     def test_serves_only_viewer_and_validated_ledger(self):
         (self.directory / "private.txt").write_text("not exposed")

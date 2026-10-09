@@ -3,6 +3,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
+from socketserver import TCPServer
 from urllib.parse import urlsplit
 
 from session import atomic_write_text, load, now, snapshot_page, write_snapshot, writer
@@ -12,6 +13,13 @@ def save_snapshot(directory):
     directory = Path(directory).resolve()
     with writer(directory):
         return write_snapshot(directory)
+
+
+class LoopbackHTTPServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # HTTPServer's reverse DNS is unnecessary for this loopback-only viewer.
+        TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address
 
 
 def make_server(directory, port=0):
@@ -53,7 +61,7 @@ def make_server(directory, port=0):
             pass
 
     try:
-        return ThreadingHTTPServer(("127.0.0.1", port), Handler)
+        return LoopbackHTTPServer(("127.0.0.1", port), Handler)
     except OSError as error:
         raise ValueError(
             f"could not open a local port ({error}). The ledger is safe and a current view is saved at "

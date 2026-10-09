@@ -12,6 +12,22 @@ permissions:
   contents: read
 
 jobs:
+  loopback:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: DNS-independent startup and real viewer lifecycle
+        env:
+          PYTHONPATH: tests
+        run: python3 -m unittest test_seed_me_viewer.TestViewerStartup test_seed_me_viewer.TestViewerHTTP test_seed_me_viewer_enforced -v
+
   test:
     runs-on: ubuntu-latest
     steps:
